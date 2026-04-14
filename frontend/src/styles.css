@@ -1,0 +1,130 @@
+:root {
+  --bg: #f2f5f8;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #475569;
+  --ok: #0f9d58;
+  --warning: #f59e0b;
+  --error: #dc2626;
+  --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at top left, #dbeafe 0%, #f8fafc 45%, #eef2ff 100%);
+}
+
+.page {
+  min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--card);
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: var(--shadow);
+}
+
+.header h1 {
+  margin: 0;
+}
+
+.header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.badge {
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.badge.ok {
+  background: var(--ok);
+}
+
+.badge.warning {
+  background: var(--warning);
+}
+
+.badge.error {
+  background: var(--error);
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.inside {
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.outside {
+  color: var(--error);
+  font-weight: 700;
+}
+
+.map-wrap {
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  height: 58vh;
+  min-height: 380px;
+}
+
+.alerts {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.alerts ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .map-wrap {
+    height: 50vh;
+  }
+}
