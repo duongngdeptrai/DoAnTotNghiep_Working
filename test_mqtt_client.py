@@ -108,5 +108,5 @@ if __name__ == "__main__":
         device_id=args.device_id,
         lat=args.lat,
         lng=args.lng,
-        move_outside=args.move_outside,
+        move_outside=args.move_outside,  
     )
