@@ -131,9 +131,21 @@ Open: `http://localhost:5173`
 
 ESP32 GPS -> MQTT topic `gps/{deviceId}` -> FastAPI subscriber -> MongoDB + Geofence checks -> Telegram/Email alerts -> WebSocket -> React map.
 
+The safe zone can run in two modes:
+- `fixed`: use the configured center from backend settings.
+- `mobile`: use the current phone/browser location as the center and keep updating it.
+
+Frontend geofence endpoints:
+- `GET /geofence/state`
+- `POST /geofence/mode` with `{ "mode": "fixed" | "mobile" }`
+- `POST /geofence/center` with `{ "lat": number, "lng": number }`
+
 ## API Endpoints
 
 - `GET /health`
+- `GET /geofence/state`
+- `POST /geofence/mode`
+- `POST /geofence/center`
 - `GET /latest/{device_id}`
 - `GET /history/{device_id}?limit=100`
 - `WS /ws`

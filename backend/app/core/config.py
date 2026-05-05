@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     mqtt_topic: str = "gps/#"
     mqtt_keepalive: int = 60
 
+    geofence_mode: str = "fixed"
     geofence_center_lat: float = 21.0285
     geofence_center_lng: float = 105.8542
     geofence_radius_m: float = 100.0
@@ -37,6 +38,10 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from_email: str | None = None
     smtp_to_email: str | None = None
+
+    # Default device mapping (optional) - used to auto-create device config on startup
+    default_device_id: str = "child_01"
+    default_device_email: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

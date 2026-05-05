@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router as api_router
 from app.core.config import get_settings
 from app.db.mongo import mongo_manager
+from app.repositories.device_config_repository import DeviceConfigRepository
 from app.repositories.location_repository import LocationRepository
 from app.services.alert_state_service import AlertStateService
 from app.services.geofence_service import GeofenceService
@@ -38,6 +39,7 @@ app.add_middleware(
 app.include_router(api_router)
 
 logger.info(f"App: {settings.app_name}")
+logger.info(f"Geofence mode: {settings.geofence_mode}")
 logger.info(f"Geofence center: ({settings.geofence_center_lat}, {settings.geofence_center_lng})")
 logger.info(f"Geofence radius: {settings.geofence_radius_m}m")
 
@@ -58,14 +60,30 @@ async def on_startup() -> None:
         center_lat=settings.geofence_center_lat,
         center_lng=settings.geofence_center_lng,
         radius_m=settings.geofence_radius_m,
+        mode=settings.geofence_mode,
     )
     alert_state_service = AlertStateService(
         cooldown_sec=settings.alert_cooldown_sec,
         noise_threshold_m=settings.noise_threshold_m,
         repeat_outside=settings.alert_repeat_outside,
     )
-    notification_service = NotificationService(settings)
+    device_config_repository = DeviceConfigRepository(mongo_manager.db)
+    notification_service = NotificationService(settings, device_config_repository)
     repository = LocationRepository()
+
+    # If default device email is provided via settings/.env, ensure config exists
+    try:
+        if settings.default_device_email:
+            device_config_repository.upsert_config(
+                settings.default_device_id, settings.default_device_email, True
+            )
+            logger.info(
+                "Default device config ensured: %s -> %s",
+                settings.default_device_id,
+                settings.default_device_email,
+            )
+    except Exception:
+        logger.exception("Failed to ensure default device config")
 
     location_processor = LocationProcessor(
         repository=repository,
@@ -74,6 +92,10 @@ async def on_startup() -> None:
         notification_service=notification_service,
         ws_manager=ws_manager,
     )
+
+    app.state.geofence_service = geofence_service
+    app.state.location_processor = location_processor
+    app.state.device_config_repository = device_config_repository
 
     logger.info("Starting MQTT subscriber...")
     mqtt_service = MQTTService(settings, location_processor)

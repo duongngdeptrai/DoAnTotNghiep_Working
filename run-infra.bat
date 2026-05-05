@@ -17,3 +17,4 @@ echo   2. Open new terminal and run: run-frontend.bat
 echo   3. Open new terminal and run: run-test-mqtt.bat
 echo.
 pause
+
