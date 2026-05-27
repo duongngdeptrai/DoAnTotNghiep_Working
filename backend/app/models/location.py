@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -35,3 +36,36 @@ class LocationOut(BaseModel):
 
 class LocationDB(LocationOut):
     receivedAt: int
+
+
+class StatsRequest(BaseModel):
+    start: int = Field(..., description="Start timestamp (Unix epoch seconds)")
+    end: int = Field(..., description="End timestamp (Unix epoch seconds)")
+
+
+class DailyStats(BaseModel):
+    date: str  # YYYY-MM-DD
+    pointCount: int
+    totalDistanceM: float
+    avgSpeedKmh: Optional[float]
+    activeDurationSec: int
+
+
+class HeatmapPoint(BaseModel):
+    lat: float
+    lng: float
+    weight: int  # number of points at this location (for heatmap intensity)
+
+
+class StatsResponse(BaseModel):
+    deviceId: str
+    start: int
+    end: int
+    totalPoints: int
+    totalDistanceM: float
+    activeDurationSec: int
+    avgSpeedKmh: Optional[float]
+    stopCount: int  # points where speed ~0
+    dailyStats: list[DailyStats]
+    heatmapData: list[HeatmapPoint]
+    trackPath: list[dict]  # [{lat, lng, timestamp}]

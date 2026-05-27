@@ -1,0 +1,23 @@
+# Flutter project
+.dart_tool/
+.build/
+build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Dependencies
+.pub/
+.packages
+
+# Local config
+local.properties

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
-async function postJson(url, body) {
+async function postJson(url, body, token) {
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -17,7 +18,7 @@ async function postJson(url, body) {
   return response.json();
 }
 
-export function useGeofenceSharing(backendHttpUrl, enabled, onStateUpdate) {
+export function useGeofenceSharing(backendHttpUrl, enabled, onStateUpdate, token) {
   const [sharingStatus, setSharingStatus] = useState("idle");
   const [sharingError, setSharingError] = useState(null);
   const lastSentAtRef = useRef(0);
@@ -49,7 +50,7 @@ export function useGeofenceSharing(backendHttpUrl, enabled, onStateUpdate) {
       lastSentAtRef.current = now;
 
       try {
-        const state = await postJson(`${backendHttpUrl}/geofence/center`, { lat, lng });
+        const state = await postJson(`${backendHttpUrl}/geofence/center`, { lat, lng }, token);
         onStateUpdate?.(state);
         setSharingStatus("sharing");
       } catch (error) {
@@ -79,7 +80,7 @@ export function useGeofenceSharing(backendHttpUrl, enabled, onStateUpdate) {
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [backendHttpUrl, enabled, onStateUpdate]);
+  }, [backendHttpUrl, enabled, onStateUpdate, token]);
 
   return { sharingStatus, sharingError };
 }

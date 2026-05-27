@@ -8,8 +8,20 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "Child Tracking Backend"
     app_host: str = "0.0.0.0"
-    app_port: int = 8000
-    cors_origins: List[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    app_port: int = 8001
+    cors_origins: List[str] = Field(default_factory=lambda: [
+    "http://localhost:5173",
+    "http://localhost:64123",
+    "http://localhost:65000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:64123",
+    "http://127.0.0.1:65000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://localhost:64124",
+    "http://localhost:65001",
+    "http://192.168.76.41:8080",
+])
 
     mongo_uri: str = "mongodb://localhost:27017"
     mongo_db_name: str = "child_tracking"
@@ -38,6 +50,10 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from_email: str | None = None
     smtp_to_email: str | None = None
+
+    jwt_secret_key: str = "change-me"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_exp_minutes: int = 60
 
     # Default device mapping (optional) - used to auto-create device config on startup
     default_device_id: str = "child_01"

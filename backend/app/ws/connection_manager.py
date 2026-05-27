@@ -7,23 +7,46 @@ from fastapi import WebSocket
 class ConnectionManager:
     def __init__(self) -> None:
         self.active_connections: set[WebSocket] = set()
+        self.connection_context: dict[WebSocket, dict[str, Any]] = {}
         self.loop: asyncio.AbstractEventLoop | None = None
 
     def attach_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self.loop = loop
 
-    async def connect(self, websocket: WebSocket) -> None:
+    async def connect(
+        self,
+        websocket: WebSocket,
+        *,
+        allowed_device_ids: set[str],
+        owner_device_ids: set[str],
+    ) -> None:
         await websocket.accept()
         self.active_connections.add(websocket)
+        self.connection_context[websocket] = {
+            "allowed_device_ids": allowed_device_ids,
+            "owner_device_ids": owner_device_ids,
+        }
 
     def disconnect(self, websocket: WebSocket) -> None:
         self.active_connections.discard(websocket)
+        self.connection_context.pop(websocket, None)
+
+    def _can_receive(self, message: dict[str, Any], context: dict[str, Any]) -> bool:
+        message_type = message.get("type")
+        if message_type in {"location_update", "geofence_alert"}:
+            device_id = message.get("deviceId")
+            return device_id in context.get("allowed_device_ids", set())
+        if message_type == "geofence_state_update":
+            return bool(context.get("allowed_device_ids"))
+        return True
 
     async def broadcast(self, message: dict[str, Any]) -> None:
         stale: list[WebSocket] = []
         for connection in self.active_connections:
             try:
-                await connection.send_json(message)
+                context = self.connection_context.get(connection, {})
+                if self._can_receive(message, context):
+                    await connection.send_json(message)
             except Exception:
                 stale.append(connection)
 

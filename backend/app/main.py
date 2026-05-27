@@ -2,13 +2,16 @@ import asyncio
 import logging
 import sys
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router as api_router
 from app.core.config import get_settings
+from app.core.auth import get_user_from_token
 from app.db.mongo import mongo_manager
 from app.repositories.device_config_repository import DeviceConfigRepository
+from app.repositories.device_permission_repository import DevicePermissionRepository
+from app.repositories.geofence_config_repository import GeofenceConfigRepository
 from app.repositories.location_repository import LocationRepository
 from app.services.alert_state_service import AlertStateService
 from app.services.geofence_service import GeofenceService
@@ -57,6 +60,7 @@ async def on_startup() -> None:
     
     logger.info("Initializing services...")
     geofence_service = GeofenceService(
+        config_repo=GeofenceConfigRepository(mongo_manager.db),
         center_lat=settings.geofence_center_lat,
         center_lng=settings.geofence_center_lng,
         radius_m=settings.geofence_radius_m,
@@ -68,6 +72,7 @@ async def on_startup() -> None:
         repeat_outside=settings.alert_repeat_outside,
     )
     device_config_repository = DeviceConfigRepository(mongo_manager.db)
+    device_permission_repository = DevicePermissionRepository()
     notification_service = NotificationService(settings, device_config_repository)
     repository = LocationRepository()
 
@@ -87,6 +92,7 @@ async def on_startup() -> None:
 
     location_processor = LocationProcessor(
         repository=repository,
+        device_permission_repository=device_permission_repository,
         geofence_service=geofence_service,
         alert_state_service=alert_state_service,
         notification_service=notification_service,
@@ -96,18 +102,19 @@ async def on_startup() -> None:
     app.state.geofence_service = geofence_service
     app.state.location_processor = location_processor
     app.state.device_config_repository = device_config_repository
+    app.state.device_permission_repository = device_permission_repository
 
-    logger.info("Starting MQTT subscriber...")
-    mqtt_service = MQTTService(settings, location_processor)
-    mqtt_service.start()
-    logger.info(f"  -> MQTT: {settings.mqtt_host}:{settings.mqtt_port}")
-    logger.info(f"  -> Topic: {settings.mqtt_topic}")
+    # logger.info("Starting MQTT subscriber...")
+    # mqtt_service = MQTTService(settings, location_processor)
+    # mqtt_service.start()
+    # logger.info(f"  -> MQTT: {settings.mqtt_host}:{settings.mqtt_port}")
+    # logger.info(f"  -> Topic: {settings.mqtt_topic}")
 
-    app.state.mqtt_service = mqtt_service
+    # app.state.mqtt_service = mqtt_service
     
     logger.info("=== STARTUP COMPLETE ===")
-    logger.info(f"Visit: http://localhost:8000/docs (Swagger)")
-    logger.info(f"WebSocket: ws://localhost:8000/ws")
+    logger.info(f"Visit: http://{settings.app_host}:{settings.app_port}/docs (Swagger)")
+    logger.info(f"WebSocket: ws://{settings.app_host}:{settings.app_port}/ws")
 
 
 @app.on_event("shutdown")
@@ -121,7 +128,28 @@ def on_shutdown() -> None:
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
-    await ws_manager.connect(websocket)
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=1008)
+        return
+
+    try:
+        user = get_user_from_token(token)
+    except HTTPException:
+        await websocket.close(code=1008)
+        return
+    permission_repo: DevicePermissionRepository = app.state.device_permission_repository
+    allowed_device_ids = permission_repo.get_device_ids_for_user(user["id"])
+    owner_device_ids = permission_repo.get_owner_device_ids(user["id"])
+    if not allowed_device_ids:
+        await websocket.close(code=1008)
+        return
+
+    await ws_manager.connect(
+        websocket,
+        allowed_device_ids=allowed_device_ids,
+        owner_device_ids=owner_device_ids,
+    )
     try:
         while True:
             await websocket.receive_text()

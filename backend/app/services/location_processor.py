@@ -3,6 +3,7 @@ import logging
 
 from app.models.location import LocationDB, LocationIn
 from app.repositories.location_repository import LocationRepository
+from app.repositories.device_permission_repository import DevicePermissionRepository
 from app.services.alert_state_service import AlertStateService
 from app.services.geofence_service import GeofenceService
 from app.services.notification_service import NotificationService
@@ -16,12 +17,14 @@ class LocationProcessor:
     def __init__(
         self,
         repository: LocationRepository,
+        device_permission_repository: DevicePermissionRepository,
         geofence_service: GeofenceService,
         alert_state_service: AlertStateService,
         notification_service: NotificationService,
         ws_manager: ConnectionManager,
     ) -> None:
         self.repository = repository
+        self.device_permission_repository = device_permission_repository
         self.geofence_service = geofence_service
         self.alert_state_service = alert_state_service
         self.notification_service = notification_service
@@ -30,6 +33,10 @@ class LocationProcessor:
     def process(self, raw_payload: dict) -> None:
         location = LocationIn.model_validate(raw_payload)
         logger.info(f"Processing: {location.deviceId} at lat={location.lat}, lng={location.lng}")
+
+        if not self.device_permission_repository.is_device_registered(location.deviceId):
+            logger.warning("Ignored unregistered device: %s", location.deviceId)
+            return
 
         if self.alert_state_service.should_ignore_as_noise(location.deviceId, location.lat, location.lng):
             logger.debug(f"Ignored noise: {location.deviceId}")
