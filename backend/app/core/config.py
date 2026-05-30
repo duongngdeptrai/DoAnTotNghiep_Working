@@ -1,4 +1,5 @@
 from functools import lru_cache
+import re
 from typing import List
 
 from pydantic import Field, field_validator
@@ -10,18 +11,18 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8001
     cors_origins: List[str] = Field(default_factory=lambda: [
-    "http://localhost:5173",
-    "http://localhost:64123",
-    "http://localhost:65000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:64123",
-    "http://127.0.0.1:65000",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "http://localhost:64124",
-    "http://localhost:65001",
-    "http://192.168.76.41:8080",
-])
+        "http://localhost:5173",
+        "http://localhost:64123",
+        "http://localhost:65000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:64123",
+        "http://127.0.0.1:65000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:64124",
+        "http://localhost:65001",
+        "http://192.168.76.41:8080",
+    ])
 
     mongo_uri: str = "mongodb://localhost:27017"
     mongo_db_name: str = "child_tracking"
@@ -55,7 +56,6 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_exp_minutes: int = 60
 
-    # Default device mapping (optional) - used to auto-create device config on startup
     default_device_id: str = "child_01"
     default_device_email: str | None = None
 
@@ -64,9 +64,13 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_origins(cls, value: str | list[str]) -> list[str]:
-        if isinstance(value, str):
-            return [item.strip() for item in value.split(",") if item.strip()]
-        return value
+        if isinstance(value, list):
+            return value
+        text = value.strip()
+        if text.startswith("[") and text.endswith("]"):
+            text = text[1:-1]
+        parts = re.split(r'[,\s]+', text.strip('"').strip("'"))
+        return [p.strip().strip('"').strip("'") for p in parts if p.strip()]
 
 
 @lru_cache(maxsize=1)
