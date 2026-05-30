@@ -1,17 +1,18 @@
 services:
   - type: web
     name: child-tracking-backend
-    runtime: python-3.12
+    runtime: docker
     plan: free
     region: singapore
-    rootDirectory: backend
-    buildCommand: pip install --only-binary=:all: -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     envVars:
       - key: APP_NAME
         value: Child Tracking Backend
       - key: APP_HOST
         value: 0.0.0.0
+      - key: APP_PORT
+        value: 8000
       - key: MONGO_DB_NAME
         value: child_tracking
       - key: MQTT_HOST
@@ -48,9 +49,9 @@ services:
       # key: MONGO_URI
       #   value: mongodb+srv://duongthcsvt7e_db_user:duongthcsvt2912@cluster0.8ansdo1.mongodb.net/child_tracking?appName=Cluster0
       # key: JWT_SECRET_KEY
-      #   value: <tạo secret mạnh>
+      #   value: child-tracking-secret-key-2026-a8f3d9e1b4c7
       # key: CORS_ORIGINS
-      #   value: http://your-frontend-url.vercel.app,http://localhost:8080
+      #   value: http://localhost:5173,http://localhost:8080
       # key: SMTP_USERNAME
       # key: SMTP_PASSWORD
       # key: SMTP_FROM_EMAIL
