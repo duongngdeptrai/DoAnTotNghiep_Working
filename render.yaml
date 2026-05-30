@@ -1,0 +1,58 @@
+services:
+  - type: web
+    name: child-tracking-backend
+    runtime: python
+    plan: free
+    region: singapore
+    rootDirectory: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_NAME
+        value: Child Tracking Backend
+      - key: APP_HOST
+        value: 0.0.0.0
+      - key: MONGO_DB_NAME
+        value: child_tracking
+      - key: MQTT_HOST
+        value: localhost
+      - key: MQTT_PORT
+        value: 1883
+      - key: MQTT_TOPIC
+        value: gps/#
+      - key: MQTT_KEEPALIVE
+        value: 60
+      - key: GEOFENCE_MODE
+        value: fixed
+      - key: GEOFENCE_CENTER_LAT
+        value: 21.0285
+      - key: GEOFENCE_CENTER_LNG
+        value: 105.8542
+      - key: GEOFENCE_RADIUS_M
+        value: 100
+      - key: NOISE_THRESHOLD_M
+        value: 5
+      - key: ALERT_COOLDOWN_SEC
+        value: 60
+      - key: ALERT_REPEAT_OUTSIDE
+        value: false
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_ACCESS_TOKEN_EXP_MINUTES
+        value: 60
+      - key: DEFAULT_DEVICE_ID
+        value: child_01
+      - key: PYTHONUNBUFFERED
+        value: true
+      # --- Các biến này BẠN PHẢI tự set trên Render Dashboard ---
+      # key: MONGO_URI
+      #   value: mongodb+srv://duongthcsvt7e_db_user:duongthcsvt2912@cluster0.8ansdo1.mongodb.net/child_tracking?appName=Cluster0
+      # key: JWT_SECRET_KEY
+      #   value: <tạo secret mạnh>
+      # key: CORS_ORIGINS
+      #   value: http://your-frontend-url.vercel.app,http://localhost:8080
+      # key: SMTP_USERNAME
+      # key: SMTP_PASSWORD
+      # key: SMTP_FROM_EMAIL
+      # key: TELEGRAM_BOT_TOKEN
+      # key: TELEGRAM_CHAT_ID

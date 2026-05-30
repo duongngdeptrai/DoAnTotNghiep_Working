@@ -84,7 +84,6 @@ function MapClickHandler({ onDeviceFound, onMapClick, locations, trackingDeviceI
   return null;
 }
 
-
 const DEVICE_COLORS = [
   { primary: "#22d3ee", secondary: "#67e8f9" },
   { primary: "#a78bfa", secondary: "#c4b5fd" },
@@ -140,23 +139,12 @@ export default function TrackingMap({
   trackingDeviceIds = [],
   geofences = [],
   onDeviceSelected,
-  onSetGeofence,
   isPlanMode,
   editingGeofenceId,
-  onSaveGeofenceName,
+  pendingConfig = { mode: 'circle', radius: 100, center: null, path: [] },
+  onUpdatePendingConfig,
 }) {
   const [selectedDevice, setSelectedDevice] = useState(null);
-  const [pendingCenter, setPendingCenter] = useState(null);
-  const [pendingPath, setPendingPath] = useState([]);
-  const [drawMode, setDrawMode] = useState('circle');
-
-  // Use the currently editing geofence's radius or default
-  const editingGeofence = geofences.find(g => g.id === editingGeofenceId);
-  const [pendingRadius, setPendingRadius] = useState(editingGeofence?.radiusM || 100);
-
-  useEffect(() => {
-    setPendingRadius(editingGeofence?.radiusM || 100);
-  }, [editingGeofence]);
 
   const handleDeviceFound = (deviceId, location) => {
     setSelectedDevice({ deviceId, location });
@@ -173,41 +161,19 @@ export default function TrackingMap({
   };
 
   const handleMapClick = (lat, lng) => {
-    if (drawMode === 'path') {
-      setPendingPath((prev) => [...prev, [lat, lng]]);
+    if (!isPlanMode) return;
+
+    if (pendingConfig.mode === 'path') {
+      onUpdatePendingConfig({
+        path: [...(pendingConfig.path || []), [lat, lng]]
+      });
     } else {
-      setPendingCenter([lat, lng]);
+      onUpdatePendingConfig({
+        center: [lat, lng]
+      });
       setSelectedDevice(null);
     }
   };
-
-  const handleSaveGeofence = () => {
-    if (drawMode === 'path') {
-      if (pendingPath.length < 2) {
-        alert("Vui lòng chọn ít nhất 2 điểm để tạo đường đi.");
-        return;
-      }
-      if (onSetGeofence) {
-        onSetGeofence({
-          type: 'path',
-          path: pendingPath,
-          radius: pendingRadius
-        });
-        setPendingPath([]);
-      }
-    } else {
-      if (pendingCenter && onSetGeofence) {
-        onSetGeofence({
-          type: 'circle',
-          center: pendingCenter,
-          radius: pendingRadius
-        });
-        setPendingCenter(null);
-      }
-    }
-  };
-
-  const safeRadius = (pendingRadius && !isNaN(pendingRadius)) ? pendingRadius : 100;
 
   const calculateCapsulePolygon = (path, radiusM) => {
     if (!path || path.length < 2) return null;
@@ -216,7 +182,6 @@ export default function TrackingMap({
     const R = actualRadius / 111320;
     const points = [];
 
-    // 1. Biên trái: đi từ điểm đầu đến điểm cuối
     for (let i = 0; i < path.length - 1; i++) {
       const p1 = path[i];
       const p2 = path[i + 1];
@@ -232,7 +197,6 @@ export default function TrackingMap({
       points.push([p2[0] + nx, p2[1] + ny]);
     }
 
-    // 2. Biên phải: đi ngược từ điểm cuối về điểm đầu
     for (let i = path.length - 1; i >= 0; i--) {
       if (i === path.length - 1) {
         const pPenultimate = path[path.length - 2];
@@ -308,54 +272,6 @@ export default function TrackingMap({
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
-      {(pendingCenter || pendingPath.length > 0) && (
-        <div style={styles.panel}>
-          <div style={styles.header}>
-            <span style={styles.icon}>{drawMode === 'path' ? '🛣️' : '📍'}</span>
-            <strong>Thiết lập vùng an toàn</strong>
-          </div>
-
-          <div style={styles.modeSelector}>
-            <button
-              onClick={() => { setDrawMode('circle'); setPendingPath([]); setPendingCenter(null); }}
-              style={{ ...styles.modeBtn, backgroundColor: drawMode === 'circle' ? '#3b82f6' : '#f1f5f9', color: drawMode === 'circle' ? 'white' : '#64748b' }}
-            >
-              Hình tròn
-            </button>
-            <button
-              onClick={() => { setDrawMode('path'); setPendingCenter(null); }}
-              style={{ ...styles.modeBtn, backgroundColor: drawMode === 'path' ? '#3b82f6' : '#f1f5f9', color: drawMode === 'path' ? 'white' : '#64748b' }}
-            >
-              Đường đi
-            </button>
-          </div>
-
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Bán kính vùng an toàn (mét)</label>
-            <div style={styles.inputWrapper}>
-              <input
-                type="number"
-                value={pendingRadius}
-                onChange={(e) => setPendingRadius(Number(e.target.value))}
-                style={styles.input}
-                placeholder="Nhập bán kính..."
-              />
-              <span style={styles.unit}>m</span>
-            </div>
-          </div>
-          <div style={styles.buttonGroup}>
-            <button onClick={handleSaveGeofence} style={styles.saveButton}>
-              Lưu thay đổi
-            </button>
-            <button
-              onClick={() => { setPendingCenter(null); setPendingPath([]); }}
-              style={styles.cancelButton}
-            >
-              Hủy bỏ
-            </button>
-          </div>
-        </div>
-      )}
       <MapContainer center={center} zoom={16} style={{ height: "100%", width: "100%" }} zoomControl={false}>
         <MapSync center={center} locations={locations} trackingDeviceIds={trackingDeviceIds} selectedDeviceId={selectedDevice?.deviceId} />
         <MapClickHandler
@@ -399,29 +315,27 @@ export default function TrackingMap({
           </React.Fragment>
         ))}
 
-        {/* Render saved geofence path if exists */}
-        {/* Removed old single geofence path render */}
-
-        {pendingCenter && drawMode === 'circle' && (
+        {/* Render pending geofence visualization */}
+        {pendingConfig?.mode === 'circle' && pendingConfig?.center && (
           <Circle
-            center={pendingCenter}
-            radius={pendingRadius}
+            center={pendingConfig.center}
+            radius={pendingConfig.radius}
             pathOptions={{ color: "#f97316", fillColor: "#f97316", fillOpacity: 0.2, dashArray: "5, 5" }}
           />
         )}
-        {pendingPath.length > 0 && (
+        {pendingConfig?.mode === 'path' && pendingConfig?.path?.length > 0 && (
           <Polyline
-            positions={pendingPath}
+            positions={pendingConfig.path}
             pathOptions={{ color: "#f97316", weight: 2, opacity: 0.5 }}
           />
         )}
-        {pendingPath.length >= 2 && (
+        {pendingConfig?.mode === 'path' && pendingConfig?.path?.length >= 2 && (
           <Polygon
-            positions={calculateCapsulePolygon(pendingPath, pendingRadius)}
+            positions={calculateCapsulePolygon(pendingConfig.path, pendingConfig.radius)}
             pathOptions={{ color: "#f97316", fillColor: "#f97316", fillOpacity: 0.2, weight: 2, dashArray: "5, 5" }}
           />
         )}
-        {pendingPath.length > 0 && pendingPath.map((pos, idx) => (
+        {pendingConfig?.mode === 'path' && pendingConfig?.path?.length > 0 && pendingConfig.path.map((pos, idx) => (
           <CircleMarker
             key={`path-point-${idx}`}
             center={pos}
@@ -460,114 +374,3 @@ export default function TrackingMap({
     </div>
   );
 }
-
-const styles = {
-  panel: {
-    position: 'absolute',
-    top: '20px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    zIndex: 9999,
-    backgroundColor: '#ffffff',
-    padding: '20px',
-    borderRadius: '16px',
-    boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-    minWidth: '280px',
-    fontFamily: '-apple-system, BlinkmacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-    border: '1px solid #e2e8f0',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    fontSize: '16px',
-    color: '#1e293b',
-    borderBottom: '1px solid #f1f5f9',
-    paddingBottom: '12px',
-  },
-  icon: {
-    fontSize: '18px',
-  },
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  label: {
-    fontSize: '13px',
-    fontWeight: '500',
-    color: '#64748b',
-    marginLeft: '2px',
-  },
-  inputWrapper: {
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  input: {
-    padding: '10px 12px',
-    borderRadius: '8px',
-    border: '1px solid #cbd5e1',
-    fontSize: '15px',
-    outline: 'none',
-    transition: 'border-color 0.2s',
-    boxSizing: 'border-box',
-  },
-  unit: {
-    position: 'absolute',
-    right: '12px',
-    color: '#94a3b8',
-    fontSize: '14px',
-    pointerEvents: 'none',
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '10px',
-    marginTop: '4px',
-  },
-  saveButton: {
-    flex: 1,
-    padding: '10px',
-    backgroundColor: '#3b82f6',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: '600',
-    fontSize: '14px',
-    transition: 'background-color 0.2s',
-  },
-  cancelButton: {
-    flex: 1,
-    padding: '10px',
-    backgroundColor: '#f1f5f9',
-    color: '#475569',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: '600',
-    fontSize: '14px',
-    transition: 'background-color 0.2s',
-  },
-  modeSelector: {
-    display: 'flex',
-    gap: '8px',
-    padding: '4px',
-    backgroundColor: '#f1f5f9',
-    borderRadius: '10px',
-    marginBottom: '8px',
-  },
-  modeBtn: {
-    flex: 1,
-    padding: '6px',
-    border: 'none',
-    borderRadius: '7px',
-    cursor: 'pointer',
-    fontSize: '13px',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-  },
-};

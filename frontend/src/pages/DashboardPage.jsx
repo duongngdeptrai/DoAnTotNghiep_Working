@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import TrackingMap from "../components/TrackingMap";
+import GeofenceEditorPanel from "../components/GeofenceEditorPanel";
 import { env } from "../config/env";
 import { useTrackingSocket } from "../hooks/useTrackingSocket";
 import { useGeofenceSharing } from "../hooks/useGeofenceSharing";
@@ -67,6 +68,43 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
   const [isPlanMode, setIsPlanMode] = useState(false);
   const [editingGeofenceId, setEditingGeofenceId] = useState(null);
   const [newGeofenceName, setNewGeofenceName] = useState("");
+  const [pendingConfig, setPendingConfig] = useState({
+    name: "",
+    mode: "circle",
+    radius: 100,
+    center: null,
+    path: [],
+  });
+
+  const updatePendingConfig = (updates) => {
+    setPendingConfig((prev) => ({ ...prev, ...updates }));
+  };
+
+  const removeLastPoint = () => {
+    setPendingConfig((prev) => ({
+      ...prev,
+      path: prev.path ? prev.path.slice(0, -1) : [],
+    }));
+  };
+
+  const handleCancelPlanMode = () => {
+    if (editingGeofenceId) {
+      const original = geofenceState.geofences?.find(g => g.id === editingGeofenceId);
+      const hasChanged =
+        original?.name !== pendingConfig.name ||
+        (original?.mode === 'fixed' ? 'circle' : 'path') !== pendingConfig.mode ||
+        original?.radius_m !== pendingConfig.radius ||
+        JSON.stringify(original?.centerLat ? [original.centerLat, original.centerLng] : null) !== JSON.stringify(pendingConfig.center) ||
+        JSON.stringify(original?.path) !== JSON.stringify(pendingConfig.path);
+
+      if (hasChanged && !window.confirm("Bạn có chắc chắn muốn hủy bỏ các thay đổi?")) {
+        return;
+      }
+    }
+    setIsPlanMode(false);
+    setEditingGeofenceId(null);
+    setModeError(null);
+  };
 
 
   const { latestMessage, status } = useTrackingSocket(token ? env.backendWsUrl : null, token);
@@ -199,17 +237,37 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
     }
   };
 
-  const handleSetGeofence = async ({ type, center, path, radius }) => {
+  const validateConfig = (config) => {
+    if (!config.name || config.name.trim() === "") {
+      return "Tên vùng an toàn không được để trống.";
+    }
+    if (config.radius < 10 || config.radius > 5000) {
+      return "Bán kính phải nằm trong khoảng từ 10m đến 5000m.";
+    }
+    if (config.mode === 'path' && (!config.path || config.path.length < 2)) {
+      return "Vùng an toàn dạng đường đi cần ít nhất 2 điểm.";
+    }
+    return null;
+  };
+
+  const handleSetGeofence = async () => {
     if (!isOwner) return;
+
+    const validationError = validateConfig(pendingConfig);
+    if (validationError) {
+      setModeError(validationError);
+      return;
+    }
+
     try {
       const payload = {
         geofence_id: editingGeofenceId || `gf_${Date.now()}`,
-        name: newGeofenceName || (editingGeofenceId ? currentGeofence.name : "Vùng mới"),
-        mode: type === 'path' ? 'mobile' : 'fixed',
-        radius_m: radius,
-        lat: center ? center[0] : null,
-        lng: center ? center[1] : null,
-        path: path || null,
+        name: pendingConfig.name || (editingGeofenceId ? currentGeofence.name : "Vùng mới"),
+        mode: pendingConfig.mode === 'path' ? 'mobile' : 'fixed',
+        radius_m: pendingConfig.radius,
+        lat: pendingConfig.mode === 'circle' ? pendingConfig.center?.[0] : null,
+        lng: pendingConfig.mode === 'circle' ? pendingConfig.center?.[1] : null,
+        path: pendingConfig.mode === 'path' ? pendingConfig.path : null,
       };
 
       const state = await postGeofenceFull(token, payload);
@@ -217,6 +275,7 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
       setIsPlanMode(false);
       setEditingGeofenceId(null);
       setNewGeofenceName("");
+      setModeError(null);
     } catch (error) {
       setModeError(error instanceof Error ? error.message : "Không thể lưu vùng an toàn.");
     }
@@ -314,7 +373,8 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
   }
 
   return (
-    <section className="full-screen-map">
+    <section className={`dashboard-layout${isPlanMode ? " editor-open" : ""}`}>
+      <div className={`map-area${isPlanMode ? " editor-open" : ""}`}>
       {/* Top-left: WS Status */}
       <div className="floating-panel top-left">
         <div className={`badge ${statusClass}`}>WS: {status}</div>
@@ -392,6 +452,13 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
               onClick={() => {
                 setEditingGeofenceId(gf.id);
                 setNewGeofenceName(gf.name);
+                setPendingConfig({
+                  name: gf.name,
+                  mode: gf.mode === 'fixed' ? 'circle' : 'path',
+                  radius: gf.radius_m || 100,
+                  center: gf.mode === 'fixed' ? [gf.centerLat, gf.centerLng] : null,
+                  path: gf.mode === 'mobile' ? gf.path : [],
+                });
                 setIsPlanMode(true);
               }}
             >
@@ -417,6 +484,13 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
             onClick={() => {
               setEditingGeofenceId(null);
               setNewGeofenceName("");
+              setPendingConfig({
+                name: "",
+                mode: "circle",
+                radius: 100,
+                center: null,
+                path: [],
+              });
               setIsPlanMode(true);
             }}
           >
@@ -568,6 +642,19 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
         />
       </div>
 
-    </section>
+      {/* Right Side Editor Panel */}
+      {isPlanMode && (
+        <GeofenceEditorPanel
+          config={pendingConfig}
+          editingGeofence={geofenceState.geofences?.find(g => g.id === editingGeofenceId)}
+          onUpdateConfig={updatePendingConfig}
+          onSave={handleSetGeofence}
+          onCancel={handleCancelPlanMode}
+          onRemoveLastPoint={removeLastPoint}
+        modeError={modeError}
+        />
+      )}
+    </div>
+  </section>
   );
 }

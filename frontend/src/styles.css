@@ -63,10 +63,10 @@ body::before {
   transform: none;
   width: 100%;
   max-width: none;
-  z-index: 1000;
+  z-index: 5000;
   display: flex;
   align-items: center;
-  justify-content: space-between; 
+  justify-content: space-between;
   gap: 16px;
   padding: 18px 22px;
   border-radius: 0 0 22px 22px;
@@ -93,18 +93,18 @@ body::before {
 /* Floating overlays */
 .floating-panel {
   position: absolute;
-  z-index: 10;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 16px;
-  padding: 14px 18px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .floating-panel h4 {
-  margin: 0 0 10px 0;
-  font-size: 13px;
+  margin: 0 0 8px 0;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
@@ -114,13 +114,22 @@ body::before {
 /* Top-left: WS Status */
 .top-left {
   top: 86px;
-  left: 20px;
+  left: 16px;
 }
 
 /* Top-right: Device Info */
 .top-right {
   top: 86px;
   right: 20px;
+}
+
+/* When editor is open, shift floating panels away from right side */
+.dashboard-layout.editor-open .top-right {
+  right: 360px;
+}
+
+.dashboard-layout.editor-open .alerts-trigger {
+  right: 360px;
 }
 
 .device-info {
@@ -173,8 +182,8 @@ body::before {
 /* Device list panel */
 .device-list-panel {
   position: absolute;
-  top: 86px;
-  right: 20px;
+  bottom: 30px;
+  left: 16px;
   width: 320px;
   max-height: calc(100vh - 120px);
   background: rgba(15, 23, 42, 0.95);
@@ -182,7 +191,7 @@ body::before {
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 16px;
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
-  z-index: 20;
+  z-index: 2000;
   overflow: hidden;
   animation: slideIn 0.3s ease;
 }
@@ -276,16 +285,17 @@ body::before {
   display: grid;
   gap: 8px;
   margin-bottom: 12px;
+  padding: 4px;
 }
 
 .tracking-device {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .tracking-dot {
@@ -297,7 +307,7 @@ body::before {
 
 .tracking-name {
   flex: 1;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -384,16 +394,16 @@ body::before {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .geofence-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   border-color: var(--accent);
 }
 
@@ -487,75 +497,242 @@ body::before {
   font-weight: 500;
 }
 
-/* Right side: Control Buttons */
-.right-side {
-  top: 50%;
-  right: 20px;
-  transform: translateY(-50%);
-  min-width: 220px;
-  max-width: 300px;
+/* Dashboard Layout */
+.dashboard-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  position: relative;
 }
 
-.control-buttons {
-  display: grid;
-  gap: 10px;
-  margin: 12px 0;
-}
-
-.control-btn {
+.map-area {
+  flex: 1;
+  position: relative;
+  height: 100%;
   width: 100%;
-  padding: 12px 20px;
-  border-radius: 12px;
+  transition: flex 0.3s ease;
+}
+
+/* Desktop side panel positioning — below top nav */
+.left-side {
+  position: absolute;
+  top: 88px;
+  left: 16px;
+  width: 240px;
+  max-height: calc(100vh - 120px);
+}
+
+.right-side {
+  position: absolute;
+  top: 88px;
+  right: 16px;
+  width: 220px;
+  max-height: calc(100vh - 120px);
+}
+
+/* When editor is open, keep map full width */
+.dashboard-layout.editor-open .map-area {
+  flex: 1;
+}
+
+/* Desktop right-side: stack buttons vertically */
+.right-side .control-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.right-side .control-btn {
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  padding: 10px;
+}
+
+/* Geofence Editor Side Panel */
+.geofence-editor-panel {
+  position: absolute;
+  top: 88px;
+  right: 16px;
+  width: 320px;
+  max-height: calc(100vh - 120px);
+  flex-shrink: 0;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.editor-panel-header {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.editor-panel-header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.editor-panel-content {
+  padding: 20px;
+  display: grid;
+  gap: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.editor-group {
+  display: grid;
+  gap: 8px;
+}
+
+.editor-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.editor-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.editor-input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.editor-input:focus {
+  border-color: var(--accent);
+}
+
+.editor-unit {
+  color: var(--muted);
+  font-size: 13px;
+  width: 25px;
+}
+
+.editor-mode-toggle {
+  display: flex;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px;
+  border-radius: 10px;
+  gap: 4px;
+}
+
+.editor-mode-btn {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+  background: transparent;
+  color: var(--muted);
+}
+
+.editor-mode-btn.active {
+  background: var(--accent);
+  color: #0b0f1a;
+}
+
+.editor-footer {
+  padding: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: grid;
+  gap: 12px;
+}
+
+.editor-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
   border: none;
   font-weight: 700;
-  font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
+  font-family: inherit;
 }
 
-.control-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
-}
-
-.control-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.control-btn.primary {
+.editor-btn-save {
   background: linear-gradient(135deg, #22d3ee, #38bdf8);
   color: #0b0f1a;
 }
 
-.control-btn.secondary {
-  background: rgba(148, 163, 184, 0.2);
+.editor-btn-cancel {
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.control-status {
-  display: grid;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+.editor-btn:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
 }
 
-.control-status .chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(34, 197, 94, 0.2);
-  color: #86efac;
+.remove-point-btn {
+  background: rgba(249, 115, 22, 0.1);
+  color: var(--error);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
   font-size: 12px;
-  font-weight: 700;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-weight: 600;
+  transition: all 0.2s;
 }
 
-.control-status .chip.error {
+.remove-point-btn:hover {
   background: rgba(249, 115, 22, 0.2);
-  color: #fdba74;
+}
+
+.editor-radius-slider {
+  width: 100%;
+  cursor: pointer;
+  accent-color: var(--accent);
 }
 
 /* Alerts trigger */
@@ -617,7 +794,7 @@ body::before {
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 16px;
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
-  z-index: 20;
+  z-index: 2000;
   display: grid;
   gap: 0;
   overflow: hidden;
@@ -724,26 +901,6 @@ body::before {
 .empty-overlay p {
   color: var(--muted);
   margin: 0;
-}
-
-.top-nav {
-  position: fixed;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100vw;
-  max-width: none;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 22px;
-  border-radius: 0 0 22px 22px;
-  border: var(--ring);
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(18px);
-  box-shadow: var(--shadow);
 }
 
 .brand {
@@ -1100,7 +1257,28 @@ button:disabled {
     inset: 64px 0 0 0;
   }
 
-  /* Compact floating panels on mobile */
+  /* When editor open on mobile, shrink map area */
+.dashboard-layout.editor-open .map-area {
+  max-height: calc(100vh - 200px);
+}
+
+/* Mobile editor panel */
+.dashboard-layout.editor-open .geofence-editor-panel {
+  position: absolute;
+  top: 64px;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-height: calc(100vh - 200px);
+  border-radius: 0;
+  animation: slideUp 0.3s ease;
+}
+
+.dashboard-layout:not(.editor-open) .geofence-editor-panel {
+  display: none;
+}
+
+/* Compact floating panels on mobile */
   .floating-panel {
     padding: 10px 12px;
     border-radius: 12px;
@@ -1118,32 +1296,26 @@ button:disabled {
     display: none;
   }
 
-  /* Side panels collapse to bottom */
-  .left-side,
-  .right-side {
-    position: fixed;
-    top: auto;
-    left: 12px;
-    right: 12px;
-    transform: none;
-    bottom: 12px;
-    min-width: auto;
-    max-width: none;
-  }
+  /* Mobile: side panels as bottom sheets */
+.left-side {
+ position: absolute;
+ bottom: 12px;
+ left: 12px;
+ right: calc(50% + 80px);
+ max-height: 35vh;
+ overflow-y: auto;
+}
 
-  .left-side {
-    bottom: 12px;
-    right: calc(50% + 60px);
-    max-width: calc(50% - 72px);
-  }
+.right-side {
+ position: absolute;
+ bottom: 12px;
+ left: calc(50% + 80px);
+ right: 12px;
+ max-height: 35vh;
+ overflow-y: auto;
+}
 
-  .right-side {
-    bottom: 12px;
-    left: calc(50% + 60px);
-    max-width: calc(50% - 72px);
-  }
-
-  .left-side h4,
+.left-side h4,
   .right-side h4 {
     font-size: 11px;
     margin-bottom: 8px;
