@@ -95,3 +95,10 @@ class DevicePermissionRepository:
             {"deviceId": device_id, "userId": self._to_object_id(user_id), "role": "shared"}
         )
         return result.deleted_count > 0
+
+def remove_device(self, device_id: str, user_id: str) -> bool:
+  result = self.collection.delete_many({
+    "deviceId": device_id,
+    "userId": self._to_object_id(user_id),
+  })
+  return result.deleted_count > 0

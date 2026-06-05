@@ -16,11 +16,15 @@ class GeofenceState {
   });
 
   factory GeofenceState.fromJson(Map<String, dynamic> json) {
+    final lat = json['center_lat'] ?? json['centerLat'];
+    final lng = json['center_lng'] ?? json['centerLng'];
+    final radius = json['radius_m'] ?? json['radiusM'] ?? json['radius'];
+
     return GeofenceState(
       mode: json['mode'] as String,
-      centerLat: (json['center_lat'] ?? json['centerLat']).toDouble(),
-      centerLng: (json['center_lng'] ?? json['centerLng']).toDouble(),
-      radiusM: (json['radius_m'] ?? json['radiusM'] ?? json['radius']).toInt(),
+      centerLat: lat is double ? lat : (lat as num?)?.toDouble() ?? 0.0,
+      centerLng: lng is double ? lng : (lng as num?)?.toDouble() ?? 0.0,
+      radiusM: radius is int ? radius : (radius as num?)?.toInt() ?? 100,
       source: json['source'] as String,
       updatedAt: json['updated_at'] ?? json['updatedAt'],
     );

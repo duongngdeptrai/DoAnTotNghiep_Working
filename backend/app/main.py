@@ -50,14 +50,14 @@ logger.info(f"Geofence radius: {settings.geofence_radius_m}m")
 @app.on_event("startup")
 async def on_startup() -> None:
     logger.info("=== STARTUP BEGIN ===")
-    
+
     logger.info("Connecting to MongoDB...")
     mongo_manager.connect()
-    logger.info(f"  -> MongoDB: {settings.mongo_uri}")
-    
+    logger.info(f" -> MongoDB: {settings.mongo_uri}")
+
     logger.info("Attaching event loop to WebSocket manager...")
     ws_manager.attach_loop(asyncio.get_running_loop())
-    
+
     logger.info("Initializing services...")
     geofence_service = GeofenceService(
         config_repo=GeofenceConfigRepository(mongo_manager.db),
@@ -104,14 +104,14 @@ async def on_startup() -> None:
     app.state.device_config_repository = device_config_repository
     app.state.device_permission_repository = device_permission_repository
 
-    # logger.info("Starting MQTT subscriber...")
-    # mqtt_service = MQTTService(settings, location_processor)
-    # mqtt_service.start()
-    # logger.info(f"  -> MQTT: {settings.mqtt_host}:{settings.mqtt_port}")
-    # logger.info(f"  -> Topic: {settings.mqtt_topic}")
+    logger.info("Starting MQTT subscriber...")
+    mqtt_service = MQTTService(settings, location_processor)
+    mqtt_service.start()
+    logger.info(f" -> MQTT: {settings.mqtt_host}:{settings.mqtt_port}")
+    logger.info(f" -> Topic: {settings.mqtt_topic}")
 
-    # app.state.mqtt_service = mqtt_service
-    
+    app.state.mqtt_service = mqtt_service
+
     logger.info("=== STARTUP COMPLETE ===")
     logger.info(f"Visit: http://{settings.app_host}:{settings.app_port}/docs (Swagger)")
     logger.info(f"WebSocket: ws://{settings.app_host}:{settings.app_port}/ws")
@@ -138,6 +138,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     except HTTPException:
         await websocket.close(code=1008)
         return
+
     permission_repo: DevicePermissionRepository = app.state.device_permission_repository
     allowed_device_ids = permission_repo.get_device_ids_for_user(user["id"])
     owner_device_ids = permission_repo.get_owner_device_ids(user["id"])

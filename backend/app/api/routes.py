@@ -9,6 +9,7 @@ from app.core.auth import create_access_token, get_current_user, hash_password, 
 from app.models.device_config import DeviceConfigIn
 from app.models.device_permission import DevicePermissionOut, DeviceRegisterIn, DeviceShareIn
 from app.models.location import StatsRequest, StatsResponse
+from app.services.location_processor import LocationProcessor
 from app.models.user import AuthTokenOut, UserLoginIn, UserOut, UserRegisterIn
 from app.repositories.device_permission_repository import DevicePermissionRepository
 from app.repositories.location_repository import LocationRepository
@@ -182,6 +183,19 @@ def list_devices(
     devices = repo.list_devices_for_user(current_user["id"])
     logger.info(f"List devices for user {current_user['id']}: found {len(devices)} devices")
     return [DevicePermissionOut(deviceId=item["deviceId"], role=item["role"]) for item in devices]
+
+
+@router.delete("/devices/{device_id}")
+def unregister_device(
+  device_id: str,
+  request: Request,
+  current_user: dict = Depends(get_current_user),
+) -> dict:
+  repo = _permission_repo(request)
+  removed = repo.remove_device(device_id, current_user["id"])
+  if not removed:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Device not found or not owned")
+  return {"message": "Device unregistered successfully", "deviceId": device_id}
 
 
 @router.post("/devices/{device_id}/share")

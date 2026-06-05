@@ -9,8 +9,8 @@ class Device {
 
   factory Device.fromJson(Map<String, dynamic> json) {
     return Device(
-      deviceId: json['device_id'] ?? json['deviceId'] as String,
-      role: json['role'] as String,
+      deviceId: json['device_id'] ?? json['deviceId'] as String? ?? '',
+      role: json['role'] as String? ?? '',
     );
   }
 

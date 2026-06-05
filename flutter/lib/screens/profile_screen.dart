@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/top_nav.dart';
+import '../utils/device_color.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -14,6 +15,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _deviceIdController = TextEditingController();
   String? _error;
   bool _isProcessing = false;
+  String? _deletingDeviceId;
 
   @override
   void dispose() {
@@ -41,10 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đăng ký thiết bị thành công'),
-            backgroundColor: Colors.green,
-          ),
+          const SnackBar(content: Text('Đăng ký thiết bị thành công'), backgroundColor: Colors.green),
         );
       }
     } catch (e) {
@@ -52,6 +51,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _error = e.toString();
         _isProcessing = false;
       });
+    }
+  }
+
+  Future<void> _confirmDelete(BuildContext context, String deviceId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('Xóa thiết bị?', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Bạn có chắc muốn xóa "$deviceId"? Hành động này không thể hoàn tác.',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Xóa', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      setState(() => _deletingDeviceId = deviceId);
+      try {
+        await context.read<AppProvider>().unregisterDevice(deviceId);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Đã xóa $deviceId'), backgroundColor: Colors.red),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi xóa thiết bị: $e'), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _deletingDeviceId = null);
+      }
     }
   }
 
@@ -86,25 +129,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header
                       Text(
                         'Hồ sơ thiết bị',
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Quản lý danh sách thiết bị bạn đang theo dõi.',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
                       ),
                       const SizedBox(height: 24),
 
-                      // Card
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -115,14 +153,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Device selector
                             const Text(
                               'Thiết bị hiện tại',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
+                              style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 13),
                             ),
                             const SizedBox(height: 8),
                             DropdownButtonFormField<String>(
@@ -144,7 +177,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                 );
                               }).toList(),
-                              onChanged: (value) {
+                              onChanged: provider.devices.isEmpty ? null : (value) {
                                 if (value != null) {
                                   provider.selectDevice(value);
                                 }
@@ -153,14 +186,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(height: 20),
 
-                            // Register new device
                             const Text(
                               'Đăng ký deviceId mới',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
+                              style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 13),
                             ),
                             const SizedBox(height: 8),
                             TextField(
@@ -180,7 +208,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(height: 16),
 
-                            // Error message
                             if (_error != null) ...[
                               Container(
                                 padding: const EdgeInsets.all(12),
@@ -208,7 +235,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(height: 16),
                             ],
 
-                            // Register button
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
@@ -232,10 +258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       )
                                     : const Text(
                                         'Đăng ký thiết bị',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                                       ),
                               ),
                             ),
@@ -243,21 +266,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
 
-                      // Device list
                       if (provider.devices.isNotEmpty) ...[
                         const Text(
                           'Danh sách thiết bị',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
+                          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 13),
                         ),
                         const SizedBox(height: 12),
                         ...provider.devices.map((device) {
-                          final colors = _getDeviceColor(device.deviceId);
+                          final colors = getDeviceColor(device.deviceId);
+                          final isDeleting = _deletingDeviceId == device.deviceId;
+
                           return Container(
                             margin: const EdgeInsets.only(bottom: 8),
                             padding: const EdgeInsets.all(14),
@@ -271,32 +291,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 Container(
                                   width: 10,
                                   height: 10,
-                                  decoration: BoxDecoration(
-                                    color: colors,
-                                    shape: BoxShape.circle,
-                                  ),
+                                  decoration: BoxDecoration(color: colors, shape: BoxShape.circle),
                                 ),
                                 const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      device.deviceId,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        device.deviceId,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      device.role.toUpperCase(),
-                                      style: TextStyle(
-                                        color: Colors.white.withOpacity(0.5),
-                                        fontSize: 11,
+                                      Text(
+                                        device.role.toUpperCase(),
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.5),
+                                          fontSize: 11,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
+                                if (isDeleting)
+                                  const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent),
+                                  )
+                                else
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                                    onPressed: () => _confirmDelete(context, device.deviceId),
+                                    tooltip: 'Xóa thiết bị',
+                                  ),
                               ],
                             ),
                           );
@@ -311,18 +342,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
-  }
-
-  Color _getDeviceColor(String deviceId) {
-    final colors = [
-      const Color(0xFF22D3EE),
-      const Color(0xFFA78BFA),
-      const Color(0xFF34D399),
-      const Color(0xFFF472B6),
-      const Color(0xFFFB923C),
-      const Color(0xFF60A5FA),
-    ];
-    final index = deviceId.length % colors.length;
-    return colors[index];
   }
 }

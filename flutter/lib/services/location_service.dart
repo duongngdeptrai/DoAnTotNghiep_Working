@@ -52,6 +52,7 @@ class LocationService {
         _positionController.add(position);
       },
       onError: (error) {
+        _isSharing = false;
         _errorController.add('Lỗi lấy vị trí: $error');
       },
     );

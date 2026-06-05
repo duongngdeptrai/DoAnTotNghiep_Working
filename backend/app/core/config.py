@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     mqtt_password: str | None = None
     mqtt_topic: str = "gps/#"
     mqtt_keepalive: int = 60
+mqtt_tls: bool = False
 
     geofence_mode: str = "fixed"
     geofence_center_lat: float = 21.0285

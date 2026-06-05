@@ -1,9 +1,9 @@
 class Env {
   static String get backend_http_url =>
-      const String.fromEnvironment('BACKEND_HTTP_URL', defaultValue: 'http://192.168.76.41:9000');
+      const String.fromEnvironment('BACKEND_HTTP_URL', defaultValue: 'https://doantotnghiep-working.onrender.com');
 
   static String get backend_ws_url =>
-      const String.fromEnvironment('BACKEND_WS_URL', defaultValue: 'ws://192.168.76.41:9000/ws');
+      const String.fromEnvironment('BACKEND_WS_URL', defaultValue: 'wss://doantotnghiep-working.onrender.com/ws');
 
   static String get default_device_id =>
       const String.fromEnvironment('DEFAULT_DEVICE_ID', defaultValue: 'child_01');

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
@@ -10,10 +11,14 @@ class AppProvider with ChangeNotifier {
   final ApiService _apiService;
   final LocationService _locationService = LocationService();
 
+  SocketService? _socketService;
+  StreamSubscription<Map<String, dynamic>>? _socketMessageSub;
+  StreamSubscription<SocketStatus>? _socketStatusSub;
+
   String? _token;
   User? _currentUser;
   List<Device> _devices = [];
-  String _selectedDeviceId = '';
+  String _selectedDeviceId = Env.default_device_id;
   String _deviceRole = '';
   Map<String, LocationData> _locations = {};
   GeofenceState _geofenceState = GeofenceState(
@@ -64,6 +69,10 @@ class AppProvider with ChangeNotifier {
 
     _selectedDeviceId = prefs.getString('selected_device_id') ?? Env.default_device_id;
 
+    if (_token != null) {
+      connectSocket();
+    }
+
     _isLoading = false;
     notifyListeners();
   }
@@ -71,25 +80,32 @@ class AppProvider with ChangeNotifier {
   Future<void> _loadCurrentUser() async {
     if (_token == null) return;
     try {
-      _currentUser = await _apiService.getMe(_token!);
+      _currentUser = await _apiService.getMe();
       notifyListeners();
     } catch (e) {
       _error = e.toString();
+      _isLoading = false;
       notifyListeners();
     }
   }
 
   Future<void> _loadDevices() async {
-    if (_token == null) return;
+    if (_token == null) {
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
     try {
-      _devices = await _apiService.fetchDevices(_token!);
-      if (_devices.isNotEmpty && _selectedDeviceId.isEmpty) {
+      _devices = await _apiService.fetchDevices();
+      if (_devices.isNotEmpty && (_selectedDeviceId.isEmpty || _selectedDeviceId == Env.default_device_id)) {
         _selectedDeviceId = _devices.first.deviceId;
         _deviceRole = _devices.first.role;
       }
+      _isLoading = false;
       notifyListeners();
     } catch (e) {
       _error = e.toString();
+      _isLoading = false;
       notifyListeners();
     }
   }
@@ -108,6 +124,7 @@ class AppProvider with ChangeNotifier {
       await prefs.setString('auth_token', _token!);
 
       await _loadDevices();
+      connectSocket();
 
       _isLoading = false;
       notifyListeners();
@@ -134,6 +151,7 @@ class AppProvider with ChangeNotifier {
       await prefs.setString('auth_token', _token!);
 
       await _loadDevices();
+      connectSocket();
 
       _isLoading = false;
       notifyListeners();
@@ -146,7 +164,7 @@ class AppProvider with ChangeNotifier {
     }
   }
 
-  void logout() {
+  Future<void> logout() async {
     _token = null;
     _currentUser = null;
     _devices = [];
@@ -154,8 +172,12 @@ class AppProvider with ChangeNotifier {
     _deviceRole = '';
     _locations = {};
     _alerts = [];
+    _shareEnabled = false;
 
-    _saveToStorage();
+    disconnectSocket();
+    _locationService.stopSharing();
+
+    await _saveToStorage();
     notifyListeners();
   }
 
@@ -167,7 +189,7 @@ class AppProvider with ChangeNotifier {
     }
 
     try {
-      await _apiService.registerDevice(_token!, deviceId);
+      await _apiService.registerDevice(deviceId);
       await _loadDevices();
     } catch (e) {
       _error = e.toString();
@@ -175,11 +197,29 @@ class AppProvider with ChangeNotifier {
     }
   }
 
-  void selectDevice(String deviceId) {
+  Future<void> unregisterDevice(String deviceId) async {
+    if (_token == null) return;
+    try {
+      await _apiService.deleteDevice(deviceId);
+      _devices.removeWhere((d) => d.deviceId == deviceId);
+      if (_selectedDeviceId == deviceId) {
+        _selectedDeviceId = _devices.isNotEmpty ? _devices.first.deviceId : Env.default_device_id;
+        _deviceRole = _devices.isNotEmpty ? _devices.first.role : '';
+      }
+      _locations.remove(deviceId);
+      await _saveToStorage();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> selectDevice(String deviceId) async {
     final device = _devices.firstWhere((d) => d.deviceId == deviceId, orElse: () => Device(deviceId: '', role: ''));
     _selectedDeviceId = deviceId;
     _deviceRole = device.role;
-    _saveToStorage();
+    await _saveToStorage();
     notifyListeners();
   }
 
@@ -208,7 +248,7 @@ class AppProvider with ChangeNotifier {
     if (_token == null) return;
 
     try {
-      final state = await _apiService.postGeofenceMode(_token!, mode);
+      final state = await _apiService.postGeofenceMode(mode);
       _geofenceState = state;
       if (mode == 'mobile') {
         _shareEnabled = true;
@@ -227,7 +267,7 @@ class AppProvider with ChangeNotifier {
   Future<void> fetchGeofenceState() async {
     if (_token == null) return;
     try {
-      final state = await _apiService.fetchGeofenceState(_token!);
+      final state = await _apiService.fetchGeofenceState();
       _geofenceState = state;
       notifyListeners();
     } catch (e) {
@@ -239,7 +279,7 @@ class AppProvider with ChangeNotifier {
   Future<void> fetchLatestLocation(String deviceId) async {
     if (_token == null) return;
     try {
-      final location = await _apiService.fetchLatest(_token!, deviceId);
+      final location = await _apiService.fetchLatest(deviceId);
       if (location != null) {
         updateLocation(deviceId, location);
       }
@@ -249,9 +289,116 @@ class AppProvider with ChangeNotifier {
     }
   }
 
+  Future<void> updateGeofenceRadius(double radiusM) async {
+    if (_token == null || !isOwner) return;
+    try {
+      final state = await _apiService.updateGeofenceRadius(radiusM);
+      _geofenceState = state;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateGeofenceCenter(double lat, double lng) async {
+    if (_token == null || !isOwner) return;
+    try {
+      final state = await _apiService.updateGeofenceCenter(lat, lng);
+      _geofenceState = state;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
   LocationService get locationService => _locationService;
 
-  void _saveToStorage() async {
+  void connectSocket() {
+    if (_token == null) return;
+
+    if (_socketService != null) {
+      final currentStatus = _socketService!.status;
+      if (currentStatus == SocketStatus.connected || currentStatus == SocketStatus.connecting) {
+        return;
+      }
+      _socketService!.disconnect();
+      _socketService = null;
+    }
+
+    _socketService = SocketService(Env.backend_ws_url, _token!);
+    _socketStatus = SocketStatus.connecting;
+    notifyListeners();
+
+    _socketService!.connect();
+
+    _socketMessageSub?.cancel();
+    _socketMessageSub = _socketService!.messageStream.listen(
+      _handleSocketMessage,
+      onError: (e) {
+        _socketStatus = SocketStatus.error;
+        notifyListeners();
+      },
+    );
+
+    _socketStatusSub?.cancel();
+    _socketStatusSub = _socketService!.statusStream.listen((status) {
+      _socketStatus = status;
+      notifyListeners();
+    });
+  }
+
+  void _handleSocketMessage(Map<String, dynamic> message) {
+    final type = message['type'] as String?;
+
+    if (type == 'location' || type == 'location_update') {
+      try {
+        final deviceId = message['deviceId'] ?? message['device_id'] as String?;
+        final data = message['data'] as Map<String, dynamic>? ?? message;
+        if (deviceId != null) {
+          _locations[deviceId] = LocationData.fromJson(data);
+          notifyListeners();
+        }
+      } catch (e) {
+        print('Error handling location message: $e');
+      }
+    } else if (type == 'alert') {
+      try {
+        final alertData = message['data'] as Map<String, dynamic>? ?? message;
+        final alert = Alert.fromJson(alertData);
+        _alerts.insert(0, alert);
+        if (_alerts.length > 10) _alerts.removeLast();
+        notifyListeners();
+      } catch (e) {
+        print('Error handling alert message: $e');
+      }
+    } else if (type == 'geofence_state_update') {
+      try {
+        _geofenceState = GeofenceState.fromJson(message);
+        notifyListeners();
+      } catch (e) {
+        print('Error handling geofence_state_update: $e');
+      }
+    }
+
+    _latestMessage = message;
+    notifyListeners();
+  }
+
+  void disconnectSocket() {
+    _socketMessageSub?.cancel();
+    _socketMessageSub = null;
+    _socketStatusSub?.cancel();
+    _socketStatusSub = null;
+    _socketService?.disconnect();
+    _socketService = null;
+    _socketStatus = SocketStatus.disconnected;
+    _latestMessage = null;
+    notifyListeners();
+  }
+
+  Future<void> _saveToStorage() async {
     final prefs = await SharedPreferences.getInstance();
     if (_token != null) {
       await prefs.setString('auth_token', _token!);
