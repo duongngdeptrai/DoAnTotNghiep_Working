@@ -44,6 +44,8 @@ function getDeviceColor(deviceId) {
 }
 
 export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
+  const getToken = () => localStorage.getItem("auth_token");
+
   const [allDevices, setAllDevices] = useState([]);
   const [trackingDeviceIds, setTrackingDeviceIds] = useState(() => {
     const saved = localStorage.getItem("tracking_devices");
@@ -57,6 +59,7 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
     radiusM: env.geofenceRadiusM,
     source: "fixed",
     updatedAt: null,
+    geofences: [],
   });
   const [shareEnabled, setShareEnabled] = useState(false);
   const [modeError, setModeError] = useState(null);
@@ -67,6 +70,7 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
   const [isPlanMode, setIsPlanMode] = useState(false);
   const [editingGeofenceId, setEditingGeofenceId] = useState(null);
   const [newGeofenceName, setNewGeofenceName] = useState("");
+
   const [pendingConfig, setPendingConfig] = useState({
     name: "",
     mode: "circle",
@@ -111,7 +115,6 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
     env.backendHttpUrl,
     shareEnabled,
     setGeofenceState,
-    token,
   );
 
   const isOwner = deviceRole === "owner";
@@ -192,12 +195,23 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
           lat: latestMessage.lat,
           lng: latestMessage.lng,
           insideGeofence: latestMessage.insideGeofence,
+          geofenceId: latestMessage.geofenceId,
           timestamp: latestMessage.timestamp,
         },
       }));
     }
 
     if (latestMessage.type === "geofence_alert" && trackingDeviceIds.includes(deviceId)) {
+      const isInside =
+        latestMessage.event === "inside_entered" || latestMessage.event === "inside_moved";
+      setLocations((prev) => ({
+        ...prev,
+        [deviceId]: {
+          ...(prev[deviceId] || {}),
+          insideGeofence: isInside,
+          geofenceId: latestMessage.geofenceId,
+        },
+      }));
       setAlerts((prev) => [{ ...latestMessage, deviceId }, ...prev].slice(0, 10));
       setShowAlerts(true);
     }
@@ -207,11 +221,19 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
     }
   }, [latestMessage, trackingDeviceIds]);
 
+  useEffect(() => {
+    if (editingGeofenceId && !geofenceState.geofences?.some((g) => g.id === editingGeofenceId)) {
+      setEditingGeofenceId(null);
+      setIsPlanMode(false);
+      setModeError(null);
+    }
+  }, [geofenceState.geofences, editingGeofenceId]);
+
   const handleFixedMode = async () => {
     setModeError(null);
     setShareEnabled(false);
     try {
-      const state = await postGeofenceMode(token, "fixed");
+      const state = await postGeofenceMode(getToken(), "fixed");
       setGeofenceState(state);
     } catch (error) {
       setModeError(error instanceof Error ? error.message : "Không thể chuyển về chế độ cố định.");
@@ -225,7 +247,7 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
       return;
     }
     try {
-      const state = await postGeofenceMode(token, "mobile");
+      const state = await postGeofenceMode(getToken(), "mobile");
       setGeofenceState(state);
       setShareEnabled(true);
     } catch (error) {
@@ -266,7 +288,7 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
         path: pendingConfig.mode === "path" ? pendingConfig.path : null,
       };
 
-      const state = await postGeofenceFull(token, payload);
+      const state = await postGeofenceFull(getToken(), payload);
       setGeofenceState(state);
       setIsPlanMode(false);
       setEditingGeofenceId(null);
@@ -284,9 +306,8 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
     }
     if (!window.confirm("Bạn có chắc chắn muốn xóa vùng an toàn này?")) return;
     try {
-      await apiFetch(`${env.backendHttpUrl}/geofence/${id}`, token, { method: "DELETE" });
-      const state = await fetchGeofenceState(token);
-      setGeofenceState(state);
+      const newState = await apiFetch(`${env.backendHttpUrl}/geofence/${id}`, getToken(), { method: "DELETE" });
+      setGeofenceState(newState);
     } catch (error) {
       setModeError("Không thể xóa vùng an toàn.");
     }

@@ -186,27 +186,28 @@ class GeofenceService:
             return self.haversine_distance_m(px, py, ax, ay)
 
         t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)
-        t = max(0, min(1, t))
+        t = max(0.0, min(1.0, t))
 
         nearest_lat = ax + t * dx
         nearest_lng = ay + t * dy
 
         return self.haversine_distance_m(px, py, nearest_lat, nearest_lng)
 
-    def is_inside(self, lat: float, lng: float) -> tuple[bool, float]:
+    def is_inside(self, lat: float, lng: float) -> tuple[bool, float, str | None]:
         with self._lock:
             geofences = list(self._geofences)
 
             if not geofences:
-                return False, float("inf")
+                return False, float("inf"), None
 
             overall_min_dist = float("inf")
-            is_inside_any = False
+            matched_geofence_id = None
 
             for g in geofences:
                 mode = g.get("mode", "fixed")
                 path = g.get("path", [])
                 radius = g.get("radiusM", 100.0)
+                gid = g.get("id", "unknown")
 
                 if mode == "mobile" and path and len(path) >= 2:
                     min_dist = float("inf")
@@ -221,8 +222,10 @@ class GeofenceService:
                     )
 
                 if distance <= radius:
-                    is_inside_any = True
+                    if matched_geofence_id is None:
+                        matched_geofence_id = gid
 
                 overall_min_dist = min(overall_min_dist, distance)
 
-            return is_inside_any, overall_min_dist
+            is_inside_any = matched_geofence_id is not None
+            return is_inside_any, overall_min_dist, matched_geofence_id

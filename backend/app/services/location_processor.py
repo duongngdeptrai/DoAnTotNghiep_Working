@@ -9,7 +9,6 @@ from app.services.geofence_service import GeofenceService
 from app.services.notification_service import NotificationService
 from app.ws.connection_manager import ConnectionManager
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -45,17 +44,15 @@ class LocationProcessor:
         self.alert_state_service.update_last_location(location.deviceId, location.lat, location.lng)
 
         geofence_state = self.geofence_service.get_state()
-        inside_geofence, distance = self.geofence_service.is_inside(location.lat, location.lng)
+        inside_geofence, distance, matched_gf_id = self.geofence_service.is_inside(location.lat, location.lng)
         received_at = int(datetime.now(tz=timezone.utc).timestamp())
-        
+
         logger.info(
-            "Geofence: %s distance=%.2fm inside=%s mode=%s center=(%s,%s)",
+            "Geofence: %s distance=%.2fm inside=%s matched_gf=%s",
             location.deviceId,
             distance,
             inside_geofence,
-            geofence_state["mode"],
-            geofence_state["centerLat"],
-            geofence_state["centerLng"],
+            matched_gf_id,
         )
 
         location_db = LocationDB(
@@ -66,6 +63,7 @@ class LocationProcessor:
             insideGeofence=inside_geofence,
             distanceFromCenterM=distance,
             receivedAt=received_at,
+            geofenceId=matched_gf_id,
         )
 
         inserted = self.repository.insert_location(location_db)
@@ -73,16 +71,19 @@ class LocationProcessor:
             logger.debug(f"Duplicate location (not inserted): {location.deviceId}")
             return
 
-        should_alert, event = self.alert_state_service.evaluate_alert(location.deviceId, inside_geofence)
-        
+        should_alert, event = self.alert_state_service.evaluate_alert(
+            location.deviceId, inside_geofence, matched_gf_id
+        )
+
         if should_alert:
-            logger.warning(f"ALERT TRIGGERED: {location.deviceId} event={event}")
+            logger.warning(f"ALERT TRIGGERED: {location.deviceId} event={event} gf={matched_gf_id}")
             self.notification_service.send_geofence_alert(
-                location.deviceId,
-                location.lat,
-                location.lng,
-                location.timestamp,
-                event,
+                device_id=location.deviceId,
+                lat=location.lat,
+                lng=location.lng,
+                timestamp=location.timestamp,
+                event=event,
+                geofence_id=matched_gf_id,
             )
 
         self.ws_manager.broadcast_from_thread(
@@ -93,6 +94,7 @@ class LocationProcessor:
                 "lng": location.lng,
                 "timestamp": location.timestamp,
                 "insideGeofence": inside_geofence,
+                "geofenceId": matched_gf_id,
                 "distanceFromCenterM": round(distance, 2),
                 "geofenceMode": geofence_state["mode"],
                 "geofenceCenterLat": geofence_state["centerLat"],
@@ -110,5 +112,6 @@ class LocationProcessor:
                     "lng": location.lng,
                     "timestamp": location.timestamp,
                     "event": event,
+                    "geofenceId": matched_gf_id,
                 }
             )

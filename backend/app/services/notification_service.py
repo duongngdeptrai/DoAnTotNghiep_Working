@@ -6,8 +6,16 @@ import requests
 
 from app.core.config import Settings
 
-
 logger = logging.getLogger(__name__)
+
+EVENT_LABELS = {
+    "outside_entered": "Thiết bị đã rời khỏi vùng an toàn",
+    "outside_reminder": "Nhắc nhở: Thiết bị vẫn đang ngoài vùng an toàn",
+    "outside_still": "",
+    "inside_entered": "Thiết bị đã vào vùng an toàn",
+    "inside_moved": "Thiết bị đã chuyển sang vùng an toàn khác",
+    "inside_still": "",
+}
 
 
 class NotificationService:
@@ -62,34 +70,34 @@ class NotificationService:
         except Exception as exc:
             logger.error("Failed to send Email alert: %s", exc)
 
-    def send_geofence_alert(self, device_id: str, lat: float, lng: float, timestamp: int, event: str) -> None:
-        # Try to get device-specific email from repository
-        parent_email = None
+    def _get_parent_email(self, device_id: str) -> str | None:
         if self.device_config_repo:
             config = self.device_config_repo.get_config(device_id)
             if config and config.get("alertEnabled"):
-                parent_email = config.get("parentEmail")
+                return config.get("parentEmail")
+        return self.settings.smtp_to_email
 
-        # Fallback to global email from settings if no device-specific config
-        if not parent_email:
-            parent_email = self.settings.smtp_to_email
-
-        # Only send if we have an email to send to
+    def send_geofence_alert(self, device_id: str, lat: float, lng: float, timestamp: int, event: str, geofence_id: str | None = None) -> None:
+        parent_email = self._get_parent_email(device_id)
         if not parent_email:
             logger.warning(f"No email configured for device {device_id}")
             return
 
+        label = EVENT_LABELS.get(event, event)
+
+        geofence_info = f" [{geofence_id}]" if geofence_id else ""
         telegram_message = (
-            f"ALERT: Device {device_id} left safe zone at {lat:.6f}, {lng:.6f} "
-            f"(ts={timestamp}, event={event})"
+            f"ALERT [{event}]{geofence_info}: Device {device_id} - {label}\n"
+            f"Vi tri: {lat:.6f}, {lng:.6f} (ts={timestamp})"
         )
 
-        email_subject = f"Cảnh báo Geofence: {device_id}"
+        email_subject = f"Cảnh báo Geofence: {device_id} - {label}{geofence_info}"
         email_body = (
-            f"Thiết bị: {device_id}\n"
-            f"Vị trí: {lat:.6f}, {lng:.6f}\n"
-            f"Thời gian: {timestamp}\n"
-            f"Sự kiện: {event}"
+            f"Thiet bi: {device_id}\n"
+            f"Su kien: {event}{geofence_info}\n"
+            f"Mo ta: {label}\n"
+            f"Vi tri: {lat:.6f}, {lng:.6f}\n"
+            f"Thoi gian: {timestamp}\n"
         )
 
         self.send_telegram(telegram_message)

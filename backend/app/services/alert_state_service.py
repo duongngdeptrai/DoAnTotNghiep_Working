@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from time import time
 
 from app.services.geofence_service import GeofenceService
@@ -6,10 +6,11 @@ from app.services.geofence_service import GeofenceService
 
 @dataclass
 class DeviceState:
-    is_outside: bool = False
-    last_alert_at: float = 0
+    is_outside: bool = True
+    last_alert_at: float = 0.0
     last_lat: float | None = None
     last_lng: float | None = None
+    current_geofence_id: str | None = None
 
 
 class AlertStateService:
@@ -37,24 +38,33 @@ class AlertStateService:
         state.last_lat = lat
         state.last_lng = lng
 
-    def evaluate_alert(self, device_id: str, is_inside: bool) -> tuple[bool, str]:
+    def evaluate_alert(self, device_id: str, is_inside: bool, geofence_id: str | None) -> tuple[bool, str]:
         state = self._get_state(device_id)
         now = time()
         is_outside = not is_inside
 
-        if not state.is_outside and is_outside:
-            state.is_outside = True
-            state.last_alert_at = now
-            return True, "outside_entered"
-
-        if state.is_outside and is_inside:
-            state.is_outside = False
-            return False, "inside_returned"
+        prev_gf_id = state.current_geofence_id
 
         if state.is_outside and is_outside:
             if self.repeat_outside and (now - state.last_alert_at) >= self.cooldown_sec:
                 state.last_alert_at = now
                 return True, "outside_reminder"
             return False, "outside_still"
+
+        if not state.is_outside and is_outside:
+            state.is_outside = True
+            state.last_alert_at = now
+            state.current_geofence_id = None
+            return True, "outside_entered"
+
+        if state.is_outside and is_inside:
+            state.is_outside = False
+            state.current_geofence_id = geofence_id
+            return True, "inside_entered"
+
+        if not state.is_outside and is_inside:
+            if prev_gf_id != geofence_id:
+                state.current_geofence_id = geofence_id
+                return True, "inside_moved"
 
         return False, "inside_still"

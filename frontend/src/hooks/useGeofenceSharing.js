@@ -18,7 +18,7 @@ async function postJson(url, body, token) {
   return response.json();
 }
 
-export function useGeofenceSharing(backendHttpUrl, enabled, onStateUpdate, token) {
+export function useGeofenceSharing(backendHttpUrl, enabled, onStateUpdate) {
   const [sharingStatus, setSharingStatus] = useState("idle");
   const [sharingError, setSharingError] = useState(null);
   const lastSentAtRef = useRef(0);
@@ -50,7 +50,8 @@ export function useGeofenceSharing(backendHttpUrl, enabled, onStateUpdate, token
       lastSentAtRef.current = now;
 
       try {
-        const state = await postJson(`${backendHttpUrl}/geofence/center`, { lat, lng }, token);
+        const freshToken = localStorage.getItem("auth_token");
+        const state = await postJson(`${backendHttpUrl}/geofence/center`, { lat, lng }, freshToken);
         onStateUpdate?.(state);
         setSharingStatus("sharing");
       } catch (error) {
@@ -80,7 +81,7 @@ export function useGeofenceSharing(backendHttpUrl, enabled, onStateUpdate, token
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [backendHttpUrl, enabled, onStateUpdate, token]);
+  }, [backendHttpUrl, enabled, onStateUpdate]);
 
   return { sharingStatus, sharingError };
 }
