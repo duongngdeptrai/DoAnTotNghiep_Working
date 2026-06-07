@@ -636,7 +636,8 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
           trackingDeviceIds={trackingDeviceIds}
           geofences={geofenceState.geofences || []}
           onDeviceSelected={handleDeviceSelected}
-          onSetGeofence={handleSetGeofence}
+          pendingConfig={pendingConfig}
+        onUpdatePendingConfig={updatePendingConfig}
           isPlanMode={isPlanMode}
           editingGeofenceId={editingGeofenceId}
         />

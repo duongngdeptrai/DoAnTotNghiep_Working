@@ -47,6 +47,28 @@ class GeofenceFullUpdate(BaseModel):
     path: list[list[float]] | None = None
 
 
+def _flat_geofence_state(state: dict) -> dict:
+    geofences = state.get("geofences", [])
+    if geofences:
+        g = geofences[0]
+        return {
+            "mode": g.get("mode", "fixed"),
+            "centerLat": g.get("centerLat", 21.0285),
+            "centerLng": g.get("centerLng", 105.8542),
+            "radiusM": g.get("radiusM", 100.0),
+            "source": g.get("source", "fixed"),
+            "updatedAt": g.get("updatedAt"),
+        }
+    return {
+        "mode": "fixed",
+        "centerLat": 21.0285,
+        "centerLng": 105.8542,
+        "radiusM": 100.0,
+        "source": "fixed",
+        "updatedAt": None,
+    }
+
+
 @router.post("/geofence/update")
 def update_full_geofence(
     payload: GeofenceFullUpdate,
@@ -61,15 +83,16 @@ def update_full_geofence(
         radius_m=payload.radius_m,
         center_lat=payload.lat,
         center_lng=payload.lng,
-        path=payload.path
+        path=payload.path,
     )
-    # Cập nhật name riêng vì update_full_geofence hiện tại chưa nhận name trực tiếp
     if payload.name:
         geofence_service.upsert_geofence(payload.geofence_id, name=payload.name)
         state = geofence_service.get_state()
 
-    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **state})
-    return state
+    flat = _flat_geofence_state(state)
+    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
+    return flat
+
 
 @router.delete("/geofence/{geofence_id}")
 def delete_geofence(
@@ -80,9 +103,9 @@ def delete_geofence(
     _require_any_owner(current_user, _permission_repo(request))
     geofence_service = request.app.state.geofence_service
     state = geofence_service.delete_geofence(geofence_id)
-    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **state})
-    return state
-
+    flat = _flat_geofence_state(state)
+    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
+    return flat
 
 
 def _permission_repo(request: Request) -> DevicePermissionRepository:
@@ -165,12 +188,12 @@ def register_device(
     logger.info(f"Register device: deviceId={payload.deviceId} for user={current_user['id']}")
     owner = repo.get_owner(payload.deviceId)
     if owner:
-        logger.info(f"  -> Device already has owner: user={owner.get('userId')}")
+        logger.info(f" -> Device already has owner: user={owner.get('userId')}")
         if str(owner.get("userId")) != current_user["id"]:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Device already owned")
 
     result = repo.add_owner(payload.deviceId, current_user["id"])
-    logger.info(f"  -> Added/verified owner: deviceId={payload.deviceId}, user={current_user['id']}")
+    logger.info(f" -> Added/verified owner: deviceId={payload.deviceId}, user={current_user['id']}")
     return DevicePermissionOut(deviceId=payload.deviceId, role="owner")
 
 
@@ -187,15 +210,15 @@ def list_devices(
 
 @router.delete("/devices/{device_id}")
 def unregister_device(
-  device_id: str,
-  request: Request,
-  current_user: dict = Depends(get_current_user),
+    device_id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
 ) -> dict:
-  repo = _permission_repo(request)
-  removed = repo.remove_device(device_id, current_user["id"])
-  if not removed:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Device not found or not owned")
-  return {"message": "Device unregistered successfully", "deviceId": device_id}
+    repo = _permission_repo(request)
+    removed = repo.remove_device(device_id, current_user["id"])
+    if not removed:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Device not found or not owned")
+    return {"message": "Device unregistered successfully", "deviceId": device_id}
 
 
 @router.post("/devices/{device_id}/share")
@@ -230,7 +253,7 @@ def unshare_device(
     _require_device_owner(device_id, current_user, permission_repo)
 
     user_repo = UserRepository()
-    target_user = user_repo.get_by_email(email)
+    target_user = user_repo.get_by_email(str(email))
     if not target_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -247,7 +270,7 @@ def get_geofence_state(
 ) -> dict:
     _require_any_device(current_user, _permission_repo(request))
     geofence_service = request.app.state.geofence_service
-    return geofence_service.get_state()
+    return _flat_geofence_state(geofence_service.get_state())
 
 
 @router.post("/geofence/center")
@@ -258,9 +281,12 @@ def update_geofence_center(
 ) -> dict:
     _require_any_owner(current_user, _permission_repo(request))
     geofence_service = request.app.state.geofence_service
-    state = geofence_service.update_mobile_center(payload.lat, payload.lng)
-    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **state})
-    return state
+    state = geofence_service.upsert_geofence(
+        "default", mode="fixed", centerLat=payload.lat, centerLng=payload.lng, source="fixed"
+    )
+    flat = _flat_geofence_state(state)
+    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
+    return flat
 
 
 @router.post("/geofence/mode")
@@ -276,8 +302,9 @@ def set_geofence_mode(
     else:
         state = geofence_service.set_mobile_mode()
 
-    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **state})
-    return state
+    flat = _flat_geofence_state(state)
+    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
+    return flat
 
 
 @router.post("/geofence/path")
@@ -289,8 +316,9 @@ def update_geofence_path(
     _require_any_owner(current_user, _permission_repo(request))
     geofence_service = request.app.state.geofence_service
     state = geofence_service.update_path(payload.path)
-    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **state})
-    return state
+    flat = _flat_geofence_state(state)
+    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
+    return flat
 
 
 @router.post("/geofence/radius")
@@ -301,9 +329,10 @@ def update_geofence_radius(
 ) -> dict:
     _require_any_owner(current_user, _permission_repo(request))
     geofence_service = request.app.state.geofence_service
-    state = geofence_service.update_radius(payload.radius_m)
-    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **state})
-    return state
+    state = geofence_service.upsert_geofence("default", radiusM=payload.radius_m)
+    flat = _flat_geofence_state(state)
+    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
+    return flat
 
 
 @router.get("/latest/{device_id}")
@@ -391,7 +420,6 @@ def get_statistics(
     _require_device_access(device_id, current_user, _permission_repo(request))
     repo = LocationRepository()
 
-    # Default to last 24 hours if not specified
     now = int(datetime.now(tz=timezone.utc).timestamp())
     if end is None:
         end = now
@@ -453,7 +481,6 @@ def get_heatmap(
     _require_device_access(device_id, current_user, _permission_repo(request))
     repo = LocationRepository()
 
-    # Default to last 7 days if not specified
     now = int(datetime.now(tz=timezone.utc).timestamp())
     if end is None:
         end = now

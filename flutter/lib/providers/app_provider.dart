@@ -97,9 +97,11 @@ class AppProvider with ChangeNotifier {
     }
     try {
       _devices = await _apiService.fetchDevices();
-      if (_devices.isNotEmpty && (_selectedDeviceId.isEmpty || _selectedDeviceId == Env.default_device_id)) {
-        _selectedDeviceId = _devices.first.deviceId;
-        _deviceRole = _devices.first.role;
+      if (_devices.isNotEmpty) {
+        final stored = _selectedDeviceId;
+        final match = _devices.firstWhere((d) => d.deviceId == stored, orElse: () => _devices.first);
+        _selectedDeviceId = match.deviceId;
+        _deviceRole = match.role;
       }
       _isLoading = false;
       notifyListeners();

@@ -43,8 +43,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _syncGeofenceControllers() {
     final state = _provider.geofenceState;
-    if (_radiusController.text != state.radiusM.toString()) {
-      _radiusController.text = state.radiusM.toString();
+    final radiusVal = double.tryParse(_radiusController.text);
+    if (radiusVal == null || (radiusVal - state.radiusM).abs() > 0.001) {
+      _radiusController.text = state.radiusM.toStringAsFixed(0);
     }
     if (_latController.text != state.centerLat.toStringAsFixed(4)) {
       _latController.text = state.centerLat.toStringAsFixed(4);
@@ -76,6 +77,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (lat != null && lng != null && mounted) {
       _provider.updateGeofenceCenter(lat, lng);
     }
+  }
+
+  void _onMapTap(LatLng point) {
+    if (_provider.geofenceState.mode != 'fixed' || !_provider.isOwner) {
+      debugPrint('[MapTap] blocked: mode=${_provider.geofenceState.mode}, isOwner=${_provider.isOwner}');
+      return;
+    }
+    debugPrint('[MapTap] tapped: lat=${point.latitude}, lng=${point.longitude}');
+    _latController.text = point.latitude.toStringAsFixed(6);
+    _lngController.text = point.longitude.toStringAsFixed(6);
+    _provider.updateGeofenceCenter(point.latitude, point.longitude).then((_) {
+      debugPrint('[MapTap] updateGeofenceCenter success');
+    }).catchError((e) {
+      debugPrint('[MapTap] updateGeofenceCenter ERROR: $e');
+    });
   }
 
   LatLng _getMapCenter() {
@@ -365,6 +381,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     geofenceRadiusM: provider.geofenceState.radiusM,
                     geofenceCenter: LatLng(provider.geofenceState.centerLat, provider.geofenceState.centerLng),
                     focusedDeviceId: null,
+                    onMapTap: (isFixed && isOwner) ? _onMapTap : null,
                   ),
                   Positioned(
                     top: 8,

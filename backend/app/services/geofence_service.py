@@ -14,7 +14,6 @@ class GeofenceService:
         self._config_repo = config_repo
         self._lock = RLock()
 
-        # Default values
         default_lat = center_lat if center_lat is not None else 21.0285
         default_lng = center_lng if center_lng is not None else 105.8542
         default_radius = radius_m if radius_m is not None else 100.0
@@ -22,7 +21,6 @@ class GeofenceService:
 
         self._geofences = []
 
-        # Try to load from database
         loaded_from_db = False
         if config_repo:
             db_config = config_repo.get_global_config()
@@ -30,7 +28,6 @@ class GeofenceService:
                 self._geofences = db_config["geofences"]
                 loaded_from_db = True
             elif db_config:
-                # Migrate old single config to list
                 self._geofences = [{
                     "id": "default",
                     "mode": db_config.get("mode", default_mode),
@@ -54,11 +51,10 @@ class GeofenceService:
                 "path": [],
                 "updatedAt": _now_epoch(),
             }]
-            if config_repo:
-                self._save_to_db()
+        if config_repo:
+            self._save_to_db()
 
     def _save_to_db(self) -> None:
-        """Save current geofences list to database as global config."""
         if not self._config_repo:
             return
         config_data = {
@@ -67,9 +63,13 @@ class GeofenceService:
         }
         self._config_repo.upsert_global_config(config_data)
 
+    def _extract_center(self, state: dict):
+        geofences = state.get("geofences", [])
+        g = geofences[0] if geofences else {}
+        return g.get("centerLat", 21.0285), g.get("centerLng", 105.8542)
+
     def get_state(self) -> dict:
         with self._lock:
-            # Return as a list of geofences
             return {"geofences": list(self._geofences)}
 
     def upsert_geofence(self, geofence_id: str, **kwargs) -> dict:
@@ -77,13 +77,11 @@ class GeofenceService:
             idx = next((i for i, g in enumerate(self._geofences) if g["id"] == geofence_id), None)
 
             if idx is not None:
-                # Update existing
                 for key, value in kwargs.items():
                     if value is not None:
                         self._geofences[idx][key] = value
                 self._geofences[idx]["updatedAt"] = _now_epoch()
             else:
-                # Add new
                 new_geofence = {
                     "id": geofence_id,
                     "name": kwargs.get("name", f"Vùng {len(self._geofences) + 1}"),
@@ -95,7 +93,6 @@ class GeofenceService:
                     "path": kwargs.get("path", []),
                     "updatedAt": _now_epoch(),
                 }
-                # Update any other provided kwargs
                 for key, value in kwargs.items():
                     new_geofence[key] = value
                 self._geofences.append(new_geofence)
@@ -112,7 +109,6 @@ class GeofenceService:
             return {"geofences": list(self._geofences)}
 
     def set_fixed_mode(self) -> dict:
-        # For backward compatibility, we update the 'default' geofence
         return self.upsert_geofence("default", mode="fixed", source="fixed")
 
     def set_mobile_mode(self) -> dict:
@@ -138,7 +134,7 @@ class GeofenceService:
                 update_data["centerLat"] = center_lat if center_lat is not None else 21.0285
                 update_data["centerLng"] = center_lng if center_lng is not None else 105.8542
                 update_data["source"] = "fixed"
-                update_data["path"] = [] # Clear path when in fixed mode
+                update_data["path"] = []
             elif mode == "mobile":
                 update_data["source"] = "mobile"
                 if path:
@@ -154,7 +150,6 @@ class GeofenceService:
                 for key, value in update_data.items():
                     self._geofences[idx][key] = value
             else:
-                # Create new if not exists
                 new_geofence = {"id": geofence_id, **update_data}
                 self._geofences.append(new_geofence)
 
@@ -162,15 +157,8 @@ class GeofenceService:
                 self._save_to_db()
             return {"geofences": list(self._geofences)}
 
-
     @classmethod
-    def haversine_distance_m(
-        cls,
-        lat1: float,
-        lng1: float,
-        lat2: float,
-        lng2: float,
-    ) -> float:
+    def haversine_distance_m(cls, lat1: float, lng1: float, lat2: float, lng2: float) -> float:
         phi1 = math.radians(lat1)
         phi2 = math.radians(lat2)
         delta_phi = math.radians(lat2 - lat1)
@@ -185,11 +173,10 @@ class GeofenceService:
 
     def distance_from_center(self, lat: float, lng: float, state: dict | None = None) -> float:
         current_state = state or self.get_state()
-        return self.haversine_distance_m(current_state["centerLat"], current_state["centerLng"], lat, lng)
+        center_lat, center_lng = self._extract_center(current_state)
+        return self.haversine_distance_m(center_lat, center_lng, lat, lng)
 
     def _distance_to_segment(self, p: tuple[float, float], a: tuple[float, float], b: tuple[float, float]) -> float:
-        # Simple approximation using Euclidean distance for small distances
-        # P = (lat, lng), A = (lat, lng), B = (lat, lng)
         px, py = p
         ax, ay = a
         bx, by = b
@@ -210,35 +197,32 @@ class GeofenceService:
         with self._lock:
             geofences = list(self._geofences)
 
-        if not geofences:
-            return False, float("inf")
+            if not geofences:
+                return False, float("inf")
 
-        overall_min_dist = float("inf")
-        is_inside_any = False
+            overall_min_dist = float("inf")
+            is_inside_any = False
 
-        for g in geofences:
-            mode = g.get("mode", "fixed")
-            path = g.get("path", [])
-            radius = g.get("radiusM", 100.0)
+            for g in geofences:
+                mode = g.get("mode", "fixed")
+                path = g.get("path", [])
+                radius = g.get("radiusM", 100.0)
 
-            if mode == "mobile" and path and len(path) >= 2:
-                min_dist = float("inf")
-                for i in range(len(path) - 1):
-                    dist = self._distance_to_segment((lat, lng), tuple(path[i]), tuple(path[i+1]))
-                    min_dist = min(min_dist, dist)
-                distance = min_dist
-            else:
-                # Use the specific center for this geofence
-                distance = self.haversine_distance_m(
-                    g.get("centerLat", 21.0285),
-                    g.get("centerLng", 105.8542),
-                    lat,
-                    lng
-                )
+                if mode == "mobile" and path and len(path) >= 2:
+                    min_dist = float("inf")
+                    for i in range(len(path) - 1):
+                        dist = self._distance_to_segment((lat, lng), tuple(path[i]), tuple(path[i + 1]))
+                        min_dist = min(min_dist, dist)
+                    distance = min_dist
+                else:
+                    distance = self.haversine_distance_m(
+                        g.get("centerLat", 21.0285), g.get("centerLng", 105.8542),
+                        lat, lng,
+                    )
 
-            if distance <= radius:
-                is_inside_any = True
+                if distance <= radius:
+                    is_inside_any = True
 
-            overall_min_dist = min(overall_min_dist, distance)
+                overall_min_dist = min(overall_min_dist, distance)
 
-        return is_inside_any, overall_min_dist
+            return is_inside_any, overall_min_dist

@@ -2,7 +2,7 @@ class GeofenceState {
   final String mode;
   final double centerLat;
   final double centerLng;
-  final int radiusM;
+  final double radiusM;
   final String source;
   final int? updatedAt;
 
@@ -24,7 +24,7 @@ class GeofenceState {
       mode: json['mode'] as String,
       centerLat: lat is double ? lat : (lat as num?)?.toDouble() ?? 0.0,
       centerLng: lng is double ? lng : (lng as num?)?.toDouble() ?? 0.0,
-      radiusM: radius is int ? radius : (radius as num?)?.toInt() ?? 100,
+      radiusM: radius is double ? radius : (radius as num?)?.toDouble() ?? 100.0,
       source: json['source'] as String,
       updatedAt: json['updated_at'] ?? json['updatedAt'],
     );
