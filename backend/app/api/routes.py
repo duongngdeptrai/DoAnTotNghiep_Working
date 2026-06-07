@@ -49,23 +49,15 @@ class GeofenceFullUpdate(BaseModel):
 
 def _flat_geofence_state(state: dict) -> dict:
     geofences = state.get("geofences", [])
-    if geofences:
-        g = geofences[0]
-        return {
-            "mode": g.get("mode", "fixed"),
-            "centerLat": g.get("centerLat", 21.0285),
-            "centerLng": g.get("centerLng", 105.8542),
-            "radiusM": g.get("radiusM", 100.0),
-            "source": g.get("source", "fixed"),
-            "updatedAt": g.get("updatedAt"),
-        }
+    g = geofences[0] if geofences else {}
     return {
-        "mode": "fixed",
-        "centerLat": 21.0285,
-        "centerLng": 105.8542,
-        "radiusM": 100.0,
-        "source": "fixed",
-        "updatedAt": None,
+        "geofences": geofences,
+        "mode": g.get("mode", "fixed"),
+        "centerLat": g.get("centerLat", 21.0285),
+        "centerLng": g.get("centerLng", 105.8542),
+        "radiusM": g.get("radiusM", 100.0),
+        "source": g.get("source", "fixed"),
+        "updatedAt": g.get("updatedAt"),
     }
 
 
