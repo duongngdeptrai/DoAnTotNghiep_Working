@@ -250,9 +250,81 @@ body::before {
 }
 
 .device-dot {
-	width: 10px;
-	height: 10px;
+	width: 12px;
+	height: 12px;
 	border-radius: 50%;
+	flex-shrink: 0;
+	transition: box-shadow 0.2s;
+}
+
+.device-list-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 16px;
+	cursor: pointer;
+	transition: background 0.15s;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.device-list-item:last-child {
+	border-bottom: none;
+}
+
+.device-list-item:hover {
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.device-list-item.tracking {
+	background: rgba(34, 211, 238, 0.06);
+}
+
+.device-list-item.tracking:hover {
+	background: rgba(34, 211, 238, 0.1);
+}
+
+.panel-close-btn {
+	background: rgba(255, 255, 255, 0.06);
+	border: none;
+	color: var(--muted);
+	width: 28px;
+	height: 28px;
+	border-radius: 8px;
+	cursor: pointer;
+	font-size: 13px;
+	transition: all 0.2s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.panel-close-btn:hover {
+	background: rgba(255, 255, 255, 0.12);
+	color: var(--text);
+}
+
+.status-on {
+	font-size: 11px;
+	font-weight: 600;
+	color: #4ade80;
+	background: rgba(74, 222, 128, 0.12);
+	border: 1px solid rgba(74, 222, 128, 0.25);
+	padding: 3px 9px;
+	border-radius: 20px;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+.status-off {
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--muted);
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	padding: 3px 9px;
+	border-radius: 20px;
+	white-space: nowrap;
 	flex-shrink: 0;
 }
 
@@ -557,7 +629,7 @@ body::before {
 	border: 1px solid rgba(255, 255, 255, 0.14);
 	border-radius: 20px;
 	box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-	z-index: 100;
+	z-index: 2000;
 	display: flex;
 	flex-direction: column;
 	animation: slideInRight 0.3s ease;

@@ -60,7 +60,7 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
   const [modeError, setModeError] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [showAlerts, setShowAlerts] = useState(false);
-  const [showDeviceList, setShowDeviceList] = useState(false);
+  const [showDeviceList, setShowDeviceList] = useState(true);
   const [focusedDeviceId, setFocusedDeviceId] = useState(null);
   const [isPlanMode, setIsPlanMode] = useState(false);
   const [editingGeofenceId, setEditingGeofenceId] = useState(null);
@@ -105,7 +105,7 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
     setModeError(null);
   };
 
-  const { latestMessage, status } = useTrackingSocket(env.backendWsUrl);
+  const { latestMessage, status } = useTrackingSocket(env.backendWsUrl, trackingDeviceIds);
   const { sharingStatus, sharingError } = useGeofenceSharing(
     env.backendHttpUrl,
     shareEnabled,
@@ -117,6 +117,22 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
 
   useEffect(() => {
     localStorage.setItem("tracking_devices", JSON.stringify(trackingDeviceIds));
+  }, [trackingDeviceIds]);
+
+  useEffect(() => {
+    trackingDeviceIds.forEach(async (deviceId) => {
+      try {
+        const data = await fetchLatest(deviceId);
+        setLocations((prev) => ({
+          ...prev,
+          [deviceId]: data
+            ? { lat: data.lat, lng: data.lng, timestamp: data.timestamp }
+            : { lat: geofenceState.centerLat, lng: geofenceState.centerLng, timestamp: 0 },
+        }));
+      } catch {
+        // ignore
+      }
+    });
   }, [trackingDeviceIds]);
 
   useEffect(() => {
@@ -165,9 +181,7 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
 
   const handleToggleTracking = (deviceId) => {
     setTrackingDeviceIds((prev) =>
-      prev.includes(deviceId)
-        ? prev.filter((id) => id !== deviceId)
-        : [...prev, deviceId],
+      prev.includes(deviceId) ? prev.filter((id) => id !== deviceId) : [...prev, deviceId],
     );
   };
 
@@ -305,9 +319,10 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
   return (
     <section className="full-screen-map">
       <TrackingMap
+        center={[geofenceState.centerLat, geofenceState.centerLng]}
         trackingDeviceIds={trackingDeviceIds}
         locations={locations}
-        geofenceState={geofenceState}
+        geofences={geofenceState.geofences}
         deviceColors={DEVICE_COLORS}
         focusedDeviceId={focusedDeviceId}
         onDeviceSelect={handleDeviceSelect}
@@ -352,9 +367,7 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
           title="Cảnh báo"
         >
           🔔
-          {alerts.length > 0 && (
-            <span className="alert-badge">{alerts.length}</span>
-          )}
+          {alerts.length > 0 && <span className="alert-badge">{alerts.length}</span>}
         </button>
         <button
           className={`control-button ${shareEnabled ? "active" : ""}`}
@@ -367,44 +380,55 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
 
       {showDeviceList && (
         <div className="device-list-panel">
-          <div className="panel-header">
-            <h4>Thiết bị theo dõi</h4>
-            <button
-              className="close-button"
-              onClick={() => setShowDeviceList(false)}
-            >
-              ✕
-            </button>
+          <div className="device-list-header">
+            <div>
+              <h4>Thiết bị theo dõi</h4>
+              {trackingDeviceIds.length > 0 && (
+                <span className="device-count" style={{ fontSize: "11px" }}>
+                  {trackingDeviceIds.length} đang theo dõi
+                </span>
+              )}
+            </div>
+            <button className="panel-close-btn" onClick={() => setShowDeviceList(false)}>✕</button>
           </div>
-          <div className="device-list">
-            {allDevices.map((device) => (
-              <div
-                key={device.deviceId}
-                className={`device-list-item ${
-                  trackingDeviceIds.includes(device.deviceId) ? "tracking" : ""
-                } ${selectedDeviceId === device.deviceId ? "selected" : ""}`}
-                onClick={() => {
-                  handleDeviceSelect(device.deviceId);
-                  handleToggleTracking(device.deviceId);
-                }}
-              >
-                <div
-                  className="device-dot"
-                  style={{ backgroundColor: getDeviceColor(device.deviceId).primary }}
-                />
-                <div className="device-info">
-                  <span className="device-id">{device.deviceId}</span>
-                  <span className="device-role">{device.role}</span>
-                </div>
-                <div className="device-status">
-                  {trackingDeviceIds.includes(device.deviceId) ? (
-                    <span className="status-on">Đang theo dõi</span>
-                  ) : (
-                    <span className="status-off">Không theo dõi</span>
-                  )}
-                </div>
-              </div>
-            ))}
+          <div className="device-list-content">
+            {allDevices.length === 0 ? (
+              <p className="muted" style={{ padding: "20px 16px", textAlign: "center", fontSize: "13px" }}>
+                Chưa có thiết bị nào
+              </p>
+            ) : (
+              allDevices.map((device) => {
+                const isTracking = trackingDeviceIds.includes(device.deviceId);
+                const color = getDeviceColor(device.deviceId);
+                return (
+                  <div
+                    key={device.deviceId}
+                    className={`device-list-item${isTracking ? " tracking" : ""}`}
+                    onClick={() => {
+                      handleDeviceSelect(device.deviceId);
+                      handleToggleTracking(device.deviceId);
+                    }}
+                  >
+                    <div
+                      className="device-dot"
+                      style={{
+                        backgroundColor: color.primary,
+                        boxShadow: isTracking ? `0 0 0 4px ${color.primary}28` : "none",
+                      }}
+                    />
+                    <div className="device-info">
+                      <span className="device-id">{device.deviceId}</span>
+                      <span className="device-role">
+                        {device.role === "owner" ? "Chủ sở hữu" : "Được chia sẻ"}
+                      </span>
+                    </div>
+                    <span className={isTracking ? "status-on" : "status-off"}>
+                      {isTracking ? "Đang theo dõi" : "Theo dõi"}
+                    </span>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       )}
@@ -413,10 +437,7 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
         <div className="alerts-panel">
           <div className="panel-header">
             <h4>Cảnh báo</h4>
-            <button
-              className="close-button"
-              onClick={() => setShowAlerts(false)}
-            >
+            <button className="close-button" onClick={() => setShowAlerts(false)}>
               ✕
             </button>
           </div>
@@ -429,9 +450,7 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
                   <span className="alert-icon">⚠️</span>
                   <div className="alert-content">
                     <span className="alert-device">{alert.deviceId}</span>
-                    <span className="alert-time">
-                      {formatEpoch(alert.timestamp)}
-                    </span>
+                    <span className="alert-time">{formatEpoch(alert.timestamp)}</span>
                   </div>
                 </div>
               ))

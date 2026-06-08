@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
 
 from app.core.auth import hash_password, verify_password
+from app.core.config import get_settings
 from app.models.device_config import DeviceConfigIn
 from app.models.device_permission import DevicePermissionOut, DeviceRegisterIn, DeviceShareIn
 from app.models.user import UserLoginIn, UserOut, UserRegisterIn
@@ -234,7 +235,15 @@ def get_latest(
     repo = LocationRepository()
     latest = repo.get_latest_by_device(device_id)
     if not latest:
-        raise HTTPException(status_code=404, detail="No location found for this device")
+        settings = get_settings()
+        return {
+            "deviceId": device_id,
+            "lat": settings.geofence_center_lat,
+            "lng": settings.geofence_center_lng,
+            "timestamp": 0,
+            "insideGeofence": False,
+            "distanceFromCenterM": 0.0,
+        }
     return latest
 
 

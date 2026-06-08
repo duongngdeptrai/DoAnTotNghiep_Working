@@ -43,7 +43,9 @@ class LocationProcessor:
 
         self.alert_state_service.update_last_location(location.deviceId, location.lat, location.lng)
 
-        geofence_state = self.geofence_service.get_state()
+        raw_state = self.geofence_service.get_state()
+        geofences = raw_state.get("geofences", [])
+        gf = geofences[0] if geofences else {}
         inside_geofence, distance, matched_gf_id = self.geofence_service.is_inside(location.lat, location.lng)
         received_at = int(datetime.now(tz=timezone.utc).timestamp())
 
@@ -96,10 +98,10 @@ class LocationProcessor:
                 "insideGeofence": inside_geofence,
                 "geofenceId": matched_gf_id,
                 "distanceFromCenterM": round(distance, 2),
-                "geofenceMode": geofence_state["mode"],
-                "geofenceCenterLat": geofence_state["centerLat"],
-                "geofenceCenterLng": geofence_state["centerLng"],
-                "geofenceRadiusM": geofence_state["radiusM"],
+                "geofenceMode": gf.get("mode", "fixed"),
+                "geofenceCenterLat": gf.get("centerLat", 21.0285),
+                "geofenceCenterLng": gf.get("centerLng", 105.8542),
+                "geofenceRadiusM": gf.get("radiusM", 100.0),
             }
         )
 
