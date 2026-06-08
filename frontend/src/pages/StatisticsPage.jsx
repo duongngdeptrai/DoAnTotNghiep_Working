@@ -94,6 +94,7 @@ export default function StatisticsPage({ devices, selectedDeviceId, onSelectDevi
 	const { device_id } = useParams();
 	const [stats, setStats] = useState(null);
 	const [dailyStats, setDailyStats] = useState([]);
+const [trackPath, setTrackPath] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const [range, setRange] = useState("24h"); // '24h' | '7d' | '30d' | 'all'
@@ -140,6 +141,7 @@ export default function StatisticsPage({ devices, selectedDeviceId, onSelectDevi
 					fetchAggregatedStats(deviceParam, start, end, interval),
 				]);
 				setStats(statsRes);
+				setTrackPath(statsRes.trackPath || []);
 				setDailyStats(dailyRes);
 			} catch (err) {
 				setError(err instanceof Error ? err.message : "Không thể tải thống kê");
