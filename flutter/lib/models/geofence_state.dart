@@ -1,3 +1,5 @@
+import 'geofence.dart';
+
 class GeofenceState {
   final String mode;
   final double centerLat;
@@ -5,6 +7,7 @@ class GeofenceState {
   final double radiusM;
   final String source;
   final int? updatedAt;
+  final List<Geofence> geofences;
 
   GeofenceState({
     required this.mode,
@@ -13,20 +16,25 @@ class GeofenceState {
     required this.radiusM,
     required this.source,
     this.updatedAt,
+    this.geofences = const [],
   });
 
   factory GeofenceState.fromJson(Map<String, dynamic> json) {
     final lat = json['center_lat'] ?? json['centerLat'];
     final lng = json['center_lng'] ?? json['centerLng'];
     final radius = json['radius_m'] ?? json['radiusM'] ?? json['radius'];
+    final rawGeofences = json['geofences'] as List<dynamic>? ?? [];
 
     return GeofenceState(
-      mode: json['mode'] as String,
+      mode: json['mode'] as String? ?? 'fixed',
       centerLat: lat is double ? lat : (lat as num?)?.toDouble() ?? 0.0,
       centerLng: lng is double ? lng : (lng as num?)?.toDouble() ?? 0.0,
       radiusM: radius is double ? radius : (radius as num?)?.toDouble() ?? 100.0,
-      source: json['source'] as String,
+      source: json['source'] as String? ?? 'fixed',
       updatedAt: json['updated_at'] ?? json['updatedAt'],
+      geofences: rawGeofences
+          .map((g) => Geofence.fromJson(g as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

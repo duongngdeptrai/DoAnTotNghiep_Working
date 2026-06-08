@@ -6,6 +6,7 @@ class TopNav extends StatelessWidget {
   final VoidCallback onLogout;
   final VoidCallback? onNavigateHome;
   final VoidCallback? onNavigateProfile;
+  final VoidCallback? onNavigateStats;
 
   const TopNav({
     super.key,
@@ -14,6 +15,7 @@ class TopNav extends StatelessWidget {
     required this.onLogout,
     this.onNavigateHome,
     this.onNavigateProfile,
+    this.onNavigateStats,
   });
 
   @override
@@ -22,12 +24,12 @@ class TopNav extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
         border: Border(
-          bottom: BorderSide(color: Colors.white.withOpacity(0.14)),
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.14)),
         ),
-        color: const Color(0xFF0F172A).withOpacity(0.85),
+        color: const Color(0xFF0F172A).withValues(alpha: 0.85),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.35),
+            color: Colors.black.withValues(alpha: 0.35),
             blurRadius: 30,
             offset: const Offset(0, 15),
           ),
@@ -56,7 +58,7 @@ class TopNav extends StatelessWidget {
                       'Real-time safety dashboard',
                       style: TextStyle(
                         fontSize: 11,
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -68,19 +70,14 @@ class TopNav extends StatelessWidget {
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(50),
-                  color: const Color(0xFF0F172A).withOpacity(0.6),
-                  border: Border.all(color: Colors.white.withOpacity(0.14)),
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.6),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
                 ),
                 child: Row(
                   children: [
-                    NavButton(
-                      label: 'Theo dõi',
-                      onTap: onNavigateHome,
-                    ),
-                    NavButton(
-                      label: 'Hồ sơ',
-                      onTap: onNavigateProfile,
-                    ),
+                    NavButton(label: 'Theo dõi', onTap: onNavigateHome),
+                    NavButton(label: 'Thống kê', onTap: onNavigateStats),
+                    NavButton(label: 'Hồ sơ', onTap: onNavigateProfile),
                   ],
                 ),
               ),
@@ -92,7 +89,7 @@ class TopNav extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                     ),
                     child: const Icon(Icons.person, color: Colors.white, size: 20),
                   ),
@@ -106,7 +103,7 @@ class TopNav extends StatelessWidget {
                         padding: const EdgeInsets.all(8),
                         child: Text(
                           userEmail ?? 'Đã đăng nhập',
-                          style: TextStyle(color: Colors.white.withOpacity(0.8)),
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
                         ),
                       ),
                     ),
@@ -116,7 +113,7 @@ class TopNav extends StatelessWidget {
               else
                 Text(
                   'Chưa đăng nhập',
-                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
                 ),
             ],
           ),
@@ -140,10 +137,10 @@ class NavButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: onTap != null ? Colors.white : Colors.white38,
           ),
         ),
       ),

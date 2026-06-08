@@ -1,5 +1,11 @@
 export 'device.dart';
 export 'location_data.dart';
 export 'geofence_state.dart';
+export 'geofence.dart';
+export 'geofence_pending_config.dart';
 export 'alert.dart';
 export 'user.dart';
+export 'stat_point.dart';
+export 'device_stats.dart';
+export 'aggregated_stat.dart';
+export 'device_config.dart';

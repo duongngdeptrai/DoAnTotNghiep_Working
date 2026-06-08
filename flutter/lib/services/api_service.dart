@@ -189,6 +189,138 @@ class ApiService {
 		}
 	}
 
+	// --- Statistics ---
+
+	Future<DeviceStats> fetchDeviceStats(String deviceId, {int? start, int? end}) async {
+		final params = <String, String>{};
+		if (start != null) params['start'] = start.toString();
+		if (end != null) params['end'] = end.toString();
+		final uri = Uri.parse('$baseUrl/stats/$deviceId').replace(queryParameters: params.isEmpty ? null : params);
+		final response = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 15));
+		if (response.statusCode == 200) {
+			return DeviceStats.fromJson(jsonDecode(response.body));
+		} else {
+			throw Exception('Không thể lấy thống kê: ${_parseError(response)}');
+		}
+	}
+
+	Future<List<AggregatedStat>> fetchAggregatedStats(String deviceId, {int? start, int? end, String interval = 'day'}) async {
+		final params = <String, String>{'interval': interval};
+		if (start != null) params['start'] = start.toString();
+		if (end != null) params['end'] = end.toString();
+		final uri = Uri.parse('$baseUrl/stats/$deviceId/aggregated').replace(queryParameters: params);
+		final response = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 15));
+		if (response.statusCode == 200) {
+			final List<dynamic> data = jsonDecode(response.body);
+			return data.map((j) => AggregatedStat.fromJson(j as Map<String, dynamic>)).toList();
+		} else {
+			throw Exception('Không thể lấy thống kê tổng hợp: ${_parseError(response)}');
+		}
+	}
+
+	// --- Device Sharing ---
+
+	Future<void> shareDevice(String deviceId, String email) async {
+		final response = await http.post(
+			Uri.parse('$baseUrl/devices/$deviceId/share'),
+			headers: _headers,
+			body: jsonEncode({'email': email}),
+		).timeout(const Duration(seconds: 15));
+		if (response.statusCode != 200 && response.statusCode != 201) {
+			throw Exception('Không thể chia sẻ thiết bị: ${_parseError(response)}');
+		}
+	}
+
+	Future<void> unshareDevice(String deviceId, String email) async {
+		final encodedEmail = Uri.encodeComponent(email);
+		final response = await http.delete(
+			Uri.parse('$baseUrl/devices/$deviceId/share/$encodedEmail'),
+			headers: _headers,
+		).timeout(const Duration(seconds: 15));
+		if (response.statusCode != 200 && response.statusCode != 204) {
+			throw Exception('Không thể bỏ chia sẻ thiết bị: ${_parseError(response)}');
+		}
+	}
+
+	// --- Device Config ---
+
+	Future<DeviceConfig> fetchDeviceConfig(String deviceId) async {
+		final response = await http.get(
+			Uri.parse('$baseUrl/devices/$deviceId/config'),
+			headers: _headers,
+		).timeout(const Duration(seconds: 15));
+		if (response.statusCode == 200) {
+			return DeviceConfig.fromJson(jsonDecode(response.body));
+		} else {
+			throw Exception('Không thể lấy cấu hình: ${_parseError(response)}');
+		}
+	}
+
+	Future<void> postDeviceConfig(String deviceId, String parentEmail, bool alertEnabled) async {
+		final response = await http.post(
+			Uri.parse('$baseUrl/devices/$deviceId/config'),
+			headers: _headers,
+			body: jsonEncode({'parentEmail': parentEmail, 'alertEnabled': alertEnabled}),
+		).timeout(const Duration(seconds: 15));
+		if (response.statusCode != 200 && response.statusCode != 201) {
+			throw Exception('Không thể lưu cấu hình: ${_parseError(response)}');
+		}
+	}
+
+	Future<void> deleteDeviceConfig(String deviceId) async {
+		final response = await http.delete(
+			Uri.parse('$baseUrl/devices/$deviceId/config'),
+			headers: _headers,
+		).timeout(const Duration(seconds: 15));
+		if (response.statusCode != 200 && response.statusCode != 204) {
+			throw Exception('Không thể xóa cấu hình: ${_parseError(response)}');
+		}
+	}
+
+	// --- Full Geofence CRUD ---
+
+	Future<GeofenceState> postGeofenceFull({
+		required String geofenceId,
+		String? name,
+		required String mode,
+		required double radiusM,
+		double? lat,
+		double? lng,
+		List<dynamic> path = const [],
+	}) async {
+		final body = <String, dynamic>{
+			'geofence_id': geofenceId,
+			if (name != null && name.isNotEmpty) 'name': name,
+			'mode': mode,
+			'radius_m': radiusM,
+			if (lat != null) 'lat': lat,
+			if (lng != null) 'lng': lng,
+			'path': path,
+		};
+		final response = await http.post(
+			Uri.parse('$baseUrl/geofence/update'),
+			headers: _headers,
+			body: jsonEncode(body),
+		).timeout(const Duration(seconds: 15));
+		if (response.statusCode == 200) {
+			return GeofenceState.fromJson(jsonDecode(response.body));
+		} else {
+			throw Exception('Không thể lưu geofence: ${_parseError(response)}');
+		}
+	}
+
+	Future<GeofenceState> deleteGeofence(String geofenceId) async {
+		final response = await http.delete(
+			Uri.parse('$baseUrl/geofence/$geofenceId'),
+			headers: _headers,
+		).timeout(const Duration(seconds: 15));
+		if (response.statusCode == 200) {
+			return GeofenceState.fromJson(jsonDecode(response.body));
+		} else {
+			throw Exception('Không thể xóa geofence: ${_parseError(response)}');
+		}
+	}
+
 	String _parseError(http.Response response) {
 		try {
 			final data = jsonDecode(response.body);

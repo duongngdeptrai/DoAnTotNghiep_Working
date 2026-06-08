@@ -42,8 +42,8 @@ class Settings(BaseSettings):
     geofence_radius_m: float = 100.0
 
     noise_threshold_m: float = 5.0
-    alert_cooldown_sec: int = 60
-    alert_repeat_outside: bool = False
+    alert_cooldown_sec: int = 300
+    alert_repeat_outside: bool = True
 
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None

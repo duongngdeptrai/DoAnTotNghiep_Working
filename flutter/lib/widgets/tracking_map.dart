@@ -8,8 +8,9 @@ class TrackingMap extends StatelessWidget {
   final LatLng center;
   final Map<String, LocationData> locations;
   final List<String> trackingDeviceIds;
-  final double geofenceRadiusM;
-  final LatLng? geofenceCenter;
+  final List<Geofence> geofences;
+  final GeofencePendingConfig? pendingConfig;
+  final bool isPlanMode;
   final Function(String deviceId)? onDeviceSelected;
   final String? focusedDeviceId;
   final Function(LatLng)? onMapTap;
@@ -19,8 +20,9 @@ class TrackingMap extends StatelessWidget {
     required this.center,
     required this.locations,
     required this.trackingDeviceIds,
-    required this.geofenceRadiusM,
-    this.geofenceCenter,
+    this.geofences = const [],
+    this.pendingConfig,
+    this.isPlanMode = false,
     this.onDeviceSelected,
     this.focusedDeviceId,
     this.onMapTap,
@@ -91,6 +93,80 @@ class TrackingMap extends StatelessWidget {
       );
     }).toList();
 
+    // Plan mode path point markers
+    if (isPlanMode && pendingConfig != null && pendingConfig!.mode == 'mobile') {
+      for (var i = 0; i < pendingConfig!.path.length; i++) {
+        markers.add(Marker(
+          point: pendingConfig!.path[i],
+          width: 20,
+          height: 20,
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFA78BFA),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: Center(
+              child: Text(
+                '${i + 1}',
+                style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ));
+      }
+    }
+
+    // Confirmed circle geofences
+    final circleMarkers = geofences
+        .where((g) => g.mode == 'fixed' && g.centerLat != null && g.centerLng != null)
+        .map((g) => CircleMarker(
+              point: LatLng(g.centerLat!, g.centerLng!),
+              radius: g.radiusM,
+              useRadiusInMeter: true,
+              color: const Color(0xFF22D3EE).withValues(alpha: 0.15),
+              borderColor: const Color(0xFF22D3EE),
+              borderStrokeWidth: 2,
+            ))
+        .toList();
+
+    // Preview pending circle in plan mode
+    if (isPlanMode && pendingConfig != null && pendingConfig!.mode == 'fixed' &&
+        pendingConfig!.centerLat != null && pendingConfig!.centerLng != null) {
+      circleMarkers.add(CircleMarker(
+        point: LatLng(pendingConfig!.centerLat!, pendingConfig!.centerLng!),
+        radius: pendingConfig!.radius,
+        useRadiusInMeter: true,
+        color: const Color(0xFF22D3EE).withValues(alpha: 0.08),
+        borderColor: const Color(0xFF22D3EE).withValues(alpha: 0.6),
+        borderStrokeWidth: 2,
+      ));
+    }
+
+    // Confirmed path geofences
+    final confirmedPolylines = geofences
+        .where((g) => g.mode == 'mobile' && g.path.length > 1)
+        .map((g) => Polyline(
+              points: g.path,
+              color: const Color(0xFFA78BFA).withValues(alpha: 0.8),
+              strokeWidth: (g.radiusM / 10).clamp(3.0, 20.0),
+              borderColor: const Color(0xFFA78BFA),
+              borderStrokeWidth: 1,
+            ))
+        .toList();
+
+    // Preview pending path in plan mode
+    if (isPlanMode && pendingConfig != null && pendingConfig!.mode == 'mobile' &&
+        pendingConfig!.path.length > 1) {
+      confirmedPolylines.add(Polyline(
+        points: pendingConfig!.path,
+        color: const Color(0xFFA78BFA).withValues(alpha: 0.5),
+        strokeWidth: (pendingConfig!.radius / 10).clamp(3.0, 20.0),
+        borderColor: const Color(0xFFA78BFA).withValues(alpha: 0.4),
+        borderStrokeWidth: 1,
+      ));
+    }
+
     return FlutterMap(
       options: MapOptions(
         initialCenter: center,
@@ -108,19 +184,11 @@ class TrackingMap extends StatelessWidget {
           subdomains: const ['a', 'b', 'c'],
           userAgentPackageName: 'com.child.tracking',
         ),
+        if (confirmedPolylines.isNotEmpty)
+          PolylineLayer(polylines: confirmedPolylines),
+        if (circleMarkers.isNotEmpty)
+          CircleLayer(circles: circleMarkers),
         MarkerLayer(markers: markers),
-        if (geofenceCenter != null && geofenceRadiusM > 0)
-          CircleLayer(
-            circles: [
-              CircleMarker(
-                point: geofenceCenter!,
-                radius: geofenceRadiusM,
-                color: const Color(0xFF22D3EE).withValues(alpha: 0.15),
-                borderColor: const Color(0xFF22D3EE),
-                borderStrokeWidth: 2,
-              ),
-            ],
-          ),
       ],
     );
   }

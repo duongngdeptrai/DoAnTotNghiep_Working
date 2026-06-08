@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'config/env.dart';
 import 'providers/app_provider.dart';
 import 'screens/auth_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/statistics_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -153,6 +153,15 @@ class MyApp extends StatelessWidget {
           '/': (context) => const _AuthOrDashboardWrapper(),
           '/auth': (context) => const AuthScreen(),
           '/profile': (context) => const ProfileScreen(),
+        },
+        onGenerateRoute: (settings) {
+          if (settings.name == '/statistics') {
+            final deviceId = settings.arguments as String?;
+            return MaterialPageRoute(
+              builder: (_) => StatisticsScreen(initialDeviceId: deviceId),
+            );
+          }
+          return null;
         },
       ),
     );

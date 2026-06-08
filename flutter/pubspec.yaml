@@ -31,6 +31,9 @@ dependencies:
   # Utilities
   intl: ^0.18.1
 
+  # Charts
+  fl_chart: ^0.68.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

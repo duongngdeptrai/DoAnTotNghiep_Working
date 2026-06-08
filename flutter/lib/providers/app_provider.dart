@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
@@ -29,17 +30,27 @@ class AppProvider with ChangeNotifier {
 		source: 'fixed',
 	);
 	List<Alert> _alerts = [];
+	Alert? _lastNewAlert;
 	SocketStatus _socketStatus = SocketStatus.disconnected;
 	Map<String, dynamic>? _latestMessage;
 	bool _shareEnabled = false;
 	bool _isLoading = false;
 	String? _error;
 
+	// Multi-device tracking
+	Set<String> _trackingDeviceIds = {};
+
+	// Geofence editor state
+	bool _isPlanMode = false;
+	String? _editingGeofenceId;
+	GeofencePendingConfig _pendingConfig = GeofencePendingConfig.defaults();
+
 	AppProvider({String? token}) : _apiService = ApiService(token: token) {
 		_token = token;
 		_loadFromStorage();
 	}
 
+	// --- Getters ---
 	String? get token => _token;
 	User? get currentUser => _currentUser;
 	List<Device> get devices => _devices;
@@ -48,12 +59,19 @@ class AppProvider with ChangeNotifier {
 	Map<String, LocationData> get locations => _locations;
 	GeofenceState get geofenceState => _geofenceState;
 	List<Alert> get alerts => _alerts;
+	Alert? get lastNewAlert => _lastNewAlert;
 	SocketStatus get socketStatus => _socketStatus;
 	Map<String, dynamic>? get latestMessage => _latestMessage;
 	bool get shareEnabled => _shareEnabled;
 	bool get isLoading => _isLoading;
 	String? get error => _error;
 	bool get isOwner => _deviceRole == 'owner';
+	Set<String> get trackingDeviceIds => Set.unmodifiable(_trackingDeviceIds);
+	bool get isPlanMode => _isPlanMode;
+	String? get editingGeofenceId => _editingGeofenceId;
+	GeofencePendingConfig get pendingConfig => _pendingConfig;
+	ApiService get apiService => _apiService;
+	LocationService get locationService => _locationService;
 
 	Future<void> _loadFromStorage() async {
 		_isLoading = true;
@@ -68,6 +86,11 @@ class AppProvider with ChangeNotifier {
 		}
 
 		_selectedDeviceId = prefs.getString('selected_device_id') ?? Env.default_device_id;
+
+		final savedTracking = prefs.getStringList('tracking_devices');
+		if (savedTracking != null && savedTracking.isNotEmpty) {
+			_trackingDeviceIds = savedTracking.toSet();
+		}
 
 		if (_token != null) {
 			connectSocket();
@@ -103,6 +126,11 @@ class AppProvider with ChangeNotifier {
 				_selectedDeviceId = match.deviceId;
 				_deviceRole = match.role;
 			}
+			// Seed tracking set if empty
+			if (_trackingDeviceIds.isEmpty && _devices.isNotEmpty) {
+				_trackingDeviceIds = {_selectedDeviceId};
+				await _saveTrackingDevices();
+			}
 			_isLoading = false;
 			notifyListeners();
 		} catch (e) {
@@ -112,7 +140,7 @@ class AppProvider with ChangeNotifier {
 		}
 	}
 
-	Future<User> login(String email, String password) async {
+	Future<void> login(String email, String password) async {
 		_isLoading = true;
 		_error = null;
 		notifyListeners();
@@ -130,7 +158,6 @@ class AppProvider with ChangeNotifier {
 
 			_isLoading = false;
 			notifyListeners();
-			return user;
 		} catch (e) {
 			_error = e.toString();
 			_isLoading = false;
@@ -139,7 +166,7 @@ class AppProvider with ChangeNotifier {
 		}
 	}
 
-	Future<User> register(String email, String password) async {
+	Future<void> register(String email, String password) async {
 		_isLoading = true;
 		_error = null;
 		notifyListeners();
@@ -157,7 +184,6 @@ class AppProvider with ChangeNotifier {
 
 			_isLoading = false;
 			notifyListeners();
-			return user;
 		} catch (e) {
 			_error = e.toString();
 			_isLoading = false;
@@ -175,6 +201,9 @@ class AppProvider with ChangeNotifier {
 		_locations = {};
 		_alerts = [];
 		_shareEnabled = false;
+		_trackingDeviceIds = {};
+		_isPlanMode = false;
+		_editingGeofenceId = null;
 
 		disconnectSocket();
 		_locationService.stopSharing();
@@ -189,7 +218,6 @@ class AppProvider with ChangeNotifier {
 			notifyListeners();
 			return;
 		}
-
 		try {
 			await _apiService.registerDevice(deviceId);
 			await _loadDevices();
@@ -204,6 +232,7 @@ class AppProvider with ChangeNotifier {
 		try {
 			await _apiService.deleteDevice(deviceId);
 			_devices.removeWhere((d) => d.deviceId == deviceId);
+			_trackingDeviceIds.remove(deviceId);
 			if (_selectedDeviceId == deviceId) {
 				_selectedDeviceId = _devices.isNotEmpty ? _devices.first.deviceId : Env.default_device_id;
 				_deviceRole = _devices.isNotEmpty ? _devices.first.role : '';
@@ -225,10 +254,31 @@ class AppProvider with ChangeNotifier {
 		notifyListeners();
 	}
 
+	// --- Multi-device tracking ---
+
+	void toggleTracking(String deviceId) {
+		if (_trackingDeviceIds.contains(deviceId)) {
+			_trackingDeviceIds.remove(deviceId);
+		} else {
+			_trackingDeviceIds.add(deviceId);
+		}
+		_saveTrackingDevices();
+		notifyListeners();
+	}
+
+	Future<void> _saveTrackingDevices() async {
+		final prefs = await SharedPreferences.getInstance();
+		await prefs.setStringList('tracking_devices', _trackingDeviceIds.toList());
+	}
+
+	// --- Location ---
+
 	void updateLocation(String deviceId, LocationData location) {
 		_locations[deviceId] = location;
 		notifyListeners();
 	}
+
+	// --- Alerts ---
 
 	void setAlerts(List<Alert> alerts) {
 		_alerts = alerts;
@@ -243,12 +293,18 @@ class AppProvider with ChangeNotifier {
 
 	void clearAlerts() {
 		_alerts = [];
+		_lastNewAlert = null;
 		notifyListeners();
 	}
 
+	void clearLastNewAlert() {
+		_lastNewAlert = null;
+	}
+
+	// --- Geofence mode ---
+
 	Future<void> setGeofenceMode(String mode) async {
 		if (_token == null) return;
-
 		try {
 			final state = await _apiService.postGeofenceMode(mode);
 			_geofenceState = state;
@@ -271,6 +327,11 @@ class AppProvider with ChangeNotifier {
 		try {
 			final state = await _apiService.fetchGeofenceState();
 			_geofenceState = state;
+			// Seed tracking from geofence state if still empty
+			if (_trackingDeviceIds.isEmpty && _devices.isNotEmpty) {
+				_trackingDeviceIds = {_selectedDeviceId};
+				await _saveTrackingDevices();
+			}
 			notifyListeners();
 		} catch (e) {
 			_error = e.toString();
@@ -314,7 +375,104 @@ class AppProvider with ChangeNotifier {
 		}
 	}
 
-	LocationService get locationService => _locationService;
+	// --- Geofence CRUD (Plan Mode) ---
+
+	void startPlanMode({Geofence? editTarget}) {
+		if (editTarget != null) {
+			_editingGeofenceId = editTarget.id;
+			_pendingConfig = GeofencePendingConfig(
+				id: editTarget.id,
+				name: editTarget.name,
+				mode: editTarget.mode,
+				radius: editTarget.radiusM,
+				centerLat: editTarget.centerLat,
+				centerLng: editTarget.centerLng,
+				path: List.from(editTarget.path),
+			);
+		} else {
+			_editingGeofenceId = null;
+			_pendingConfig = GeofencePendingConfig.defaults();
+		}
+		_isPlanMode = true;
+		notifyListeners();
+	}
+
+	void cancelPlanMode() {
+		_isPlanMode = false;
+		_editingGeofenceId = null;
+		notifyListeners();
+	}
+
+	void updatePendingConfig(GeofencePendingConfig config) {
+		_pendingConfig = config;
+		notifyListeners();
+	}
+
+	void handleMapTap(LatLng point) {
+		if (!_isPlanMode) return;
+		if (_pendingConfig.mode == 'mobile') {
+			_pendingConfig = _pendingConfig.copyWith(
+				path: [..._pendingConfig.path, point],
+			);
+		} else {
+			_pendingConfig = _pendingConfig.copyWith(
+				centerLat: point.latitude,
+				centerLng: point.longitude,
+			);
+		}
+		notifyListeners();
+	}
+
+	void removeLastPathPoint() {
+		if (_pendingConfig.path.isEmpty) return;
+		_pendingConfig = _pendingConfig.copyWith(
+			path: _pendingConfig.path.sublist(0, _pendingConfig.path.length - 1),
+		);
+		notifyListeners();
+	}
+
+	Future<void> saveGeofence() async {
+		if (_token == null) return;
+		_isLoading = true;
+		_error = null;
+		notifyListeners();
+		try {
+			final cfg = _pendingConfig;
+			final pathJson = cfg.path.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList();
+			final state = await _apiService.postGeofenceFull(
+				geofenceId: cfg.id,
+				name: cfg.name,
+				mode: cfg.mode,
+				radiusM: cfg.radius,
+				lat: cfg.centerLat,
+				lng: cfg.centerLng,
+				path: pathJson,
+			);
+			_geofenceState = state;
+			_isPlanMode = false;
+			_editingGeofenceId = null;
+			_isLoading = false;
+			notifyListeners();
+		} catch (e) {
+			_error = e.toString();
+			_isLoading = false;
+			notifyListeners();
+		}
+	}
+
+	Future<void> removeGeofence(String geofenceId) async {
+		if (_token == null) return;
+		try {
+			final state = await _apiService.deleteGeofence(geofenceId);
+			_geofenceState = state;
+			notifyListeners();
+		} catch (e) {
+			_error = e.toString();
+			notifyListeners();
+		}
+	}
+
+	// --- Socket ---
 
 	void connectSocket() {
 		if (_token == null) return;
@@ -362,24 +520,35 @@ class AppProvider with ChangeNotifier {
 					notifyListeners();
 				}
 			} catch (e) {
-				print('Error handling location message: $e');
+				debugPrint('Error handling location message: $e');
 			}
 		} else if (type == 'alert') {
 			try {
 				final alertData = message['data'] as Map<String, dynamic>? ?? message;
 				final alert = Alert.fromJson(alertData);
 				_alerts.insert(0, alert);
-				if (_alerts.length > 10) _alerts.removeLast();
+				if (_alerts.length > 50) _alerts.removeLast();
+				_lastNewAlert = alert;
 				notifyListeners();
 			} catch (e) {
-				print('Error handling alert message: $e');
+				debugPrint('Error handling alert message: $e');
+			}
+		} else if (type == 'geofence_alert') {
+			try {
+				final alert = Alert.fromJson(message);
+				_alerts.insert(0, alert);
+				if (_alerts.length > 50) _alerts.removeLast();
+				_lastNewAlert = alert;
+				notifyListeners();
+			} catch (e) {
+				debugPrint('Error handling geofence_alert message: $e');
 			}
 		} else if (type == 'geofence_state_update') {
 			try {
 				_geofenceState = GeofenceState.fromJson(message);
 				notifyListeners();
 			} catch (e) {
-				print('Error handling geofence_state_update: $e');
+				debugPrint('Error handling geofence_state_update: $e');
 			}
 		}
 
@@ -407,5 +576,6 @@ class AppProvider with ChangeNotifier {
 			await prefs.remove('auth_token');
 		}
 		await prefs.setString('selected_device_id', _selectedDeviceId);
+		await prefs.setStringList('tracking_devices', _trackingDeviceIds.toList());
 	}
 }

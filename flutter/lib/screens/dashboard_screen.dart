@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:latlong2/latlong.dart';
 import '../providers/app_provider.dart';
+import '../models/models.dart';
 import '../widgets/top_nav.dart';
 import '../widgets/tracking_map.dart';
+import '../widgets/geofence_editor_panel.dart';
 import '../services/location_service.dart';
 import '../services/socket_service.dart';
 import '../utils/device_color.dart';
@@ -19,16 +21,19 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   late final AppProvider _provider;
   late final LocationService _locationService;
-  final _radiusController = TextEditingController();
-  final _latController = TextEditingController();
-  final _lngController = TextEditingController();
   Timer? _syncTimer;
+  Timer? _bannerTimer;
+  Alert? _bannerAlert;
+  bool _showDeviceList = true;
+  bool _showAlerts = false;
+  String? _focusedDeviceId;
 
   @override
   void initState() {
     super.initState();
     _provider = context.read<AppProvider>();
     _locationService = _provider.locationService;
+    _provider.addListener(_onProviderChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _provider.fetchGeofenceState();
       _provider.connectSocket();
@@ -36,251 +41,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   @override
-  void didUpdateWidget(covariant DashboardScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _syncGeofenceControllers();
-  }
-
-  void _syncGeofenceControllers() {
-    final state = _provider.geofenceState;
-    final radiusVal = double.tryParse(_radiusController.text);
-    if (radiusVal == null || (radiusVal - state.radiusM).abs() > 0.001) {
-      _radiusController.text = state.radiusM.toStringAsFixed(0);
-    }
-    if (_latController.text != state.centerLat.toStringAsFixed(4)) {
-      _latController.text = state.centerLat.toStringAsFixed(4);
-    }
-    if (_lngController.text != state.centerLng.toStringAsFixed(4)) {
-      _lngController.text = state.centerLng.toStringAsFixed(4);
-    }
-  }
-
-  @override
   void dispose() {
-    _radiusController.dispose();
-    _latController.dispose();
-    _lngController.dispose();
+    _bannerTimer?.cancel();
+    _provider.removeListener(_onProviderChange);
     _syncTimer?.cancel();
     super.dispose();
   }
 
-  void _applyRadius() {
-    final val = double.tryParse(_radiusController.text);
-    if (val != null && val > 0 && mounted) {
-      _provider.updateGeofenceRadius(val);
+  void _onProviderChange() {
+    final alert = _provider.lastNewAlert;
+    if (alert != null) {
+      _provider.clearLastNewAlert();
+      _showAlertBanner(alert);
     }
   }
 
-  void _applyCenter() {
-    final lat = double.tryParse(_latController.text);
-    final lng = double.tryParse(_lngController.text);
-    if (lat != null && lng != null && mounted) {
-      _provider.updateGeofenceCenter(lat, lng);
-    }
-  }
-
-  void _onMapTap(LatLng point) {
-    if (_provider.geofenceState.mode != 'fixed' || !_provider.isOwner) {
-      debugPrint('[MapTap] blocked: mode=${_provider.geofenceState.mode}, isOwner=${_provider.isOwner}');
-      return;
-    }
-    debugPrint('[MapTap] tapped: lat=${point.latitude}, lng=${point.longitude}');
-    _latController.text = point.latitude.toStringAsFixed(6);
-    _lngController.text = point.longitude.toStringAsFixed(6);
-    _provider.updateGeofenceCenter(point.latitude, point.longitude).then((_) {
-      debugPrint('[MapTap] updateGeofenceCenter success');
-    }).catchError((e) {
-      debugPrint('[MapTap] updateGeofenceCenter ERROR: $e');
+  void _showAlertBanner(Alert alert) {
+    setState(() => _bannerAlert = alert);
+    _bannerTimer?.cancel();
+    _bannerTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _bannerAlert = null);
     });
   }
 
+  void _onMapTap(LatLng point) {
+    if (_provider.isPlanMode) {
+      _provider.handleMapTap(point);
+      return;
+    }
+    if (_provider.geofenceState.mode == 'fixed' && _provider.isOwner) {
+      _provider.updateGeofenceCenter(point.latitude, point.longitude);
+    }
+  }
+
   LatLng _getMapCenter() {
-    final provider = _provider;
-    if (provider.geofenceState.mode == 'mobile' && _locationService.currentPosition != null) {
+    if (_provider.geofenceState.mode == 'mobile' && _locationService.currentPosition != null) {
       final pos = _locationService.currentPosition!;
       return LatLng(pos.latitude, pos.longitude);
     }
-    return LatLng(provider.geofenceState.centerLat, provider.geofenceState.centerLng);
-  }
-
-  void _showDeviceListSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final devices = _provider.devices;
-        return Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.45,
-          ),
-          decoration: const BoxDecoration(
-            color: Color(0xFF0F172A),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Thiết bị đang theo dõi',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white, size: 20),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(color: Colors.white24, height: 1),
-              if (devices.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text('Chưa có thiết bị', style: TextStyle(color: Colors.white54)),
-                )
-              else
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: devices.length,
-                    itemBuilder: (context, index) {
-                      final device = devices[index];
-                      final location = _provider.locations[device.deviceId];
-                      final colors = getDeviceColor(device.deviceId);
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        leading: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(color: colors, shape: BoxShape.circle),
-                        ),
-                        title: Text(
-                          device.deviceId,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
-                        ),
-                        subtitle: location != null
-                            ? Text(
-                                '${location.lat.toStringAsFixed(4)}, ${location.lng.toStringAsFixed(4)}',
-                                style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
-                              )
-                            : null,
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(50),
-                          ),
-                          child: const Text(
-                            'ON',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white60),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showAlertsSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final alerts = _provider.alerts;
-        return Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.4,
-          ),
-          decoration: const BoxDecoration(
-            color: Color(0xFF0F172A),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Cảnh báo gần đây',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white, size: 20),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(color: Colors.white24, height: 1),
-              if (alerts.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text('Chưa có cảnh báo', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                )
-              else
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: alerts.length,
-                    itemBuilder: (context, index) {
-                      final alert = alerts[index];
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        leading: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(color: Colors.orangeAccent, shape: BoxShape.circle),
-                        ),
-                        title: Text(
-                          alert.event,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.orangeAccent),
-                        ),
-                        subtitle: Text(
-                          '${alert.lat.toStringAsFixed(4)}, ${alert.lng.toStringAsFixed(4)}\n'
-                              '${DateTime.fromMillisecondsSinceEpoch(alert.timestamp * 1000).toLocal()}',
-                          style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5)),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
-    );
+    return LatLng(_provider.geofenceState.centerLat, _provider.geofenceState.centerLng);
   }
 
   Color _getStatusColor(SocketStatus status) {
@@ -298,32 +97,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final isFixed = provider.geofenceState.mode == 'fixed';
-    final isOwner = provider.isOwner;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    final navBar = TopNav(
+      token: provider.token,
+      userEmail: provider.currentUser?.email,
+      onLogout: () {
+        provider.logout();
+        Navigator.of(context).pushReplacementNamed('/auth');
+      },
+      onNavigateProfile: () => Navigator.of(context).pushNamed('/profile'),
+      onNavigateStats: provider.devices.isNotEmpty
+          ? () => Navigator.of(context).pushNamed('/statistics', arguments: provider.selectedDeviceId)
+          : null,
+    );
 
     if (provider.devices.isEmpty) {
       return Scaffold(
         body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF0B0F1A), Color(0xFF0F172A), Color(0xFF111827)],
-            ),
-          ),
+          decoration: _bgDecoration,
           child: SafeArea(
             child: Column(
               children: [
-                TopNav(
-                  token: provider.token,
-                  userEmail: provider.currentUser?.email,
-                  onLogout: () {
-                    provider.logout();
-                    Navigator.of(context).pushReplacementNamed('/auth');
-                  },
-                  onNavigateProfile: () => Navigator.of(context).pushNamed('/profile'),
-                ),
+                navBar,
                 const Expanded(
                   child: Center(
                     child: Column(
@@ -331,15 +127,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Icon(Icons.info_outline, size: 64, color: Colors.white24),
                         SizedBox(height: 16),
-                        Text(
-                          'Chưa có thiết bị',
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
+                        Text('Chưa có thiết bị',
+                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
                         SizedBox(height: 8),
-                        Text(
-                          'Hãy thêm thiết bị trong trang Hồ sơ',
-                          style: TextStyle(fontSize: 14, color: Colors.white54),
-                        ),
+                        Text('Hãy thêm thiết bị trong trang Hồ sơ',
+                            style: TextStyle(fontSize: 14, color: Colors.white54)),
                       ],
                     ),
                   ),
@@ -353,78 +145,129 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0B0F1A), Color(0xFF0F172A), Color(0xFF111827)],
-          ),
-        ),
+        decoration: _bgDecoration,
         child: Column(
           children: [
-            TopNav(
-              token: provider.token,
-              userEmail: provider.currentUser?.email,
-              onLogout: () {
-                provider.logout();
-                Navigator.of(context).pushReplacementNamed('/auth');
-              },
-              onNavigateProfile: () => Navigator.of(context).pushNamed('/profile'),
-            ),
+            navBar,
             Expanded(
               child: Stack(
                 children: [
+                  // Map
                   TrackingMap(
                     center: _getMapCenter(),
                     locations: provider.locations,
-                    trackingDeviceIds: provider.devices.map((d) => d.deviceId).toList(),
-                    geofenceRadiusM: provider.geofenceState.radiusM,
-                    geofenceCenter: LatLng(provider.geofenceState.centerLat, provider.geofenceState.centerLng),
-                    focusedDeviceId: null,
-                    onMapTap: (isFixed && isOwner) ? _onMapTap : null,
+                    trackingDeviceIds: provider.trackingDeviceIds.toList(),
+                    geofences: provider.geofenceState.geofences,
+                    pendingConfig: provider.isPlanMode ? provider.pendingConfig : null,
+                    isPlanMode: provider.isPlanMode,
+                    focusedDeviceId: _focusedDeviceId,
+                    onDeviceSelected: (id) => setState(() => _focusedDeviceId = id),
+                    onMapTap: _onMapTap,
                   ),
+
+                  // Status pill (top left)
                   Positioned(
                     top: 8,
-                    left: 16,
+                    left: 12,
                     child: _StatusPill(
                       status: provider.socketStatus,
                       getColor: _getStatusColor,
                     ),
                   ),
+
+                  // Icon buttons (top right)
                   Positioned(
                     top: 8,
-                    right: 16,
+                    right: 12,
                     child: Row(
                       children: [
                         _IconPill(
                           icon: Icons.people_outline,
-                          label: '${provider.devices.length} thiết bị',
-                          onTap: _showDeviceListSheet,
+                          label: '${provider.devices.length}',
+                          active: _showDeviceList,
+                          onTap: () => setState(() => _showDeviceList = !_showDeviceList),
                           color: Colors.cyanAccent,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         _IconPill(
                           icon: Icons.warning_amber_rounded,
-                          label: null,
-                          onTap: _showAlertsSheet,
+                          label: provider.alerts.isNotEmpty ? '${provider.alerts.length}' : null,
+                          active: _showAlerts,
+                          onTap: () => setState(() => _showAlerts = !_showAlerts),
                           color: Colors.orangeAccent,
+                        ),
+                        const SizedBox(width: 6),
+                        _IconPill(
+                          icon: provider.shareEnabled ? Icons.share_location : Icons.location_off_outlined,
+                          label: null,
+                          active: provider.shareEnabled,
+                          onTap: () => provider.setGeofenceMode(
+                              provider.shareEnabled ? 'fixed' : 'mobile'),
+                          color: Colors.greenAccent,
                         ),
                       ],
                     ),
                   ),
+
+                  // Device list panel (toggle)
+                  if (_showDeviceList)
+                    Positioned(
+                      top: 44,
+                      right: 12,
+                      child: _DeviceListPanel(
+                        devices: provider.devices,
+                        trackingIds: provider.trackingDeviceIds,
+                        locations: provider.locations,
+                        onToggle: provider.toggleTracking,
+                        onClose: () => setState(() => _showDeviceList = false),
+                      ),
+                    ),
+
+                  // Alerts panel (toggle)
+                  if (_showAlerts)
+                    Positioned(
+                      top: 44,
+                      right: 12,
+                      child: _AlertsPanel(
+                        alerts: provider.alerts,
+                        onClose: () => setState(() => _showAlerts = false),
+                        onClear: provider.clearAlerts,
+                      ),
+                    ),
+
+                  // Alert banner (auto-dismiss after 5s)
+                  if (_bannerAlert != null)
+                    Positioned(
+                      top: 8,
+                      left: 80,
+                      right: 80,
+                      child: _AlertBanner(
+                        alert: _bannerAlert!,
+                        onDismiss: () {
+                          _bannerTimer?.cancel();
+                          setState(() => _bannerAlert = null);
+                        },
+                        onTap: () {
+                          _bannerTimer?.cancel();
+                          setState(() { _showAlerts = true; _bannerAlert = null; });
+                        },
+                      ),
+                    ),
+
+                  // Geofence editor panel (bottom left, always visible)
+                  const Positioned(
+                    left: 8,
+                    bottom: 80,
+                    child: GeofenceEditorPanel(),
+                  ),
                 ],
               ),
             ),
-            _ControlDock(
+
+            // Mode toggle dock (simplified)
+            _ModeDock(
               provider: provider,
               bottomPadding: bottomPadding,
-              isFixed: isFixed,
-              isOwner: isOwner,
-              radiusController: _radiusController,
-              latController: _latController,
-              lngController: _lngController,
-              onApplyRadius: _applyRadius,
-              onApplyCenter: _applyCenter,
             ),
           ],
         ),
@@ -432,6 +275,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 }
+
+// ─── Background decoration ───────────────────────────────────────────────────
+
+const _bgDecoration = BoxDecoration(
+  gradient: LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF0B0F1A), Color(0xFF0F172A), Color(0xFF111827)],
+  ),
+);
+
+// ─── Status Pill ──────────────────────────────────────────────────────────────
 
 class _StatusPill extends StatelessWidget {
   final SocketStatus status;
@@ -445,98 +300,322 @@ class _StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(50),
-        border: Border.all(color: color.withOpacity(0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           const SizedBox(width: 6),
-          Text(
-            'WS: ${status.name}',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
-          ),
+          Text('WS: ${status.name}',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
         ],
       ),
     );
   }
 }
 
+// ─── Icon Pill ────────────────────────────────────────────────────────────────
+
 class _IconPill extends StatelessWidget {
   final IconData icon;
   final String? label;
+  final bool active;
   final VoidCallback onTap;
   final Color color;
 
   const _IconPill({
     required this.icon,
     this.label,
+    required this.active,
     required this.onTap,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    final child = Row(
-      children: [
-        Icon(icon, size: 16, color: color),
-        if (label != null) ...[
-          const SizedBox(width: 6),
-          Text(
-            label!,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color),
-          ),
-        ],
-      ],
-    );
-    final isCircle = label == null;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: isCircle ? 12 : 14,
-          vertical: isCircle ? 12 : 10,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFF0F172A).withOpacity(0.85),
-          shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
-          borderRadius: isCircle ? null : BorderRadius.circular(50),
-          border: Border.all(color: Colors.white.withOpacity(0.14)),
+          color: active ? color.withValues(alpha: 0.2) : const Color(0xFF0F172A).withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(50),
+          border: Border.all(
+            color: active ? color : Colors.white.withValues(alpha: 0.14),
+          ),
         ),
-        child: child,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: active ? color : Colors.white54),
+            if (label != null) ...[
+              const SizedBox(width: 4),
+              Text(label!, style: TextStyle(fontSize: 11, color: active ? color : Colors.white54, fontWeight: FontWeight.bold)),
+            ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _ControlDock extends StatelessWidget {
-  final AppProvider provider;
-  final double bottomPadding;
-  final bool isFixed;
-  final bool isOwner;
-  final TextEditingController radiusController;
-  final TextEditingController latController;
-  final TextEditingController lngController;
-  final VoidCallback onApplyRadius;
-  final VoidCallback onApplyCenter;
+// ─── Device List Panel ────────────────────────────────────────────────────────
 
-  const _ControlDock({
-    required this.provider,
-    required this.bottomPadding,
-    required this.isFixed,
-    required this.isOwner,
-    required this.radiusController,
-    required this.latController,
-    required this.lngController,
-    required this.onApplyRadius,
-    required this.onApplyCenter,
+class _DeviceListPanel extends StatelessWidget {
+  final List devices;
+  final Set<String> trackingIds;
+  final Map locations;
+  final void Function(String) onToggle;
+  final VoidCallback onClose;
+
+  const _DeviceListPanel({
+    required this.devices,
+    required this.trackingIds,
+    required this.locations,
+    required this.onToggle,
+    required this.onClose,
   });
 
   @override
   Widget build(BuildContext context) {
-    final state = provider.geofenceState;
+    return Container(
+      width: 220,
+      constraints: const BoxConstraints(maxHeight: 300),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1729).withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
+            child: Row(
+              children: [
+                const Text('Thiết bị theo dõi',
+                    style: TextStyle(color: Color(0xFF22D3EE), fontSize: 13, fontWeight: FontWeight.w600)),
+                const Spacer(),
+                GestureDetector(onTap: onClose,
+                    child: const Icon(Icons.close, color: Colors.white38, size: 16)),
+              ],
+            ),
+          ),
+          const Divider(color: Colors.white12, height: 1),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: devices.length,
+              itemBuilder: (context, i) {
+                final device = devices[i];
+                final id = device.deviceId as String;
+                final isTracking = trackingIds.contains(id);
+                final color = getDeviceColor(id);
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Row(
+                    children: [
+                      Container(width: 10, height: 10,
+                          decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(id,
+                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                      Switch(
+                        value: isTracking,
+                        onChanged: (_) => onToggle(id),
+                        activeColor: const Color(0xFF22D3EE),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Alerts Panel ─────────────────────────────────────────────────────────────
+
+class _AlertsPanel extends StatelessWidget {
+  final List alerts;
+  final VoidCallback onClose;
+  final VoidCallback onClear;
+
+  const _AlertsPanel({required this.alerts, required this.onClose, required this.onClear});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 240,
+      constraints: const BoxConstraints(maxHeight: 320),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1729).withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 16),
+                const SizedBox(width: 6),
+                const Text('Cảnh báo',
+                    style: TextStyle(color: Colors.orangeAccent, fontSize: 13, fontWeight: FontWeight.w600)),
+                const Spacer(),
+                if (alerts.isNotEmpty)
+                  GestureDetector(
+                    onTap: onClear,
+                    child: const Text('Xóa', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                  ),
+                const SizedBox(width: 8),
+                GestureDetector(onTap: onClose,
+                    child: const Icon(Icons.close, color: Colors.white38, size: 16)),
+              ],
+            ),
+          ),
+          const Divider(color: Colors.white12, height: 1),
+          if (alerts.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Chưa có cảnh báo', style: TextStyle(color: Colors.white38, fontSize: 12)),
+            )
+          else
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: alerts.length,
+                itemBuilder: (context, i) {
+                  final alert = alerts[i];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          width: 6, height: 6,
+                          decoration: BoxDecoration(color: _eventColor(alert.event), shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(alert.deviceId,
+                                  style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600)),
+                              Text(_eventLabel(alert.event),
+                                  style: TextStyle(color: _eventColor(alert.event), fontSize: 11, fontWeight: FontWeight.w600)),
+                              Text(
+                                DateTime.fromMillisecondsSinceEpoch(alert.timestamp * 1000).toLocal().toString().substring(0, 16),
+                                style: const TextStyle(color: Colors.white38, fontSize: 10),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Alert helpers ───────────────────────────────────────────────────────────
+
+String _eventLabel(String event) => switch (event) {
+  'outside_entered'  => '⚠️ Rời vùng an toàn',
+  'outside_reminder' => '⏰ Vẫn ngoài vùng an toàn',
+  'inside_entered'   => '✅ Đã vào vùng an toàn',
+  'inside_moved'     => '📍 Chuyển vùng an toàn',
+  _                  => event,
+};
+
+Color _eventColor(String event) => event.startsWith('outside')
+    ? Colors.orangeAccent
+    : Colors.greenAccent;
+
+String _eventBannerText(Alert alert) => switch (alert.event) {
+  'outside_entered'  => '⚠️ ${alert.deviceId} rời vùng an toàn!',
+  'outside_reminder' => '⏰ ${alert.deviceId} vẫn ngoài vùng an toàn',
+  'inside_entered'   => '✅ ${alert.deviceId} đã vào vùng an toàn',
+  'inside_moved'     => '📍 ${alert.deviceId} chuyển sang vùng an toàn mới',
+  _                  => alert.event,
+};
+
+// ─── Alert Banner ─────────────────────────────────────────────────────────────
+
+class _AlertBanner extends StatelessWidget {
+  final Alert alert;
+  final VoidCallback onDismiss;
+  final VoidCallback onTap;
+
+  const _AlertBanner({required this.alert, required this.onDismiss, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _eventColor(alert.event);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A).withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.5)),
+          boxShadow: [
+            BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 12, spreadRadius: 1),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                _eventBannerText(alert),
+                style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: onDismiss,
+              child: const Icon(Icons.close, color: Colors.white38, size: 14),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Mode Dock ────────────────────────────────────────────────────────────────
+
+class _ModeDock extends StatelessWidget {
+  final AppProvider provider;
+  final double bottomPadding;
+
+  const _ModeDock({required this.provider, required this.bottomPadding});
+
+  @override
+  Widget build(BuildContext context) {
+    final isFixed = provider.geofenceState.mode == 'fixed';
     return Container(
       padding: EdgeInsets.fromLTRB(16, 10, 16, bottomPadding + 10),
       decoration: const BoxDecoration(
@@ -546,110 +625,12 @@ class _ControlDock extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (isFixed && isOwner) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: radiusController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: 'Bán kính (m)',
-                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.06),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
-                      ),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.check, size: 16, color: Colors.cyanAccent),
-                        onPressed: onApplyRadius,
-                        tooltip: 'Áp dụng',
-                      ),
-                    ),
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    onSubmitted: (_) => onApplyRadius(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Tâm vùng', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: latController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              decoration: InputDecoration(
-                                hintText: 'Lat',
-                                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                                filled: true,
-                                fillColor: Colors.white.withOpacity(0.06),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
-                                ),
-                              ),
-                              style: const TextStyle(color: Colors.white, fontSize: 12),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: TextField(
-                              controller: lngController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              decoration: InputDecoration(
-                                hintText: 'Lng',
-                                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                                filled: true,
-                                fillColor: Colors.white.withOpacity(0.06),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
-                                ),
-                              ),
-                              style: const TextStyle(color: Colors.white, fontSize: 12),
-                              onSubmitted: (_) => onApplyCenter(),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.check, size: 16, color: Colors.cyanAccent),
-                            onPressed: onApplyCenter,
-                            tooltip: 'Áp dụng tọa độ',
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-          ] else if (isFixed && !isOwner) ...[
-            Row(
-              children: [
-                Icon(Icons.lock_outline, size: 12, color: Colors.white.withOpacity(0.3)),
-                const SizedBox(width: 6),
-                Text(
-                  'Bán kính: ${state.radiusM}m | Tâm: ${state.centerLat.toStringAsFixed(4)}, ${state.centerLng.toStringAsFixed(4)}',
-                  style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.4)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-          ],
           Row(
             children: [
               Expanded(
                 child: _ModeButton(
                   label: 'Cố định',
-                  active: provider.geofenceState.mode == 'fixed',
+                  active: isFixed,
                   onTap: () => provider.setGeofenceMode('fixed'),
                   color: Colors.cyan,
                 ),
@@ -658,7 +639,7 @@ class _ControlDock extends StatelessWidget {
               Expanded(
                 child: _ModeButton(
                   label: 'Dùng điện thoại',
-                  active: provider.geofenceState.mode == 'mobile',
+                  active: !isFixed,
                   onTap: () => provider.setGeofenceMode('mobile'),
                   color: Colors.orange,
                 ),
@@ -668,17 +649,17 @@ class _ControlDock extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              Icon(Icons.circle, size: 6, color: Colors.cyanAccent),
+              const Icon(Icons.circle, size: 6, color: Colors.cyanAccent),
               const SizedBox(width: 6),
               Text(
-                '${provider.geofenceState.radiusM}m · ${provider.geofenceState.mode}',
+                '${provider.geofenceState.radiusM.toStringAsFixed(0)}m · ${provider.geofenceState.mode} · ${provider.geofenceState.geofences.length} vùng',
                 style: const TextStyle(fontSize: 11, color: Colors.white54),
               ),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: (provider.shareEnabled ? Colors.green : Colors.orange).withOpacity(0.15),
+                  color: (provider.shareEnabled ? Colors.green : Colors.orange).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(50),
                 ),
                 child: Text(
@@ -704,12 +685,7 @@ class _ModeButton extends StatelessWidget {
   final VoidCallback onTap;
   final Color color;
 
-  const _ModeButton({
-    required this.label,
-    required this.active,
-    required this.onTap,
-    required this.color,
-  });
+  const _ModeButton({required this.label, required this.active, required this.onTap, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -719,10 +695,10 @@ class _ModeButton extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: active ? color : Colors.white.withOpacity(0.06),
+          color: active ? color : Colors.white.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: active ? color : Colors.white.withOpacity(0.12),
+            color: active ? color : Colors.white.withValues(alpha: 0.12),
             width: active ? 1.5 : 1,
           ),
         ),
@@ -732,7 +708,7 @@ class _ModeButton extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: active ? const Color(0xFF0B0F1A) : Colors.white.withOpacity(0.5),
+            color: active ? const Color(0xFF0B0F1A) : Colors.white.withValues(alpha: 0.5),
           ),
         ),
       ),
