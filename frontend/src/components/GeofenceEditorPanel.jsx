@@ -1,20 +1,32 @@
 import React from "react";
 
 export default function GeofenceEditorPanel({
-  config,
-  editingGeofence,
+  pendingConfig,
+  editingGeofenceId,
+  geofenceState,
+  isOwner,
+  isPlanMode,
+  modeError,
   onUpdateConfig,
   onSave,
   onCancel,
   onRemoveLastPoint,
-  modeError,
+  onStartPlanMode,
+  onEditGeofence,
+  onDeleteGeofence,
+  onSetMode,
+  onSetRadius,
+  onSetPath,
 }) {
+  const editingGeofence = editingGeofenceId
+    ? geofenceState.geofences?.find((g) => g.id === editingGeofenceId)
+    : null;
   const isNew = !editingGeofence;
 
   return (
     <div className="geofence-editor-panel">
       <div className="editor-panel-header">
-        <h4>{isNew ? "Thêm vùng an toàn mới" : `Chỉnh sửa: ${editingGeofence.name}`}</h4>
+        <h4>{isNew ? "Thêm vùng an toàn mới" : `Chỉnh sửa: ${editingGeofence?.name || ""}`}</h4>
         <button className="close-btn" onClick={onCancel} type="button">✕</button>
       </div>
 
@@ -24,7 +36,7 @@ export default function GeofenceEditorPanel({
           <input
             type="text"
             className="editor-input"
-            value={config.name || ""}
+            value={pendingConfig.name || ""}
             onChange={(e) => onUpdateConfig({ name: e.target.value })}
             placeholder="Nhập tên vùng..."
           />
@@ -34,14 +46,14 @@ export default function GeofenceEditorPanel({
           <label className="editor-label">Chế độ vùng</label>
           <div className="editor-mode-toggle">
             <button
-              className={`editor-mode-btn ${config.mode === "circle" ? "active" : ""}`}
+              className={`editor-mode-btn ${pendingConfig.mode === "circle" ? "active" : ""}`}
               onClick={() => onUpdateConfig({ mode: "circle" })}
               type="button"
             >
               📍 Hình tròn
             </button>
             <button
-              className={`editor-mode-btn ${config.mode === "path" ? "active" : ""}`}
+              className={`editor-mode-btn ${pendingConfig.mode === "path" ? "active" : ""}`}
               onClick={() => onUpdateConfig({ mode: "path" })}
               type="button"
             >
@@ -59,14 +71,14 @@ export default function GeofenceEditorPanel({
               min="10"
               max="5000"
               step="10"
-              value={config.radius}
+              value={pendingConfig.radius}
               onChange={(e) => onUpdateConfig({ radius: parseInt(e.target.value, 10) })}
             />
             <div className="radius-number-row">
               <input
                 type="number"
                 className="editor-input radius-input"
-                value={config.radius}
+                value={pendingConfig.radius}
                 onChange={(e) => onUpdateConfig({ radius: parseInt(e.target.value, 10) || 0 })}
                 min="10"
                 max="5000"
@@ -76,13 +88,13 @@ export default function GeofenceEditorPanel({
           </div>
         </div>
 
-        {config.mode === "path" && (
+        {pendingConfig.mode === "path" && (
           <div className="editor-group path-group">
-            <label className="editor-label">Số điểm vẽ: {config.path?.length || 0}</label>
+            <label className="editor-label">Số điểm vẽ: {pendingConfig.path?.length || 0}</label>
             <button
               className="remove-point-btn"
               onClick={onRemoveLastPoint}
-              disabled={!config.path || config.path.length < 2}
+              disabled={!pendingConfig.path || pendingConfig.path.length < 2}
               type="button"
             >
               🗑️ Xóa điểm cuối cùng

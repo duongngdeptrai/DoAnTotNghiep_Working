@@ -55,6 +55,7 @@ def _flat_geofence_state(state: dict) -> dict:
         "radiusM": g.get("radiusM", 100.0),
         "source": g.get("source", "fixed"),
         "updatedAt": g.get("updatedAt"),
+        "name": g.get("name"),
     }
 
 
@@ -74,7 +75,7 @@ def update_full_geofence(
     )
     if payload.name:
         geofence_service.upsert_geofence(payload.geofence_id, name=payload.name)
-    state = geofence_service.get_state()
+        state = geofence_service.get_state()
 
     flat = _flat_geofence_state(state)
     ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
@@ -267,7 +268,7 @@ def get_device_config(
     device_config_repo = request.app.state.device_config_repository
     config = device_config_repo.get_config(device_id)
     if not config:
-        raise HTTPException(status_code=404, detail="No config found for this device")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No config found for this device")
     return config
 
 
@@ -280,7 +281,7 @@ def delete_device_config(
     device_config_repo = request.app.state.device_config_repository
     deleted = device_config_repo.delete_config(device_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="No config found for this device")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No config found for this device")
     return {"message": "Config deleted successfully"}
 
 
@@ -303,7 +304,7 @@ def get_statistics(
         start = now - 24 * 3600
 
     if start > end:
-        raise HTTPException(status_code=400, detail="start must be <= end")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="start must be <= end")
 
     stats = repo.get_statistics(device_id, start, end)
     track_path = repo.get_track_path(device_id, start, end)
@@ -324,9 +325,7 @@ def get_aggregated_statistics(
     end: int = None,
     interval: str = "day",
 ) -> list[dict]:
-    """
-    Get aggregated statistics for a device grouped by interval (hour, day, week, year).
-    """
+    """Get aggregated statistics for a device grouped by interval (hour, day, week, year)."""
     repo = LocationRepository()
 
     now = int(datetime.now(tz=timezone.utc).timestamp())
@@ -345,10 +344,7 @@ def get_heatmap(
     end: int = None,
     bucket_size: float = 0.0005,
 ) -> list[dict]:
-    """
-    Get heatmap data for device locations.
-    Points are bucketed into grid cells for efficient rendering.
-    """
+    """Get heatmap data for device locations."""
     repo = LocationRepository()
 
     now = int(datetime.now(tz=timezone.utc).timestamp())
