@@ -150,7 +150,7 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
       return;
     }
     const promises = trackingDeviceIds.map((deviceId) =>
-      fetchLatest(token, deviceId).then((latest) => {
+      fetchLatest(deviceId).then((latest) => {
         if (latest) {
           setLocations((prev) => ({
             ...prev,

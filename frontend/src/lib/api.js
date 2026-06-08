@@ -61,8 +61,8 @@ export function registerDevice(token, deviceId) {
   });
 }
 
-export function fetchLatest(token, deviceId) {
-  return apiFetch(`${env.backendHttpUrl}/latest/${deviceId}`, token);
+export function fetchLatest(deviceId) {
+  return apiFetch(`${env.backendHttpUrl}/latest/${deviceId}`);
 }
 
 export function postGeofenceFull(token, payload) {
@@ -121,31 +121,31 @@ export function postGeofencePath(token, path) {
 
 
 // Statistics APIs
-export function fetchStatistics(token, deviceId, start = null, end = null) {
+export function fetchStatistics(deviceId, start = null, end = null) {
   const params = new URLSearchParams();
   if (start !== null) params.append("start", start);
   if (end !== null) params.append("end", end);
   const queryString = params.toString();
   const url = queryString ? `${env.backendHttpUrl}/stats/${deviceId}?${queryString}` : `${env.backendHttpUrl}/stats/${deviceId}`;
-  return apiFetch(url, token);
+  return apiFetch(url);
 }
 
-export function fetchAggregatedStats(token, deviceId, start = null, end = null, interval = "day") {
+export function fetchAggregatedStats(deviceId, start = null, end = null, interval = "day") {
   const params = new URLSearchParams();
   if (start !== null) params.append("start", start);
   if (end !== null) params.append("end", end);
   params.append("interval", interval);
   const queryString = params.toString();
   const url = `${env.backendHttpUrl}/stats/${deviceId}/aggregated?${queryString}`;
-  return apiFetch(url, token);
+  return apiFetch(url);
 }
 
-export function fetchHeatmapData(token, deviceId, start = null, end = null, bucketSize = 0.0005) {
+export function fetchHeatmapData(deviceId, start = null, end = null, bucketSize = 0.0005) {
   const params = new URLSearchParams();
   if (start !== null) params.append("start", start);
   if (end !== null) params.append("end", end);
   params.append("bucket_size", bucketSize);
   const queryString = params.toString();
   const url = `${env.backendHttpUrl}/stats/${deviceId}/heatmap?${queryString}`;
-  return apiFetch(url, token);
+  return apiFetch(url);
 }

@@ -330,10 +330,7 @@ def update_geofence_radius(
 @router.get("/latest/{device_id}")
 def get_latest(
     device_id: str,
-    request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
-    _require_device_access(device_id, current_user, _permission_repo(request))
     repo = LocationRepository()
     latest = repo.get_latest_by_device(device_id)
     if not latest:
@@ -344,11 +341,8 @@ def get_latest(
 @router.get("/history/{device_id}")
 def get_history(
     device_id: str,
-    request: Request,
     limit: int = 100,
-    current_user: dict = Depends(get_current_user),
 ) -> list[dict]:
-    _require_device_access(device_id, current_user, _permission_repo(request))
     repo = LocationRepository()
     return repo.get_history_by_device(device_id, max(1, min(limit, 1000)))
 
@@ -400,16 +394,13 @@ def delete_device_config(
 @router.get("/stats/{device_id}")
 def get_statistics(
     device_id: str,
-    request: Request,
     start: int = None,
     end: int = None,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
     """
     Get comprehensive statistics for a device.
     If start/end not provided, defaults to last 24 hours.
     """
-    _require_device_access(device_id, current_user, _permission_repo(request))
     repo = LocationRepository()
 
     now = int(datetime.now(tz=timezone.utc).timestamp())
@@ -436,16 +427,13 @@ def get_statistics(
 @router.get("/stats/{device_id}/aggregated")
 def get_aggregated_statistics(
     device_id: str,
-    request: Request,
     start: int = None,
     end: int = None,
     interval: str = "day",
-    current_user: dict = Depends(get_current_user),
 ) -> list[dict]:
     """
     Get aggregated statistics for a device grouped by interval (hour, day, week, year).
     """
-    _require_device_access(device_id, current_user, _permission_repo(request))
     repo = LocationRepository()
 
     now = int(datetime.now(tz=timezone.utc).timestamp())
@@ -460,17 +448,14 @@ def get_aggregated_statistics(
 @router.get("/stats/{device_id}/heatmap")
 def get_heatmap(
     device_id: str,
-    request: Request,
     start: int = None,
     end: int = None,
     bucket_size: float = 0.0005,
-    current_user: dict = Depends(get_current_user),
 ) -> list[dict]:
     """
     Get heatmap data for device locations.
     Points are bucketed into grid cells for efficient rendering.
     """
-    _require_device_access(device_id, current_user, _permission_repo(request))
     repo = LocationRepository()
 
     now = int(datetime.now(tz=timezone.utc).timestamp())
