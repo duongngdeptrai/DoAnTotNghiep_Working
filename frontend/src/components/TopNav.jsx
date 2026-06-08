@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 
-export default function TopNav({ token, currentUser, onLogout }) {
+export default function TopNav({ isLoggedIn, currentUser, onLogout }) {
   return (
     <header className="top-nav">
       <div className="brand">
@@ -17,14 +17,14 @@ export default function TopNav({ token, currentUser, onLogout }) {
         <NavLink to="/profile" className="nav-link">
           Hồ sơ
         </NavLink>
-        {!token && (
+        {!isLoggedIn && (
           <NavLink to="/auth" className="nav-link">
             Đăng nhập
           </NavLink>
         )}
       </nav>
       <div className="nav-meta">
-        {token ? (
+        {isLoggedIn ? (
           <>
             <span className="nav-user">{currentUser?.email || "Đã đăng nhập"}</span>
             <button className="secondary-button" onClick={onLogout} type="button">

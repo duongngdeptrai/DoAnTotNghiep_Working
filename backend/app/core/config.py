@@ -55,9 +55,6 @@ class Settings(BaseSettings):
     smtp_from_email: str | None = None
     smtp_to_email: str | None = None
 
-    jwt_secret_key: str = "change-me"
-    jwt_algorithm: str = "HS256"
-    jwt_access_token_exp_minutes: int = 60
 
     default_device_id: str = "child_01"
     default_device_email: str | None = None

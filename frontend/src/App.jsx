@@ -10,14 +10,13 @@ import {
   authLogin,
   authRegister,
   fetchDevices,
-  fetchMe,
   registerDevice,
 } from "./lib/api";
 
 const DEFAULT_DEVICE_ID = env.deviceId;
 
 function AppShell() {
-  const [token, setToken] = useState(() => localStorage.getItem("auth_token"));
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [authError, setAuthError] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
@@ -34,31 +33,32 @@ function AppShell() {
     try {
       const data =
         mode === "login" ? await authLogin(payload) : await authRegister(payload);
-      localStorage.setItem("auth_token", data.access_token);
-      setToken(data.access_token);
-      setCurrentUser(data.user);
+      setIsLoggedIn(true);
+      setCurrentUser(data);
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "Không thể đăng nhập.");
+      setAuthError(
+        error instanceof Error ? error.message : "Không thể đăng nhập.",
+      );
     } finally {
       setAuthLoading(false);
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("auth_token");
-    setToken(null);
+    setIsLoggedIn(false);
     setCurrentUser(null);
     setDevices([]);
     setSelectedDeviceId(DEFAULT_DEVICE_ID);
     setDeviceRole(null);
   };
 
-  const loadDevices = async (nextToken) => {
+  const loadDevices = async () => {
     try {
-      const data = await fetchDevices(nextToken);
+      const data = await fetchDevices();
       setDevices(data);
       if (data.length > 0) {
-        const preferred = data.find((item) => item.deviceId === selectedDeviceId) || data[0];
+        const preferred =
+          data.find((item) => item.deviceId === selectedDeviceId) || data[0];
         setSelectedDeviceId(preferred.deviceId);
         setDeviceRole(preferred.role);
       } else {
@@ -66,22 +66,26 @@ function AppShell() {
         setDeviceRole(null);
       }
     } catch (error) {
-      setDeviceError(error instanceof Error ? error.message : "Không thể tải danh sách thiết bị.");
+      setDeviceError(
+        error instanceof Error ? error.message : "Không thể tải danh sách thiết bị.",
+      );
     }
   };
 
   const handleRegisterDevice = async (deviceId) => {
-    if (!deviceId || !token) {
-      setDeviceError("Không có token đăng nhập. Vui lòng đăng nhập lại.");
+    if (!deviceId) {
+      setDeviceError("Vui lòng nhập Device ID.");
       return;
     }
 
     setDeviceError(null);
     try {
-      await registerDevice(token, deviceId);
-      await loadDevices(token);
+      await registerDevice(deviceId);
+      await loadDevices();
     } catch (error) {
-      setDeviceError(error instanceof Error ? error.message : "Không thể đăng ký thiết bị.");
+      setDeviceError(
+        error instanceof Error ? error.message : "Không thể đăng ký thiết bị.",
+      );
     }
   };
 
@@ -91,21 +95,12 @@ function AppShell() {
     setDeviceRole(match?.role || null);
   };
 
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
-    fetchMe(token)
-      .then((data) => setCurrentUser(data))
-      .catch(() => undefined);
-  }, [token]);
-
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
-    loadDevices(token);
-  }, [token]);
+  const handleNavigateToStats = (deviceId) => {
+    setSelectedDeviceId(deviceId);
+    const match = devices.find((item) => item.deviceId === deviceId);
+    setDeviceRole(match?.role || null);
+    window.location.href = `/stats/${deviceId}`;
+  };
 
   useEffect(() => {
     if (selectedDeviceId) {
@@ -113,16 +108,23 @@ function AppShell() {
     }
   }, [selectedDeviceId]);
 
+  useEffect(() => {
+    if (isLoggedIn) {
+      loadDevices();
+    }
+  }, [isLoggedIn]);
+
   return (
     <div className="page">
-      {token && <TopNav token={token} currentUser={currentUser} onLogout={handleLogout} />}
+      {isLoggedIn && (
+        <TopNav isLoggedIn={isLoggedIn} currentUser={currentUser} onLogout={handleLogout} />
+      )}
       <Routes>
         <Route
           path="/"
           element={
-            token ? (
+            isLoggedIn ? (
               <DashboardPage
-                token={token}
                 selectedDeviceId={selectedDeviceId}
                 deviceRole={deviceRole}
               />
@@ -134,13 +136,14 @@ function AppShell() {
         <Route
           path="/profile"
           element={
-            token ? (
+            isLoggedIn ? (
               <ProfilePage
                 devices={devices}
                 selectedDeviceId={selectedDeviceId}
                 onSelectDevice={handleSelectDevice}
                 onRegisterDevice={handleRegisterDevice}
                 deviceError={deviceError}
+                onNavigateToStats={handleNavigateToStats}
               />
             ) : (
               <Navigate to="/auth" replace />
@@ -150,9 +153,8 @@ function AppShell() {
         <Route
           path="/stats/:device_id?"
           element={
-            token ? (
+            isLoggedIn ? (
               <StatisticsPage
-                token={token}
                 devices={devices}
                 selectedDeviceId={selectedDeviceId}
                 onSelectDevice={handleSelectDevice}
@@ -165,14 +167,14 @@ function AppShell() {
         <Route
           path="/auth"
           element={
-            token ? (
+            isLoggedIn ? (
               <Navigate to="/" replace />
             ) : (
               <AuthPage onAuth={handleAuth} loading={authLoading} error={authError} />
             )
           }
         />
-        <Route path="*" element={<Navigate to={token ? "/" : "/auth"} replace />} />
+        <Route path="*" element={<Navigate to={isLoggedIn ? "/" : "/auth"} replace />} />
       </Routes>
     </div>
   );

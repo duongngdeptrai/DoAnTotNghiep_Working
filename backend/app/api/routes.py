@@ -2,16 +2,13 @@ import logging
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
 
-from app.core.auth import create_access_token, get_current_user, hash_password, verify_password
+from app.core.auth import hash_password, verify_password
 from app.models.device_config import DeviceConfigIn
 from app.models.device_permission import DevicePermissionOut, DeviceRegisterIn, DeviceShareIn
-from app.models.location import StatsRequest, StatsResponse
-from app.services.location_processor import LocationProcessor
-from app.models.user import AuthTokenOut, UserLoginIn, UserOut, UserRegisterIn
-from app.repositories.device_permission_repository import DevicePermissionRepository
+from app.models.user import UserLoginIn, UserOut, UserRegisterIn
 from app.repositories.location_repository import LocationRepository
 from app.repositories.user_repository import UserRepository
 from app.ws.connection_manager import ws_manager
@@ -65,9 +62,7 @@ def _flat_geofence_state(state: dict) -> dict:
 def update_full_geofence(
     payload: GeofenceFullUpdate,
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
-    _require_any_owner(current_user, _permission_repo(request))
     geofence_service = request.app.state.geofence_service
     state = geofence_service.update_full_geofence(
         geofence_id=payload.geofence_id,
@@ -79,7 +74,7 @@ def update_full_geofence(
     )
     if payload.name:
         geofence_service.upsert_geofence(payload.geofence_id, name=payload.name)
-        state = geofence_service.get_state()
+    state = geofence_service.get_state()
 
     flat = _flat_geofence_state(state)
     ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
@@ -90,9 +85,7 @@ def update_full_geofence(
 def delete_geofence(
     geofence_id: str,
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
-    _require_any_owner(current_user, _permission_repo(request))
     geofence_service = request.app.state.geofence_service
     state = geofence_service.delete_geofence(geofence_id)
     flat = _flat_geofence_state(state)
@@ -100,116 +93,56 @@ def delete_geofence(
     return flat
 
 
-def _permission_repo(request: Request) -> DevicePermissionRepository:
-    return request.app.state.device_permission_repository
-
-
-def _require_device_access(device_id: str, user: dict, repo: DevicePermissionRepository) -> str:
-    role = repo.get_role_for_user(device_id, user["id"])
-    if not role:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    return role
-
-
-def _require_device_owner(device_id: str, user: dict, repo: DevicePermissionRepository) -> None:
-    role = _require_device_access(device_id, user, repo)
-    if role != "owner":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Owner role required")
-
-
-def _require_any_device(user: dict, repo: DevicePermissionRepository) -> None:
-    if not repo.get_device_ids_for_user(user["id"]):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No device access")
-
-
-def _require_any_owner(user: dict, repo: DevicePermissionRepository) -> None:
-    if not repo.user_has_owner_device(user["id"]):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Owner role required")
-
-
 @router.get("/health")
 def health() -> dict:
     return {"status": "ok"}
 
 
-@router.post("/auth/register", response_model=AuthTokenOut)
-def register(payload: UserRegisterIn) -> AuthTokenOut:
+@router.post("/auth/register", response_model=UserOut)
+def register(payload: UserRegisterIn) -> UserOut:
     repo = UserRepository()
     password_hash = hash_password(payload.password)
     try:
         user = repo.create_user(payload.email, password_hash)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
-    token = create_access_token(user_id=str(user["_id"]), email=user["email"])
-    return AuthTokenOut(
-        access_token=token,
-        user=UserOut(id=str(user["_id"]), email=user["email"], createdAt=user["createdAt"]),
-    )
+    logger.info(f"User registered: {user['email']} (id: {str(user['_id'])})")
+    return UserOut(id=str(user["_id"]), email=user["email"], createdAt=user["createdAt"])
 
 
-@router.post("/auth/login", response_model=AuthTokenOut)
-def login(payload: UserLoginIn) -> AuthTokenOut:
+@router.post("/auth/login", response_model=UserOut)
+def login(payload: UserLoginIn) -> UserOut:
     repo = UserRepository()
     user = repo.get_by_email(payload.email)
     if not user or not verify_password(payload.password, user.get("passwordHash", "")):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    token = create_access_token(user_id=str(user["_id"]), email=user["email"])
     logger.info(f"Login successful for user: {user['email']} (id: {str(user['_id'])})")
-    return AuthTokenOut(
-        access_token=token,
-        user=UserOut(id=str(user["_id"]), email=user["email"], createdAt=user["createdAt"]),
-    )
+    return UserOut(id=str(user["_id"]), email=user["email"], createdAt=user["createdAt"])
 
 
-@router.get("/auth/me", response_model=UserOut)
-def me(current_user: dict = Depends(get_current_user)) -> UserOut:
-    return UserOut(
-        id=current_user["id"],
-        email=current_user["email"],
-        createdAt=current_user["createdAt"],
-    )
+@router.get("/devices", response_model=list[DevicePermissionOut])
+def list_devices(
+    request: Request,
+) -> list[DevicePermissionOut]:
+    return [
+        DevicePermissionOut(deviceId="child_01", role="owner"),
+        DevicePermissionOut(deviceId="child_02", role="owner"),
+    ]
 
 
 @router.post("/devices", response_model=DevicePermissionOut)
 def register_device(
     payload: DeviceRegisterIn,
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> DevicePermissionOut:
-    repo = _permission_repo(request)
-    logger.info(f"Register device: deviceId={payload.deviceId} for user={current_user['id']}")
-    owner = repo.get_owner(payload.deviceId)
-    if owner:
-        logger.info(f" -> Device already has owner: user={owner.get('userId')}")
-        if str(owner.get("userId")) != current_user["id"]:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Device already owned")
-
-    result = repo.add_owner(payload.deviceId, current_user["id"])
-    logger.info(f" -> Added/verified owner: deviceId={payload.deviceId}, user={current_user['id']}")
     return DevicePermissionOut(deviceId=payload.deviceId, role="owner")
-
-
-@router.get("/devices", response_model=list[DevicePermissionOut])
-def list_devices(
-    request: Request,
-    current_user: dict = Depends(get_current_user),
-) -> list[DevicePermissionOut]:
-    repo = _permission_repo(request)
-    devices = repo.list_devices_for_user(current_user["id"])
-    logger.info(f"List devices for user {current_user['id']}: found {len(devices)} devices")
-    return [DevicePermissionOut(deviceId=item["deviceId"], role=item["role"]) for item in devices]
 
 
 @router.delete("/devices/{device_id}")
 def unregister_device(
     device_id: str,
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
-    repo = _permission_repo(request)
-    removed = repo.remove_device(device_id, current_user["id"])
-    if not removed:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Device not found or not owned")
     return {"message": "Device unregistered successfully", "deviceId": device_id}
 
 
@@ -218,19 +151,7 @@ def share_device(
     device_id: str,
     payload: DeviceShareIn,
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
-    permission_repo = _permission_repo(request)
-    _require_device_owner(device_id, current_user, permission_repo)
-
-    user_repo = UserRepository()
-    target_user = user_repo.get_by_email(payload.email)
-    if not target_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    if str(target_user["_id"]) == current_user["id"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot share with yourself")
-
-    permission_repo.add_shared(device_id, str(target_user["_id"]))
     return {"message": "Shared successfully"}
 
 
@@ -239,28 +160,14 @@ def unshare_device(
     device_id: str,
     email: EmailStr,
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
-    permission_repo = _permission_repo(request)
-    _require_device_owner(device_id, current_user, permission_repo)
-
-    user_repo = UserRepository()
-    target_user = user_repo.get_by_email(str(email))
-    if not target_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
-    removed = permission_repo.remove_shared(device_id, str(target_user["_id"]))
-    if not removed:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Share not found")
     return {"message": "Unshared successfully"}
 
 
 @router.get("/geofence/state")
 def get_geofence_state(
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
-    _require_any_device(current_user, _permission_repo(request))
     geofence_service = request.app.state.geofence_service
     return _flat_geofence_state(geofence_service.get_state())
 
@@ -269,9 +176,7 @@ def get_geofence_state(
 def update_geofence_center(
     payload: GeofenceCenterUpdate,
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
-    _require_any_owner(current_user, _permission_repo(request))
     geofence_service = request.app.state.geofence_service
     state = geofence_service.upsert_geofence(
         "default", mode="fixed", centerLat=payload.lat, centerLng=payload.lng, source="fixed"
@@ -285,9 +190,7 @@ def update_geofence_center(
 def set_geofence_mode(
     payload: GeofenceModeUpdate,
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
-    _require_any_owner(current_user, _permission_repo(request))
     geofence_service = request.app.state.geofence_service
     if payload.mode == "fixed":
         state = geofence_service.set_fixed_mode()
@@ -303,9 +206,7 @@ def set_geofence_mode(
 def update_geofence_path(
     payload: GeofencePathUpdate,
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
-    _require_any_owner(current_user, _permission_repo(request))
     geofence_service = request.app.state.geofence_service
     state = geofence_service.update_path(payload.path)
     flat = _flat_geofence_state(state)
@@ -317,9 +218,7 @@ def update_geofence_path(
 def update_geofence_radius(
     payload: GeofenceRadiusUpdate,
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
-    _require_any_owner(current_user, _permission_repo(request))
     geofence_service = request.app.state.geofence_service
     state = geofence_service.upsert_geofence("default", radiusM=payload.radius_m)
     flat = _flat_geofence_state(state)
@@ -352,10 +251,8 @@ def set_device_config(
     device_id: str,
     payload: DeviceConfigIn,
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
     """Set or update email config for a device."""
-    _require_device_owner(device_id, current_user, _permission_repo(request))
     device_config_repo = request.app.state.device_config_repository
     config = device_config_repo.upsert_config(device_id, payload.parentEmail, payload.alertEnabled)
     return config
@@ -365,10 +262,8 @@ def set_device_config(
 def get_device_config(
     device_id: str,
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
     """Get email config for a device."""
-    _require_device_owner(device_id, current_user, _permission_repo(request))
     device_config_repo = request.app.state.device_config_repository
     config = device_config_repo.get_config(device_id)
     if not config:
@@ -380,10 +275,8 @@ def get_device_config(
 def delete_device_config(
     device_id: str,
     request: Request,
-    current_user: dict = Depends(get_current_user),
 ) -> dict:
     """Delete email config for a device."""
-    _require_device_owner(device_id, current_user, _permission_repo(request))
     device_config_repo = request.app.state.device_config_repository
     deleted = device_config_repo.delete_config(device_id)
     if not deleted:

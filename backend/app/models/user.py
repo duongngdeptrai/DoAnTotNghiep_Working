@@ -15,9 +15,3 @@ class UserOut(BaseModel):
     id: str
     email: EmailStr
     createdAt: int
-
-
-class AuthTokenOut(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user: UserOut

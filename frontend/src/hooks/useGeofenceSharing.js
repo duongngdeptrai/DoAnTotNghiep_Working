@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
-async function postJson(url, body, token) {
+async function postJson(url, body) {
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -50,8 +49,7 @@ export function useGeofenceSharing(backendHttpUrl, enabled, onStateUpdate) {
       lastSentAtRef.current = now;
 
       try {
-        const freshToken = localStorage.getItem("auth_token");
-        const state = await postJson(`${backendHttpUrl}/geofence/center`, { lat, lng }, freshToken);
+        const state = await postJson(`${backendHttpUrl}/geofence/center`, { lat, lng });
         onStateUpdate?.(state);
         setSharingStatus("sharing");
       } catch (error) {

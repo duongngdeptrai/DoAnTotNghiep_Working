@@ -1,17 +1,12 @@
 import { env } from "../config/env";
 
-export async function apiFetch(url, token, options = {}) {
-  const headers = {
-    ...(options.headers || {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+export async function apiFetch(url, options = {}) {
+  const response = await fetch(url, options);
 
   if (!response.ok) {
+    if (response.status === 404 && options.allow404) {
+      return null;
+    }
     const message = await response.text();
     throw new Error(message || `Request failed with status ${response.status}`);
   }
@@ -24,101 +19,113 @@ export async function apiFetch(url, token, options = {}) {
 }
 
 export function authLogin(payload) {
-  return apiFetch(`${env.backendHttpUrl}/auth/login`, null, {
+  return apiFetch(`${env.backendHttpUrl}/auth/login`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 }
 
 export function authRegister(payload) {
-  return apiFetch(`${env.backendHttpUrl}/auth/register`, null, {
+  return apiFetch(`${env.backendHttpUrl}/auth/register`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 }
 
-export function fetchMe(token) {
-  return apiFetch(`${env.backendHttpUrl}/auth/me`, token);
+export function fetchDevices() {
+  return apiFetch(`${env.backendHttpUrl}/devices`);
 }
 
-export function fetchDevices(token) {
-  return apiFetch(`${env.backendHttpUrl}/devices`, token);
-}
-
-export function registerDevice(token, deviceId) {
-  return apiFetch(`${env.backendHttpUrl}/devices`, token, {
+export function registerDevice(deviceId) {
+  return apiFetch(`${env.backendHttpUrl}/devices`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ deviceId }),
   });
 }
 
-export function fetchLatest(deviceId) {
-  return apiFetch(`${env.backendHttpUrl}/latest/${deviceId}`);
+export function shareDevice(deviceId, email) {
+  return apiFetch(`${env.backendHttpUrl}/devices/${deviceId}/share`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
 }
 
-export function postGeofenceFull(token, payload) {
-  return apiFetch(`${env.backendHttpUrl}/geofence/update`, token, {
+export function unshareDevice(deviceId, email) {
+  return apiFetch(
+    `${env.backendHttpUrl}/devices/${deviceId}/share/${encodeURIComponent(email)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function fetchDeviceConfig(deviceId) {
+  return apiFetch(`${env.backendHttpUrl}/devices/${deviceId}/config`);
+}
+
+export function postDeviceConfig(deviceId, parentEmail, alertEnabled) {
+  return apiFetch(`${env.backendHttpUrl}/devices/${deviceId}/config`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ parentEmail, alertEnabled }),
+  });
+}
+
+export function deleteDeviceConfig(deviceId) {
+  return apiFetch(`${env.backendHttpUrl}/devices/${deviceId}/config`, {
+    method: "DELETE",
+  });
+}
+
+export function fetchLatest(deviceId) {
+  return apiFetch(`${env.backendHttpUrl}/latest/${deviceId}`, { allow404: true });
+}
+
+export function postGeofenceFull(payload) {
+  return apiFetch(`${env.backendHttpUrl}/geofence/update`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 }
 
-export function fetchGeofenceState(token) {
-  return apiFetch(`${env.backendHttpUrl}/geofence/state`, token);
+export function fetchGeofenceState() {
+  return apiFetch(`${env.backendHttpUrl}/geofence/state`);
 }
 
-export function postGeofenceMode(token, mode) {
-  return apiFetch(`${env.backendHttpUrl}/geofence/mode`, token, {
+export function postGeofenceMode(mode) {
+  return apiFetch(`${env.backendHttpUrl}/geofence/mode`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mode }),
   });
 }
 
-export function postGeofenceCenter(token, lat, lng) {
-  return apiFetch(`${env.backendHttpUrl}/geofence/center`, token, {
+export function postGeofenceCenter(lat, lng) {
+  return apiFetch(`${env.backendHttpUrl}/geofence/center`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ lat, lng }),
   });
 }
 
-export function postGeofenceRadius(token, radius_m) {
-  return apiFetch(`${env.backendHttpUrl}/geofence/radius`, token, {
+export function postGeofenceRadius(radius_m) {
+  return apiFetch(`${env.backendHttpUrl}/geofence/radius`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ radius_m }),
   });
 }
 
-export function postGeofencePath(token, path) {
-  return apiFetch(`${env.backendHttpUrl}/geofence/path`, token, {
+export function postGeofencePath(path) {
+  return apiFetch(`${env.backendHttpUrl}/geofence/path`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path }),
   });
 }
-
 
 // Statistics APIs
 export function fetchStatistics(deviceId, start = null, end = null) {
@@ -126,7 +133,9 @@ export function fetchStatistics(deviceId, start = null, end = null) {
   if (start !== null) params.append("start", start);
   if (end !== null) params.append("end", end);
   const queryString = params.toString();
-  const url = queryString ? `${env.backendHttpUrl}/stats/${deviceId}?${queryString}` : `${env.backendHttpUrl}/stats/${deviceId}`;
+  const url = queryString
+    ? `${env.backendHttpUrl}/stats/${deviceId}?${queryString}`
+    : `${env.backendHttpUrl}/stats/${deviceId}`;
   return apiFetch(url);
 }
 

@@ -1,14 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import TrackingMap from "../components/TrackingMap";
 import GeofenceEditorPanel from "../components/GeofenceEditorPanel";
 import { env } from "../config/env";
 import { useTrackingSocket } from "../hooks/useTrackingSocket";
 import { useGeofenceSharing } from "../hooks/useGeofenceSharing";
 import {
-  authLogin,
-  authRegister,
+  apiFetch,
   fetchDevices,
-  fetchMe,
   fetchGeofenceState,
   postGeofenceFull,
   fetchLatest,
@@ -16,7 +14,6 @@ import {
   postGeofenceCenter,
   postGeofenceRadius,
   postGeofencePath,
-  registerDevice,
 } from "../lib/api";
 
 function formatEpoch(epoch) {
@@ -43,9 +40,7 @@ function getDeviceColor(deviceId) {
   return DEVICE_COLORS[index];
 }
 
-export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
-  const getToken = () => localStorage.getItem("auth_token");
-
+export default function DashboardPage({ selectedDeviceId, deviceRole }) {
   const [allDevices, setAllDevices] = useState([]);
   const [trackingDeviceIds, setTrackingDeviceIds] = useState(() => {
     const saved = localStorage.getItem("tracking_devices");
@@ -110,7 +105,7 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
     setModeError(null);
   };
 
-  const { latestMessage, status } = useTrackingSocket(token ? env.backendWsUrl : null, token);
+  const { latestMessage, status } = useTrackingSocket(env.backendWsUrl);
   const { sharingStatus, sharingError } = useGeofenceSharing(
     env.backendHttpUrl,
     shareEnabled,
@@ -131,10 +126,7 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
   }, [isOwner]);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-    fetchDevices(token)
+    fetchDevices()
       .then((devices) => {
         setAllDevices(devices || []);
         const deviceIds = devices?.map((d) => d.deviceId) || [];
@@ -143,525 +135,324 @@ export default function DashboardPage({ token, selectedDeviceId, deviceRole }) {
         }
       })
       .catch(() => undefined);
-  }, [token]);
+  }, []);
 
   useEffect(() => {
-    if (!token || trackingDeviceIds.length === 0) {
-      return;
-    }
-    const promises = trackingDeviceIds.map((deviceId) =>
-      fetchLatest(deviceId).then((latest) => {
-        if (latest) {
-          setLocations((prev) => ({
-            ...prev,
-            [deviceId]: {
-              lat: latest.lat,
-              lng: latest.lng,
-              insideGeofence: latest.insideGeofence,
-              timestamp: latest.timestamp,
-            },
-          }));
-        }
-      }).catch(() => undefined),
-    );
-    Promise.all(promises);
-  }, [token, trackingDeviceIds]);
-
-  useEffect(() => {
-    setAlerts([]);
-  }, [trackingDeviceIds]);
-
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
-    fetchGeofenceState(token)
-      .then((state) => {
-        if (!state) return;
-        setGeofenceState(state);
-      })
+    fetchGeofenceState()
+      .then((state) => setGeofenceState((prev) => ({ ...prev, ...state })))
       .catch(() => undefined);
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     if (!latestMessage) return;
 
-    const deviceId = latestMessage.deviceId;
-
-    if (latestMessage.type === "location_update" && trackingDeviceIds.includes(deviceId)) {
+    if (latestMessage.type === "location_update" || latestMessage.type === "location") {
+      const { deviceId, lat, lng, timestamp } = latestMessage;
       setLocations((prev) => ({
         ...prev,
-        [deviceId]: {
-          lat: latestMessage.lat,
-          lng: latestMessage.lng,
-          insideGeofence: latestMessage.insideGeofence,
-          geofenceId: latestMessage.geofenceId,
-          timestamp: latestMessage.timestamp,
-        },
+        [deviceId]: { lat, lng, timestamp },
       }));
     }
 
-    if (latestMessage.type === "geofence_alert" && trackingDeviceIds.includes(deviceId)) {
-      const isInside =
-        latestMessage.event === "inside_entered" || latestMessage.event === "inside_moved";
-      setLocations((prev) => ({
-        ...prev,
-        [deviceId]: {
-          ...(prev[deviceId] || {}),
-          insideGeofence: isInside,
-          geofenceId: latestMessage.geofenceId,
-        },
-      }));
-      setAlerts((prev) => [{ ...latestMessage, deviceId }, ...prev].slice(0, 10));
-      setShowAlerts(true);
+    if (latestMessage.type === "alert" || latestMessage.type === "geofence_alert") {
+      setAlerts((prev) => [latestMessage, ...prev].slice(0, 50));
     }
 
     if (latestMessage.type === "geofence_state_update") {
-      setGeofenceState(latestMessage);
+      setGeofenceState((prev) => ({ ...prev, ...latestMessage }));
     }
-  }, [latestMessage, trackingDeviceIds]);
+  }, [latestMessage]);
 
-  useEffect(() => {
-    if (editingGeofenceId && !geofenceState.geofences?.some((g) => g.id === editingGeofenceId)) {
-      setEditingGeofenceId(null);
-      setIsPlanMode(false);
-      setModeError(null);
-    }
-  }, [geofenceState.geofences, editingGeofenceId]);
+  const handleToggleTracking = (deviceId) => {
+    setTrackingDeviceIds((prev) =>
+      prev.includes(deviceId)
+        ? prev.filter((id) => id !== deviceId)
+        : [...prev, deviceId],
+    );
+  };
 
-  const handleFixedMode = async () => {
+  const handleDeviceSelect = (deviceId) => {
+    setFocusedDeviceId(deviceId);
+  };
+
+  const handleSaveGeofence = async () => {
     setModeError(null);
-    setShareEnabled(false);
     try {
-      const state = await postGeofenceMode(getToken(), "fixed");
-      setGeofenceState(state);
-    } catch (error) {
-      setModeError(error instanceof Error ? error.message : "Không thể chuyển về chế độ cố định.");
-    }
-  };
-
-  const handleMobileMode = async () => {
-    setModeError(null);
-    if (!isOwner) {
-      setModeError("Chỉ chủ thiết bị mới được thay đổi geofence.");
-      return;
-    }
-    try {
-      const state = await postGeofenceMode(getToken(), "mobile");
-      setGeofenceState(state);
-      setShareEnabled(true);
-    } catch (error) {
-      setModeError(error instanceof Error ? error.message : "Không thể chuyển sang chế độ di động.");
-    }
-  };
-
-  const validateConfig = (config) => {
-    if (!config.name || config.name.trim() === "") {
-      return "Tên vùng an toàn không được để trống.";
-    }
-    if (config.radius < 10 || config.radius > 5000) {
-      return "Bán kính phải nằm trong khoảng từ 10m đến 5000m.";
-    }
-    if (config.mode === "path" && (!config.path || config.path.length < 2)) {
-      return "Vùng an toàn dạng đường đi cần ít nhất 2 điểm.";
-    }
-    return null;
-  };
-
-  const handleSetGeofence = async () => {
-    if (!isOwner) return;
-
-    const validationError = validateConfig(pendingConfig);
-    if (validationError) {
-      setModeError(validationError);
-      return;
-    }
-
-    try {
-      const payload = {
-        geofence_id: editingGeofenceId || `gf_${Date.now()}`,
-        name: pendingConfig.name || (editingGeofenceId ? currentGeofence.name : "Vùng mới"),
-        mode: pendingConfig.mode === "path" ? "mobile" : "fixed",
-        radius_m: Number(pendingConfig.radius),
-        lat: pendingConfig.mode === "circle" ? pendingConfig.center?.[0] : null,
-        lng: pendingConfig.mode === "circle" ? pendingConfig.center?.[1] : null,
-        path: pendingConfig.mode === "path" ? pendingConfig.path : null,
-      };
-
-      const state = await postGeofenceFull(getToken(), payload);
-      setGeofenceState(state);
-      setIsPlanMode(false);
-      setEditingGeofenceId(null);
-      setNewGeofenceName("");
-      setModeError(null);
-    } catch (error) {
-      setModeError(error instanceof Error ? error.message : "Không thể lưu vùng an toàn.");
-    }
-  };
-
-  const handleDeleteGeofence = async (id) => {
-    if (id === "default") {
-      setModeError("Không thể xóa vùng an toàn mặc định.");
-      return;
-    }
-    if (!window.confirm("Bạn có chắc chắn muốn xóa vùng an toàn này?")) return;
-    try {
-      const newState = await apiFetch(`${env.backendHttpUrl}/geofence/${id}`, getToken(), { method: "DELETE" });
-      setGeofenceState(newState);
-    } catch (error) {
-      setModeError("Không thể xóa vùng an toàn.");
-    }
-  };
-
-  const toggleDeviceTracking = (deviceId) => {
-    setTrackingDeviceIds((prev) => {
-      if (prev.includes(deviceId)) {
-        return prev.filter((id) => id !== deviceId);
+      if (editingGeofenceId) {
+        await postGeofenceFull({
+          geofence_id: editingGeofenceId,
+          name: pendingConfig.name,
+          mode: pendingConfig.mode,
+          radius_m: pendingConfig.radius,
+          lat: pendingConfig.center?.[0],
+          lng: pendingConfig.center?.[1],
+          path: pendingConfig.path,
+        });
+      } else {
+        await postGeofenceFull({
+          geofence_id: "default",
+          name: pendingConfig.name || undefined,
+          mode: pendingConfig.mode,
+          radius_m: pendingConfig.radius,
+          lat: pendingConfig.center?.[0],
+          lng: pendingConfig.center?.[1],
+          path: pendingConfig.path,
+        });
       }
-      return [...prev, deviceId];
+      setIsPlanMode(false);
+      setEditingGeofenceId(null);
+      setPendingConfig({ name: "", mode: "circle", radius: 100, center: null, path: [] });
+      const updated = await fetchGeofenceState();
+      setGeofenceState((prev) => ({ ...prev, ...updated }));
+    } catch (err) {
+      setModeError(err.message);
+    }
+  };
+
+  const handleSetMode = async (mode) => {
+    setModeError(null);
+    try {
+      const updated = await postGeofenceMode(mode);
+      setGeofenceState((prev) => ({ ...prev, ...updated }));
+    } catch (err) {
+      setModeError(err.message);
+    }
+  };
+
+  const handleSetCenter = async (lat, lng) => {
+    setModeError(null);
+    try {
+      const updated = await postGeofenceCenter(lat, lng);
+      setGeofenceState((prev) => ({ ...prev, ...updated }));
+    } catch (err) {
+      setModeError(err.message);
+    }
+  };
+
+  const handleSetRadius = async (radius) => {
+    setModeError(null);
+    try {
+      const updated = await postGeofenceRadius(radius);
+      setGeofenceState((prev) => ({ ...prev, ...updated }));
+    } catch (err) {
+      setModeError(err.message);
+    }
+  };
+
+  const handleSetPath = async (path) => {
+    setModeError(null);
+    try {
+      const updated = await postGeofencePath(path);
+      setGeofenceState((prev) => ({ ...prev, ...updated }));
+    } catch (err) {
+      setModeError(err.message);
+    }
+  };
+
+  const handleStartPlanMode = () => {
+    setIsPlanMode(true);
+    setEditingGeofenceId(null);
+    setPendingConfig({
+      name: "",
+      mode: geofenceState.mode === "mobile" ? "path" : "circle",
+      radius: geofenceState.radiusM || 100,
+      center: geofenceState.centerLat
+        ? [geofenceState.centerLat, geofenceState.centerLng]
+        : null,
+      path: [],
     });
   };
 
-  const statusClass = useMemo(() => {
-    if (status === "connected") return "ok";
-    if (status === "connecting") return "warning";
-    return "error";
-  }, [status]);
+  const handleEditGeofence = (geofence) => {
+    setEditingGeofenceId(geofence.id);
+    setPendingConfig({
+      name: geofence.name || "",
+      mode: geofence.mode === "mobile" ? "path" : "circle",
+      radius: geofence.radiusM || 100,
+      center: geofence.centerLat ? [geofence.centerLat, geofence.centerLng] : null,
+      path: geofence.path || [],
+    });
+    setIsPlanMode(true);
+  };
 
-  const currentGeofence = useMemo(() => {
-    if (!geofenceState.geofences || geofenceState.geofences.length === 0) {
-      return {
-        mode: "fixed",
-        centerLat: env.defaultLat,
-        centerLng: env.defaultLng,
-        radiusM: env.geofenceRadiusM,
-        source: "fixed",
-        path: [],
-        updatedAt: null,
-      };
+  const handleDeleteGeofence = async (geofenceId) => {
+    setModeError(null);
+    try {
+      const updated = await apiFetch(
+        `${env.backendHttpUrl}/geofence/${geofenceId}`,
+        { method: "DELETE" },
+      );
+      setGeofenceState((prev) => ({ ...prev, ...updated }));
+    } catch (err) {
+      setModeError(err.message);
     }
-    return geofenceState.geofences.find((g) => g.id === "default") || geofenceState.geofences[0];
-  }, [geofenceState]);
-
-  const center = [
-    currentGeofence.centerLat ?? env.defaultLat,
-    currentGeofence.centerLng ?? env.defaultLng,
-  ];
-  const alertCount = alerts.length;
-
-  const trackingDevices = trackingDeviceIds
-    .map((id) => ({
-      id,
-      ...locations[id],
-      color: getDeviceColor(id),
-      role: allDevices.find((d) => d.deviceId === id)?.role || "unknown",
-    }))
-    .filter((d) => d.lat !== undefined);
-
-  const handleDeviceSelected = (deviceId) => {
-    setFocusedDeviceId(deviceId);
-    setShowDeviceList(false);
   };
 
-  const handleClearFocus = () => {
-    setFocusedDeviceId(null);
+  const handleFetchLatest = async (deviceId) => {
+    try {
+      const data = await fetchLatest(deviceId);
+      if (data) {
+        setLocations((prev) => ({
+          ...prev,
+          [deviceId]: { lat: data.lat, lng: data.lng, timestamp: data.timestamp },
+        }));
+      }
+    } catch {
+      // ignore fetch errors for individual devices
+    }
   };
-
-  if (!token) {
-    return (
-      <section className="full-screen-map">
-        <div className="empty-overlay">
-          <h3>Vui lòng đăng nhập</h3>
-          <p className="muted">Hãy đăng nhập để theo dõi thiết bị.</p>
-        </div>
-      </section>
-    );
-  }
-
-  if (allDevices.length === 0) {
-    return (
-      <section className="full-screen-map">
-        <div className="empty-overlay">
-          <h3>Chưa có thiết bị</h3>
-          <p className="muted">Hãy đăng nhập và thêm thiết bị trong trang Hồ sơ.</p>
-        </div>
-      </section>
-    );
-  }
 
   return (
-    <section className={`dashboard-layout${isPlanMode ? " editor-open" : ""}`}>
-      <div className={`map-area${isPlanMode ? " editor-open" : ""}`}>
-        {/* Top-left: WS Status */}
-        <div className="floating-panel top-left">
-          <div className={`badge ${statusClass}`}>WS: {status}</div>
-        </div>
+    <section className="full-screen-map">
+      <TrackingMap
+        trackingDeviceIds={trackingDeviceIds}
+        locations={locations}
+        geofenceState={geofenceState}
+        deviceColors={DEVICE_COLORS}
+        focusedDeviceId={focusedDeviceId}
+        onDeviceSelect={handleDeviceSelect}
+        onMapClick={handleSetCenter}
+        isPlanMode={isPlanMode}
+        editingGeofenceId={editingGeofenceId}
+        pendingConfig={pendingConfig}
+        updatePendingConfig={updatePendingConfig}
+        removeLastPoint={removeLastPoint}
+      />
 
-        {/* Top-right: Device Selector Button */}
-        <div className="floating-panel top-right">
-          <button
-            className="device-selector-btn"
-            onClick={() => setShowDeviceList(!showDeviceList)}
-            type="button"
-          >
-            <span className="device-icon">📍</span>
-            <span className="device-count">{trackingDeviceIds.length} thiết bị</span>
-          </button>
-        </div>
+      <GeofenceEditorPanel
+        geofenceState={geofenceState}
+        isOwner={isOwner}
+        isPlanMode={isPlanMode}
+        editingGeofenceId={editingGeofenceId}
+        pendingConfig={pendingConfig}
+        modeError={modeError}
+        onSetMode={handleSetMode}
+        onStartPlanMode={handleStartPlanMode}
+        onSaveGeofence={handleSaveGeofence}
+        onCancelPlanMode={handleCancelPlanMode}
+        onEditGeofence={handleEditGeofence}
+        onDeleteGeofence={handleDeleteGeofence}
+        onSetRadius={handleSetRadius}
+        onSetPath={handleSetPath}
+        updatePendingConfig={updatePendingConfig}
+        removeLastPoint={removeLastPoint}
+      />
 
-        {/* Device List Panel */}
-        {showDeviceList && (
-          <div className="device-list-panel">
-            <div className="device-list-header">
-              <h4>Thiết bị đang theo dõi</h4>
-              <button
-                className="close-btn"
-                onClick={() => setShowDeviceList(false)}
-                type="button"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="device-list-content">
-              {allDevices.map((device) => {
-                const isTracking = trackingDeviceIds.includes(device.deviceId);
-                const location = locations[device.deviceId];
-                const colors = getDeviceColor(device.deviceId);
+      <div className="map-controls">
+        <button
+          className="control-button"
+          onClick={() => setShowDeviceList(!showDeviceList)}
+          title="Danh sách thiết bị"
+        >
+          📱
+        </button>
+        <button
+          className="control-button"
+          onClick={() => setShowAlerts(!showAlerts)}
+          title="Cảnh báo"
+        >
+          🔔
+          {alerts.length > 0 && (
+            <span className="alert-badge">{alerts.length}</span>
+          )}
+        </button>
+        <button
+          className={`control-button ${shareEnabled ? "active" : ""}`}
+          onClick={() => setShareEnabled(!shareEnabled)}
+          title="Chia sẻ vị trí"
+        >
+          📤
+        </button>
+      </div>
 
-                return (
-                  <div
-                    key={device.deviceId}
-                    className={`device-item ${isTracking ? "tracking" : ""}`}
-                    onClick={() => toggleDeviceTracking(device.deviceId)}
-                  >
-                    <div className="device-info">
-                      <div className="device-name">
-                        <span className="device-dot" style={{ backgroundColor: colors.primary }} />
-                        {device.deviceId}
-                      </div>
-                      {location && (
-                        <div className="device-location">
-                          {location.lat?.toFixed(4)}, {location.lng?.toFixed(4)}
-                        </div>
-                      )}
-                    </div>
-                    <div className={`toggle ${isTracking ? "on" : "off"}`}>
-                      {isTracking ? "Đang theo dõi" : "Tạm dừng"}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+      {showDeviceList && (
+        <div className="device-list-panel">
+          <div className="panel-header">
+            <h4>Thiết bị theo dõi</h4>
+            <button
+              className="close-button"
+              onClick={() => setShowDeviceList(false)}
+            >
+              ✕
+            </button>
           </div>
-        )}
-
-        {/* Left side: Geofence Status */}
-        <div className="floating-panel left-side">
-          <h4>Vùng an toàn</h4>
-          <div className="geofence-list">
-            {geofenceState.geofences?.map((gf) => (
+          <div className="device-list">
+            {allDevices.map((device) => (
               <div
-                key={gf.id}
-                className={`geofence-item ${editingGeofenceId === gf.id ? "editing" : ""}`}
+                key={device.deviceId}
+                className={`device-list-item ${
+                  trackingDeviceIds.includes(device.deviceId) ? "tracking" : ""
+                } ${selectedDeviceId === device.deviceId ? "selected" : ""}`}
                 onClick={() => {
-                  setEditingGeofenceId(gf.id);
-                  setNewGeofenceName(gf.name);
-                  setPendingConfig({
-                    name: gf.name,
-                    mode: gf.mode === "fixed" ? "circle" : "path",
-                    radius: gf.radiusM || 100,
-                    center: gf.mode === "fixed" ? [gf.centerLat, gf.centerLng] : null,
-                    path: gf.mode === "mobile" ? gf.path : [],
-                  });
-                  setIsPlanMode(true);
+                  handleDeviceSelect(device.deviceId);
+                  handleToggleTracking(device.deviceId);
                 }}
               >
-                <div className="geofence-info">
-                  <span className="geofence-name">{gf.name}</span>
-                  <span className="geofence-mode">{gf.mode === "fixed" ? "📍" : "🛣️"}</span>
+                <div
+                  className="device-dot"
+                  style={{ backgroundColor: getDeviceColor(device.deviceId).primary }}
+                />
+                <div className="device-info">
+                  <span className="device-id">{device.deviceId}</span>
+                  <span className="device-role">{device.role}</span>
                 </div>
-                {gf.id !== "default" && (
-                  <button
-                    className="delete-gf-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteGeofence(gf.id);
-                    }}
-                  >
-                    ✕
-                  </button>
-                )}
+                <div className="device-status">
+                  {trackingDeviceIds.includes(device.deviceId) ? (
+                    <span className="status-on">Đang theo dõi</span>
+                  ) : (
+                    <span className="status-off">Không theo dõi</span>
+                  )}
+                </div>
               </div>
             ))}
-            <button
-              className="add-geofence-btn"
-              onClick={() => {
-                setEditingGeofenceId(null);
-                setNewGeofenceName("");
-                setPendingConfig({
-                  name: "",
-                  mode: "circle",
-                  radius: 100,
-                  center: null,
-                  path: [],
-                });
-                setIsPlanMode(true);
-              }}
-            >
-              + Thêm vùng mới
-            </button>
-          </div>
-
-          {trackingDevices.length > 0 && (
-            <div className="tracking-section">
-              <div className="tracking-summary">
-                {trackingDevices.map((device) => (
-                  <div
-                    key={device.id}
-                    className={`tracking-device ${focusedDeviceId === device.id ? "focused" : ""}`}
-                    style={{ borderColor: device.color.primary }}
-                    onClick={() => handleDeviceSelected(device.id)}
-                  >
-                    <span
-                      className="tracking-dot"
-                      style={{ backgroundColor: device.color.primary }}
-                    />
-                    <span className="tracking-name">{device.id}</span>
-                    <span className={device.insideGeofence ? "inside" : "outside"}>
-                      {device.insideGeofence ? "✓" : "⚠"}
-                    </span>
-                    <button
-                      className="tracking-toggle-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleDeviceTracking(device.id);
-                      }}
-                      type="button"
-                    >
-                      {trackingDeviceIds.includes(device.id) ? "Tắt" : "Bật"}
-                    </button>
-                  </div>
-                ))}
-              </div>
-              {focusedDeviceId && (
-                <button className="clear-focus-btn" onClick={handleClearFocus} type="button">
-                  Bỏ chọn
-                </button>
-              )}
-              <div className="status-details">
-                <p>
-                  <strong>Bán kính:</strong> {currentGeofence.radiusM} m
-                </p>
-                <p>
-                  <strong>Chế độ:</strong> {currentGeofence.mode}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right side: Control Buttons */}
-        <div className="floating-panel right-side">
-          <h4>Điều khiển vùng an toàn</h4>
-          <div className="control-buttons">
-            <button
-              className={`control-btn ${isPlanMode ? "active" : "primary"}`}
-              onClick={() => setIsPlanMode(!isPlanMode)}
-              type="button"
-            >
-              {isPlanMode ? "✕ Thoát thiết lập" : "📍 Thiết lập vùng"}
-            </button>
-            <button
-              className="control-btn primary"
-              onClick={handleFixedMode}
-              type="button"
-              disabled={!isOwner}
-            >
-              Chế độ cố định
-            </button>
-            <button
-              className="control-btn secondary"
-              onClick={handleMobileMode}
-              type="button"
-              disabled={!isOwner}
-            >
-              Dùng điện thoại này
-            </button>
-          </div>
-          <div className="control-status">
-            <span className={`chip ${sharingStatus}`}>Chia sẻ: {sharingStatus}</span>
-            {modeError && <span className="error-text">{modeError}</span>}
           </div>
         </div>
+      )}
 
-        {/* Top-right corner: Alerts */}
-        <div className="floating-panel alerts-trigger">
-          <button className="alerts-btn" onClick={() => setShowAlerts(!showAlerts)} type="button">
-            <span className="alerts-icon">⚠️</span>
-            {alertCount > 0 && <span className="alerts-badge">{alertCount}</span>}
-          </button>
-        </div>
-
-        {/* Alerts Drawer */}
-        {showAlerts && (
-          <div className="alerts-drawer">
-            <div className="alerts-header">
-              <h4>Cảnh báo gần đây</h4>
-              <button
-                className="close-btn"
-                onClick={() => setShowAlerts(false)}
-                type="button"
-              >
-                ✕
-              </button>
-            </div>
-            {alertCount === 0 ? (
-              <p className="muted">Chưa có cảnh báo.</p>
+      {showAlerts && (
+        <div className="alerts-panel">
+          <div className="panel-header">
+            <h4>Cảnh báo</h4>
+            <button
+              className="close-button"
+              onClick={() => setShowAlerts(false)}
+            >
+              ✕
+            </button>
+          </div>
+          <div className="alerts-list">
+            {alerts.length === 0 ? (
+              <p className="muted">Không có cảnh báo</p>
             ) : (
-              <ul className="alerts-list">
-                {alerts.map((item, index) => (
-                  <li key={`${item.timestamp}-${index}`} className="alert-item">
-                    <span className="alert-device">{item.deviceId}</span>
-                    <span className="alert-event">{item.event}</span>
-                    <span className="alert-loc">
-                      ({item.lat?.toFixed(4)}, {item.lng?.toFixed(4)})
+              alerts.map((alert, idx) => (
+                <div key={idx} className="alert-item">
+                  <span className="alert-icon">⚠️</span>
+                  <div className="alert-content">
+                    <span className="alert-device">{alert.deviceId}</span>
+                    <span className="alert-time">
+                      {formatEpoch(alert.timestamp)}
                     </span>
-                    <span className="alert-time">{formatEpoch(item.timestamp)}</span>
-                  </li>
-                ))}
-              </ul>
+                  </div>
+                </div>
+              ))
             )}
           </div>
-        )}
-
-        {/* Map - fills remaining space */}
-        <div className="map-container">
-          <TrackingMap
-            center={center}
-            locations={locations}
-            trackingDeviceIds={trackingDeviceIds}
-            geofences={geofenceState.geofences || []}
-            onDeviceSelected={handleDeviceSelected}
-            pendingConfig={pendingConfig}
-            onUpdatePendingConfig={updatePendingConfig}
-            isPlanMode={isPlanMode}
-            editingGeofenceId={editingGeofenceId}
-          />
         </div>
+      )}
 
-        {/* Right Side Editor Panel */}
-        {isPlanMode && (
-          <GeofenceEditorPanel
-            config={pendingConfig}
-            editingGeofence={geofenceState.geofences?.find((g) => g.id === editingGeofenceId)}
-            onUpdateConfig={updatePendingConfig}
-            onSave={handleSetGeofence}
-            onCancel={handleCancelPlanMode}
-            onRemoveLastPoint={removeLastPoint}
-            modeError={modeError}
-          />
-        )}
-      </div>
+      {shareEnabled && (
+        <div className="sharing-status">
+          <span className="sharing-dot" />
+          Đang chia sẻ vị trí...
+        </div>
+      )}
+
+      {modeError && (
+        <div className="error-toast">
+          {modeError}
+          <button onClick={() => setModeError(null)}>✕</button>
+        </div>
+      )}
     </section>
   );
 }
