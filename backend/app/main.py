@@ -129,8 +129,8 @@ def on_shutdown() -> None:
 async def websocket_endpoint(websocket: WebSocket) -> None:
     await ws_manager.connect(
         websocket,
-        allowed_device_ids={"child_01", "child_02"},
-        owner_device_ids={"child_01", "child_02"},
+        allowed_device_ids=None,  # allow all — auth not enforced
+        owner_device_ids=None,
     )
     try:
         while True:

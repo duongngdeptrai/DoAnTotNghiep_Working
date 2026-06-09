@@ -449,6 +449,17 @@ body::before {
 	background: rgba(34, 211, 238, 0.1);
 }
 
+.device-list-item.focused {
+	background: rgba(34, 211, 238, 0.12);
+	border-left: 2px solid rgba(34, 211, 238, 0.6);
+}
+
+.device-list-item .status-on,
+.device-list-item .status-off {
+	transform: none !important;
+	box-shadow: none !important;
+}
+
 .panel-close-btn {
 	background: rgba(255, 255, 255, 0.06);
 	border: none;

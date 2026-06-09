@@ -33,10 +33,6 @@ class LocationProcessor:
         location = LocationIn.model_validate(raw_payload)
         logger.info(f"Processing: {location.deviceId} at lat={location.lat}, lng={location.lng}")
 
-        if not self.device_permission_repository.is_device_registered(location.deviceId):
-            logger.warning("Ignored unregistered device: %s", location.deviceId)
-            return
-
         if self.alert_state_service.should_ignore_as_noise(location.deviceId, location.lat, location.lng):
             logger.debug(f"Ignored noise: {location.deviceId}")
             return

@@ -375,7 +375,7 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
         geofences={geofenceState.geofences}
         deviceColors={DEVICE_COLORS}
         focusedDeviceId={focusedDeviceId}
-        onDeviceSelect={handleDeviceSelect}
+        onDeviceSelected={handleDeviceSelect}
         onMapClick={handleSetCenter}
         isPlanMode={isPlanMode}
         editingGeofenceId={editingGeofenceId}
@@ -458,15 +458,17 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
             ) : (
               allDevices.map((device) => {
                 const isTracking = trackingDeviceIds.includes(device.deviceId);
+                const isFocused = focusedDeviceId === device.deviceId;
                 const color = getDeviceColor(device.deviceId);
                 return (
                   <div
                     key={device.deviceId}
-                    className={`device-list-item${isTracking ? " tracking" : ""}`}
+                    className={`device-list-item${isTracking ? " tracking" : ""}${isFocused ? " focused" : ""}`}
                     onClick={() => {
                       handleDeviceSelect(device.deviceId);
-                      handleToggleTracking(device.deviceId);
+                      if (!isTracking) handleToggleTracking(device.deviceId);
                     }}
+                    title="Click để chiếu đến vị trí"
                   >
                     <div
                       className="device-dot"
@@ -481,9 +483,16 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
                         {device.role === "owner" ? "Chủ sở hữu" : "Được chia sẻ"}
                       </span>
                     </div>
-                    <span className={isTracking ? "status-on" : "status-off"}>
+                    <button
+                      className={isTracking ? "status-on" : "status-off"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleTracking(device.deviceId);
+                      }}
+                      title={isTracking ? "Dừng theo dõi" : "Bắt đầu theo dõi"}
+                    >
                       {isTracking ? "Đang theo dõi" : "Theo dõi"}
-                    </span>
+                    </button>
                   </div>
                 );
               })

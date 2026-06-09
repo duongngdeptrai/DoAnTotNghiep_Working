@@ -17,8 +17,8 @@ class ConnectionManager:
         self,
         websocket: WebSocket,
         *,
-        allowed_device_ids: set[str],
-        owner_device_ids: set[str],
+        allowed_device_ids: set[str] | None = None,
+        owner_device_ids: set[str] | None = None,
     ) -> None:
         await websocket.accept()
         self.active_connections.add(websocket)
@@ -33,11 +33,14 @@ class ConnectionManager:
 
     def _can_receive(self, message: dict[str, Any], context: dict[str, Any]) -> bool:
         message_type = message.get("type")
+        allowed = context.get("allowed_device_ids")
         if message_type in {"location_update", "geofence_alert"}:
+            if allowed is None:
+                return True  # None = allow all devices
             device_id = message.get("deviceId")
-            return device_id in context.get("allowed_device_ids", set())
+            return device_id in allowed
         if message_type == "geofence_state_update":
-            return bool(context.get("allowed_device_ids"))
+            return allowed is None or bool(allowed)
         return True
 
     async def broadcast(self, message: dict[str, Any]) -> None:

@@ -1,5 +1,5 @@
 import { Circle, CircleMarker, MapContainer, Marker, Popup, Polyline, TileLayer, useMap, useMapEvent, Polygon } from "react-leaflet";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -41,6 +41,23 @@ function MapSync({ center, locations, trackingDeviceIds, selectedDeviceId }) {
       map.setView(center, map.getZoom(), { animate: true });
     }
   }, [center, locations, trackingDeviceIds, selectedDeviceId, map]);
+
+  return null;
+}
+
+function FlyToDevice({ focusedDeviceId, locations }) {
+  const map = useMap();
+  const prevRef = useRef(null);
+
+  useEffect(() => {
+    if (!focusedDeviceId) return;
+    if (prevRef.current === focusedDeviceId) return;
+    prevRef.current = focusedDeviceId;
+    const loc = locations[focusedDeviceId];
+    if (loc?.lat && loc?.lng) {
+      map.flyTo([loc.lat, loc.lng], 17, { animate: true, duration: 0.6 });
+    }
+  }, [focusedDeviceId, locations, map]);
 
   return null;
 }
@@ -138,6 +155,7 @@ export default function TrackingMap({
   locations,
   trackingDeviceIds = [],
   geofences = [],
+  focusedDeviceId = null,
   onDeviceSelected,
   isPlanMode,
   editingGeofenceId,
@@ -274,6 +292,7 @@ export default function TrackingMap({
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
       <MapContainer center={center} zoom={16} style={{ height: "100%", width: "100%" }} zoomControl={false}>
         <MapSync center={center} locations={locations} trackingDeviceIds={trackingDeviceIds} selectedDeviceId={selectedDevice?.deviceId} />
+        <FlyToDevice focusedDeviceId={focusedDeviceId} locations={locations} />
         <MapClickHandler
           onDeviceFound={handleDeviceFound}
           onMapClick={handleMapClick}
