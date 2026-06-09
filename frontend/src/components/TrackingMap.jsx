@@ -1,6 +1,5 @@
 import { Circle, CircleMarker, MapContainer, Marker, Popup, Polyline, TileLayer, useMap, useMapEvent, Polygon } from "react-leaflet";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
 const markerIcon = L.icon({
@@ -10,54 +9,26 @@ const markerIcon = L.icon({
   iconAnchor: [12, 41],
 });
 
-function MapSync({ center, locations, trackingDeviceIds, selectedDeviceId }) {
+function MapResizer() {
   const map = useMap();
-
   useEffect(() => {
-    if (selectedDeviceId && locations[selectedDeviceId]) {
-      const loc = locations[selectedDeviceId];
-      map.setView([loc.lat, loc.lng], 17, { animate: true });
-      return;
-    }
-
-    if (trackingDeviceIds.length === 0) {
-      map.setView(center, map.getZoom(), { animate: true });
-      return;
-    }
-
-    const coords = trackingDeviceIds
-      .map((id) => locations[id])
-      .filter((loc) => loc && loc.lat && loc.lng)
-      .map((loc) => [loc.lat, loc.lng]);
-
-    if (coords.length > 0) {
-      if (coords.length === 1) {
-        map.setView(coords[0], map.getZoom(), { animate: true });
-      } else {
-        const bounds = L.latLngBounds(coords);
-        map.fitBounds(bounds, { padding: [50, 50], animate: true });
-      }
-    } else {
-      map.setView(center, map.getZoom(), { animate: true });
-    }
-  }, [center, locations, trackingDeviceIds, selectedDeviceId, map]);
-
+    map.invalidateSize();
+  }, [map]);
   return null;
 }
 
 function FlyToDevice({ focusedDeviceId, locations }) {
   const map = useMap();
-  const prevRef = useRef(null);
+  const locationsRef = useRef(locations);
+  locationsRef.current = locations;
 
   useEffect(() => {
     if (!focusedDeviceId) return;
-    if (prevRef.current === focusedDeviceId) return;
-    prevRef.current = focusedDeviceId;
-    const loc = locations[focusedDeviceId];
+    const loc = locationsRef.current[focusedDeviceId];
     if (loc?.lat && loc?.lng) {
       map.flyTo([loc.lat, loc.lng], 17, { animate: true, duration: 0.6 });
     }
-  }, [focusedDeviceId, locations, map]);
+  }, [focusedDeviceId, map]);
 
   return null;
 }
@@ -284,14 +255,14 @@ export default function TrackingMap({
     return points.length >= 2 ? points : null;
   }, [locations, trackingDeviceIds]);
 
-  if (!center || !center[0] || !center[1]) {
+  if (!center || center[0] == null || center[1] == null) {
     return <div style={{ height: "100%", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>Đang tải bản đồ...</div>;
   }
 
   return (
-    <div style={{ position: 'relative', height: '100%', width: '100%' }}>
-      <MapContainer center={center} zoom={16} style={{ height: "100%", width: "100%" }} zoomControl={false}>
-        <MapSync center={center} locations={locations} trackingDeviceIds={trackingDeviceIds} selectedDeviceId={selectedDevice?.deviceId} />
+    <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
+      <MapContainer center={center} zoom={16} style={{ height: "100vh", width: "100%" }} zoomControl={false}>
+        <MapResizer />
         <FlyToDevice focusedDeviceId={focusedDeviceId} locations={locations} />
         <MapClickHandler
           onDeviceFound={handleDeviceFound}

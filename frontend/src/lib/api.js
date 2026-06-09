@@ -8,7 +8,9 @@ export async function apiFetch(url, options = {}) {
       return null;
     }
     const message = await response.text();
-    throw new Error(message || `Request failed with status ${response.status}`);
+    const err = new Error(message || `Request failed with status ${response.status}`);
+    err.status = response.status;
+    throw err;
   }
 
   if (response.status === 204) {

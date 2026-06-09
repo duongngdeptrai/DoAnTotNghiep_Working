@@ -141,6 +141,7 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
   useEffect(() => {
     trackingDeviceIds.forEach(async (deviceId) => {
       try {
+        window.__locations = locations;
         const data = await fetchLatest(deviceId);
         setLocations((prev) => ({
           ...prev,
@@ -174,7 +175,16 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
 
   useEffect(() => {
     fetchGeofenceState()
-      .then((state) => setGeofenceState((prev) => ({ ...prev, ...state })))
+      .then((state) => {
+        if (state) {
+          setGeofenceState((prev) => ({
+            ...prev,
+            ...state,
+            centerLat: state.centerLat ?? prev.centerLat,
+            centerLng: state.centerLng ?? prev.centerLng,
+          }));
+        }
+      })
       .catch(() => undefined);
   }, []);
 
@@ -183,6 +193,7 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
 
     if (latestMessage.type === "location_update" || latestMessage.type === "location") {
       const { deviceId, lat, lng, timestamp } = latestMessage;
+      console.log("[location update]", deviceId, { lat, lng, timestamp });
       setLocations((prev) => ({
         ...prev,
         [deviceId]: { lat, lng, timestamp },
@@ -190,6 +201,13 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
     }
 
     if (latestMessage.type === "alert" || latestMessage.type === "geofence_alert") {
+      const { deviceId, lat, lng, timestamp } = latestMessage;
+      if (deviceId && lat != null && lng != null) {
+        setLocations((prev) => ({
+          ...prev,
+          [deviceId]: { lat, lng, timestamp },
+        }));
+      }
       setAlerts((prev) => [latestMessage, ...prev].slice(0, 50));
       const zone = geofenceState.geofences?.find((g) => g.id === latestMessage.geofenceId);
       const zoneName = zone?.name || null;
@@ -369,19 +387,16 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
   return (
     <section className="full-screen-map">
       <TrackingMap
-        center={[geofenceState.centerLat, geofenceState.centerLng]}
+        center={[geofenceState.centerLat ?? env.defaultLat, geofenceState.centerLng ?? env.defaultLng]}
         trackingDeviceIds={trackingDeviceIds}
         locations={locations}
         geofences={geofenceState.geofences}
-        deviceColors={DEVICE_COLORS}
         focusedDeviceId={focusedDeviceId}
         onDeviceSelected={handleDeviceSelect}
-        onMapClick={handleSetCenter}
         isPlanMode={isPlanMode}
         editingGeofenceId={editingGeofenceId}
         pendingConfig={pendingConfig}
-        updatePendingConfig={updatePendingConfig}
-        removeLastPoint={removeLastPoint}
+        onUpdatePendingConfig={updatePendingConfig}
       />
 
       <GeofenceEditorPanel

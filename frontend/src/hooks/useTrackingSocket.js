@@ -45,6 +45,7 @@ export function useTrackingSocket(url, trackingDeviceIds = []) {
       results.forEach((result, index) => {
         if (result.status === "fulfilled" && result.value) {
           const data = result.value;
+          console.log("[poll raw]", ids[index], data);
           emitLocationUpdate(ids[index], data.lat, data.lng);
         }
       });
@@ -99,11 +100,14 @@ export function useTrackingSocket(url, trackingDeviceIds = []) {
       socket.onopen = () => {
         setStatus("connected");
         reconnectAttemptRef.current = 0;
+        wsFailedRef.current = false;
+        stopPolling();
       };
 
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          console.log("[ws raw]", data);
           setLatestMessage(data);
         } catch {
           // Ignore malformed payloads from server.

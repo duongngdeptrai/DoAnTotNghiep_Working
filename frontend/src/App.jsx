@@ -16,7 +16,9 @@ import {
 const DEFAULT_DEVICE_ID = env.deviceId;
 
 function AppShell() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    () => localStorage.getItem("is_logged_in") === "true",
+  );
   const [currentUser, setCurrentUser] = useState(null);
   const [authError, setAuthError] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
@@ -33,6 +35,7 @@ function AppShell() {
     try {
       const data =
         mode === "login" ? await authLogin(payload) : await authRegister(payload);
+      localStorage.setItem("is_logged_in", "true");
       setIsLoggedIn(true);
       setCurrentUser(data);
     } catch (error) {
@@ -45,6 +48,7 @@ function AppShell() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem("is_logged_in");
     setIsLoggedIn(false);
     setCurrentUser(null);
     setDevices([]);
@@ -66,6 +70,10 @@ function AppShell() {
         setDeviceRole(null);
       }
     } catch (error) {
+      if (error?.status === 401) {
+        handleLogout();
+        return;
+      }
       setDeviceError(
         error instanceof Error ? error.message : "Không thể tải danh sách thiết bị.",
       );
