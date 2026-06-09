@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import TrackingMap from "../components/TrackingMap";
 import GeofenceEditorPanel from "../components/GeofenceEditorPanel";
+import NotificationToast from "../components/NotificationToast";
 import { env } from "../config/env";
 import { useTrackingSocket } from "../hooks/useTrackingSocket";
 import { useGeofenceSharing } from "../hooks/useGeofenceSharing";
@@ -21,6 +22,22 @@ function formatEpoch(epoch) {
     return "No data yet";
   }
   return new Date(epoch * 1000).toLocaleString();
+}
+
+function getEventMessage(event, deviceId, zoneName) {
+  const zone = zoneName || "vùng an toàn";
+  switch (event) {
+    case "outside_entered":
+      return `${deviceId} đã rời khỏi vùng an toàn`;
+    case "outside_reminder":
+      return `${deviceId} vẫn đang ngoài vùng an toàn`;
+    case "inside_entered":
+      return `${deviceId} đã đến ${zone}`;
+    case "inside_moved":
+      return `${deviceId} đã chuyển đến ${zone}`;
+    default:
+      return `Cảnh báo từ ${deviceId}`;
+  }
 }
 
 const DEVICE_COLORS = [
@@ -60,6 +77,8 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
   const [modeError, setModeError] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [showAlerts, setShowAlerts] = useState(false);
+  const [toastAlerts, setToastAlerts] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [showDeviceList, setShowDeviceList] = useState(true);
   const [focusedDeviceId, setFocusedDeviceId] = useState(null);
   const [isPlanMode, setIsPlanMode] = useState(false);
@@ -172,6 +191,11 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
 
     if (latestMessage.type === "alert" || latestMessage.type === "geofence_alert") {
       setAlerts((prev) => [latestMessage, ...prev].slice(0, 50));
+      const zone = geofenceState.geofences?.find((g) => g.id === latestMessage.geofenceId);
+      const zoneName = zone?.name || null;
+      const toastId = Date.now() + Math.random();
+      setToastAlerts((prev) => [...prev, { id: toastId, alert: latestMessage, zoneName }].slice(-3));
+      setUnreadCount((prev) => prev + 1);
     }
 
     if (latestMessage.type === "geofence_state_update") {
@@ -302,6 +326,32 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
     }
   };
 
+  const handleToggleAlerts = () => {
+    setShowAlerts((v) => {
+      if (!v) setUnreadCount(0);
+      return !v;
+    });
+  };
+
+  const handleDismissToast = (toastId) => {
+    setToastAlerts((prev) => prev.filter((t) => t.id !== toastId));
+  };
+
+  const handleTestToast = () => {
+    const mockEvents = [
+      { event: "outside_entered", deviceId: "child_01", geofenceId: null },
+      { event: "inside_entered", deviceId: "child_01", geofenceId: geofenceState.geofences?.[0]?.id || null },
+      { event: "outside_reminder", deviceId: "child_02", geofenceId: null },
+      { event: "inside_moved", deviceId: "child_01", geofenceId: geofenceState.geofences?.[1]?.id || geofenceState.geofences?.[0]?.id || null },
+    ];
+    const mock = mockEvents[Math.floor(Math.random() * mockEvents.length)];
+    const zone = geofenceState.geofences?.find((g) => g.id === mock.geofenceId);
+    const toastId = Date.now() + Math.random();
+    setToastAlerts((prev) => [...prev, { id: toastId, alert: { ...mock, timestamp: Math.floor(Date.now() / 1000) }, zoneName: zone?.name || null }].slice(-3));
+    setAlerts((prev) => [{ type: "geofence_alert", ...mock, timestamp: Math.floor(Date.now() / 1000) }, ...prev].slice(0, 50));
+    setUnreadCount((prev) => prev + 1);
+  };
+
   const handleFetchLatest = async (deviceId) => {
     try {
       const data = await fetchLatest(deviceId);
@@ -362,21 +412,30 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
           📱
         </button>
         <button
-          className="control-button"
-          onClick={() => setShowAlerts(!showAlerts)}
-          title="Cảnh báo"
-        >
-          🔔
-          {alerts.length > 0 && <span className="alert-badge">{alerts.length}</span>}
-        </button>
-        <button
           className={`control-button ${shareEnabled ? "active" : ""}`}
           onClick={() => setShareEnabled(!shareEnabled)}
           title="Chia sẻ vị trí"
         >
           📤
         </button>
+        <button
+          className="control-button"
+          onClick={handleTestToast}
+          title="Thử thông báo"
+        >
+          🧪
+        </button>
       </div>
+
+      <button
+        className={`notification-bell-btn${unreadCount > 0 ? " has-alerts" : ""}`}
+        onClick={() => alerts.length > 0 && handleToggleAlerts()}
+        title={alerts.length > 0 ? "Xem thông báo" : "Không có thông báo"}
+        style={{ cursor: alerts.length > 0 ? "pointer" : "default" }}
+      >
+        🔔
+        {unreadCount > 0 && <span className="notification-bell-badge">{unreadCount}</span>}
+      </button>
 
       {showDeviceList && (
         <div className="device-list-panel">
@@ -445,15 +504,20 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
             {alerts.length === 0 ? (
               <p className="muted">Không có cảnh báo</p>
             ) : (
-              alerts.map((alert, idx) => (
-                <div key={idx} className="alert-item">
-                  <span className="alert-icon">⚠️</span>
-                  <div className="alert-content">
-                    <span className="alert-device">{alert.deviceId}</span>
-                    <span className="alert-time">{formatEpoch(alert.timestamp)}</span>
+              alerts.map((alert, idx) => {
+                const isOutside = alert.event?.startsWith("outside");
+                const zone = geofenceState.geofences?.find((g) => g.id === alert.geofenceId);
+                const msg = getEventMessage(alert.event, alert.deviceId, zone?.name);
+                return (
+                  <div key={idx} className={`alert-item ${isOutside ? "alert-outside" : "alert-inside"}`}>
+                    <span className="alert-icon">{isOutside ? "⚠️" : "✅"}</span>
+                    <div className="alert-content">
+                      <span className="alert-message">{msg}</span>
+                      <span className="alert-time">{formatEpoch(alert.timestamp)}</span>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -472,6 +536,8 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
           <button onClick={() => setModeError(null)}>✕</button>
         </div>
       )}
+
+      <NotificationToast toasts={toastAlerts} onDismiss={handleDismissToast} />
     </section>
   );
 }

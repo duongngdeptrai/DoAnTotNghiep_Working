@@ -15,16 +15,8 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 
-ChartJS.register(
-	CategoryScale,
-	LinearScale,
-	BarElement,
-	Title,
-	Tooltip,
-	Legend
-);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-// Fix Leaflet default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
 	iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
@@ -34,13 +26,10 @@ L.Icon.Default.mergeOptions({
 
 function formatDistance(meters) {
 	if (!meters) return "0 m";
-	if (meters >= 1000) {
-		return `${(meters / 1000).toFixed(2)} km`;
-	}
+	if (meters >= 1000) return `${(meters / 1000).toFixed(2)} km`;
 	return `${Math.round(meters)} m`;
 }
 
-// Simple Track Map Component
 function TrackMap({ trackPath }) {
 	if (!trackPath || trackPath.length === 0) {
 		return (
@@ -53,8 +42,6 @@ function TrackMap({ trackPath }) {
 	const points = trackPath.map((p) => [p.lat, p.lng]);
 	const startPoint = points[0];
 	const endPoint = points[points.length - 1];
-
-	// Calculate bounds to fit all points
 	const lats = points.map((p) => p[0]);
 	const lngs = points.map((p) => p[1]);
 	const bounds = [
@@ -77,7 +64,7 @@ function TrackMap({ trackPath }) {
 				/>
 				<Polyline
 					positions={points}
-					pathOptions={{ color: "#ef4444", weight: 5, opacity: 0.9 }}
+					pathOptions={{ color: "#22d3ee", weight: 5, opacity: 0.9 }}
 				/>
 				<Marker position={startPoint}>
 					<Popup>Điểm bắt đầu</Popup>
@@ -90,14 +77,16 @@ function TrackMap({ trackPath }) {
 	);
 }
 
+const RANGE_LABELS = { "24h": "24 giờ", "7d": "7 ngày", "30d": "30 ngày", all: "Tất cả" };
+
 export default function StatisticsPage({ devices, selectedDeviceId, onSelectDevice }) {
 	const { device_id } = useParams();
 	const [stats, setStats] = useState(null);
 	const [dailyStats, setDailyStats] = useState([]);
-const [trackPath, setTrackPath] = useState([]);
+	const [trackPath, setTrackPath] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
-	const [range, setRange] = useState("24h"); // '24h' | '7d' | '30d' | 'all'
+	const [range, setRange] = useState("24h");
 
 	const deviceParam = device_id || selectedDeviceId;
 	const deviceList = devices?.map((d) => d.deviceId) || [];
@@ -113,32 +102,19 @@ const [trackPath, setTrackPath] = useState([]);
 		let interval = "day";
 
 		switch (range) {
-			case "24h":
-				start = now - 24 * 3600;
-				interval = "hour";
-				break;
-			case "7d":
-				start = now - 7 * 24 * 3600;
-				interval = "day";
-				break;
-			case "30d":
-				start = now - 30 * 24 * 3600;
-				interval = "week";
-				break;
-			case "all":
-				start = now - 365 * 24 * 3600; // 1 year
-				interval = "year";
-				break;
+			case "24h": start = now - 24 * 3600; interval = "hour"; break;
+			case "7d": start = now - 7 * 24 * 3600; interval = "day"; break;
+			case "30d": start = now - 30 * 24 * 3600; interval = "week"; break;
+			case "all": start = now - 365 * 24 * 3600; interval = "year"; break;
 		}
-		const end = now;
 
 		const loadStats = async () => {
 			setLoading(true);
 			setError(null);
 			try {
 				const [statsRes, dailyRes] = await Promise.all([
-					fetchStatistics(deviceParam, start, end),
-					fetchAggregatedStats(deviceParam, start, end, interval),
+					fetchStatistics(deviceParam, start, now),
+					fetchAggregatedStats(deviceParam, start, now, interval),
 				]);
 				setStats(statsRes);
 				setTrackPath(statsRes.trackPath || []);
@@ -153,32 +129,26 @@ const [trackPath, setTrackPath] = useState([]);
 		loadStats();
 	}, [deviceParam, range]);
 
-	const handleDateRangeChange = (newRange) => {
-		setRange(newRange);
-	};
-
-	const chartData = useMemo(() => {
-		const labels = dailyStats.map((d) => d.label);
-		const distances = dailyStats.map((d) => d.totalDistanceM / 1000); // Convert to km
-
-		return {
-			labels,
-			datasets: [
-				{
-					label: "Quãng đường (km)",
-					data: distances,
-					backgroundColor: "rgba(34, 211, 238, 0.6)",
-					borderColor: "rgb(34, 211, 238)",
-					borderWidth: 1,
-				},
-			],
-		};
-	}, [dailyStats]);
+	const chartData = useMemo(() => ({
+		labels: dailyStats.map((d) => d.label),
+		datasets: [
+			{
+				label: "Quãng đường (km)",
+				data: dailyStats.map((d) => d.totalDistanceM / 1000),
+				backgroundColor: "rgba(34, 211, 238, 0.25)",
+				borderColor: "#22d3ee",
+				borderWidth: 2,
+				borderRadius: 6,
+				borderSkipped: false,
+			},
+		],
+	}), [dailyStats]);
 
 	if (devices?.length === 0) {
 		return (
 			<div className="page statistics-page">
 				<div className="empty-state">
+					<div className="empty-icon">📊</div>
 					<h3>Chưa có thiết bị</h3>
 					<p>Hãy đăng ký thiết bị để xem thống kê.</p>
 				</div>
@@ -200,20 +170,10 @@ const [trackPath, setTrackPath] = useState([]);
 	if (error) {
 		return (
 			<div className="page statistics-page">
-				<div className="error-container">
-					<h3>Lỗi tải thống kê</h3>
+				<div className="error-state">
+					<div className="empty-icon">⚠️</div>
+					<h3>Không thể tải thống kê</h3>
 					<p>{error}</p>
-				</div>
-			</div>
-		);
-	}
-
-	if (!stats) {
-		return (
-			<div className="page statistics-page">
-				<div className="empty-state">
-					<h3>Không có dữ liệu thống kê</h3>
-					<p>Thiết bị chưa có dữ liệu vị trí trong khoảng thời gian này.</p>
 				</div>
 			</div>
 		);
@@ -221,53 +181,105 @@ const [trackPath, setTrackPath] = useState([]);
 
 	return (
 		<div className="page statistics-page">
-			<div className="stats-header">
-				<h2>Thống kê thiết bị: {deviceParam}</h2>
-				<div className="range-selector">
-					{["24h", "7d", "30d", "all"].map((r) => (
-						<button
-							key={r}
-							className={range === r ? "active" : ""}
-							onClick={() => handleDateRangeChange(r)}
+			<div className="page-header">
+				<div>
+					<h1>Thống kê</h1>
+					<p className="muted">Lịch sử di chuyển và phân tích dữ liệu</p>
+				</div>
+				{deviceList.length > 0 && (
+					<div className="device-selector">
+						<label>Thiết bị</label>
+						<select
+							value={deviceParam || ""}
+							onChange={(e) => onSelectDevice?.(e.target.value)}
 						>
-							{r === "24h" && "24 giờ"}
-							{r === "7d" && "7 ngày"}
-							{r === "30d" && "30 ngày"}
-							{r === "all" && "Tất cả"}
-						</button>
-					))}
-				</div>
+							{deviceList.map((id) => (
+								<option key={id} value={id}>{id}</option>
+							))}
+						</select>
+					</div>
+				)}
 			</div>
 
-			<div className="stats-grid">
-				<div className="stat-card">
-					<h3>Tổng quãng đường</h3>
-					<p className="stat-value">{formatDistance(stats.totalDistanceM)}</p>
-				</div>
-				<div className="stat-card">
-					<h3>Số điểm vị trí</h3>
-					<p className="stat-value">{stats.pointCount}</p>
-				</div>
-				<div className="stat-card">
-					<h3>Tốc độ trung bình</h3>
-					<p className="stat-value">{stats.avgSpeedKmh?.toFixed(1) || "0"} km/h</p>
-				</div>
-				<div className="stat-card">
-					<h3>Tốc độ tối đa</h3>
-					<p className="stat-value">{stats.maxSpeedKmh?.toFixed(1) || "0"} km/h</p>
-				</div>
+			<div className="date-range-selector">
+				{Object.entries(RANGE_LABELS).map(([r, label]) => (
+					<button
+						key={r}
+						className={`range-btn${range === r ? " active" : ""}`}
+						onClick={() => setRange(r)}
+					>
+						{label}
+					</button>
+				))}
 			</div>
 
-			<div className="chart-container">
-				<h3>Quãng đường theo thời gian</h3>
-				<Bar data={chartData} options={chartOptions} />
-			</div>
-
-			{trackPath && trackPath.length > 0 && (
-				<div className="track-map-section">
-					<h3>Lộ trình di chuyển</h3>
-					<TrackMap trackPath={trackPath} />
+			{!stats ? (
+				<div className="empty-state">
+					<div className="empty-icon">📭</div>
+					<h3>Không có dữ liệu</h3>
+					<p>Thiết bị chưa có dữ liệu vị trí trong khoảng thời gian này.</p>
 				</div>
+			) : (
+				<>
+					<div className="stats-grid">
+						<div className="stat-card accent">
+							<span className="stat-icon">🛣️</span>
+							<div className="stat-info">
+								<div className="stat-label">Tổng quãng đường</div>
+								<div className="stat-value">{formatDistance(stats.totalDistanceM)}</div>
+							</div>
+						</div>
+						<div className="stat-card">
+							<span className="stat-icon">📍</span>
+							<div className="stat-info">
+								<div className="stat-label">Số điểm vị trí</div>
+								<div className="stat-value">{stats.pointCount ?? 0}</div>
+							</div>
+						</div>
+						<div className="stat-card">
+							<span className="stat-icon">⚡</span>
+							<div className="stat-info">
+								<div className="stat-label">Tốc độ trung bình</div>
+								<div className="stat-value">
+									{stats.avgSpeedKmh?.toFixed(1) || "0"}
+									<span className="stat-unit"> km/h</span>
+								</div>
+							</div>
+						</div>
+						<div className="stat-card">
+							<span className="stat-icon">🚀</span>
+							<div className="stat-info">
+								<div className="stat-label">Tốc độ tối đa</div>
+								<div className="stat-value">
+									{stats.maxSpeedKmh?.toFixed(1) || "0"}
+									<span className="stat-unit"> km/h</span>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div className="stats-sections">
+						<div className="stats-section chart-section">
+							<h3>Quãng đường theo thời gian</h3>
+							{dailyStats.length === 0 ? (
+								<div className="empty-chart">
+									<p>Chưa có dữ liệu cho khoảng thời gian này.</p>
+								</div>
+							) : (
+								<div className="chart-container">
+									<Bar data={chartData} options={chartOptions} />
+								</div>
+							)}
+						</div>
+
+						{trackPath.length > 0 && (
+							<div className="stats-section full-map">
+								<h3>Lộ trình di chuyển</h3>
+								<TrackMap trackPath={trackPath} />
+							</div>
+						)}
+					</div>
+				</>
 			)}
 		</div>
 	);
@@ -275,21 +287,40 @@ const [trackPath, setTrackPath] = useState([]);
 
 const chartOptions = {
 	responsive: true,
+	maintainAspectRatio: false,
 	plugins: {
-		legend: {
-			display: false,
-		},
-		title: {
-			display: false,
+		legend: { display: false },
+		title: { display: false },
+		tooltip: {
+			backgroundColor: "rgba(15, 23, 42, 0.95)",
+			titleColor: "#e2e8f0",
+			bodyColor: "#9aa4b2",
+			borderColor: "rgba(255, 255, 255, 0.14)",
+			borderWidth: 1,
+			padding: 12,
+			callbacks: {
+				label: (ctx) => ` ${ctx.parsed.y.toFixed(2)} km`,
+			},
 		},
 	},
 	scales: {
+		x: {
+			grid: { color: "rgba(255, 255, 255, 0.06)" },
+			border: { color: "rgba(255, 255, 255, 0.1)" },
+			ticks: {
+				color: "#9aa4b2",
+				font: { family: "Space Grotesk", size: 12 },
+				maxRotation: 45,
+			},
+		},
 		y: {
 			beginAtZero: true,
+			grid: { color: "rgba(255, 255, 255, 0.06)" },
+			border: { color: "rgba(255, 255, 255, 0.1)" },
 			ticks: {
-				callback: function (value) {
-					return value + " km";
-				},
+				color: "#9aa4b2",
+				font: { family: "Space Grotesk", size: 12 },
+				callback: (value) => value + " km",
 			},
 		},
 	},
