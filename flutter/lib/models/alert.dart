@@ -5,6 +5,8 @@ class Alert {
   final double lat;
   final double lng;
   final int timestamp;
+  final String? geofenceId;
+  final String? zoneName;
 
   Alert({
     required this.deviceId,
@@ -13,7 +15,20 @@ class Alert {
     required this.lat,
     required this.lng,
     required this.timestamp,
+    this.geofenceId,
+    this.zoneName,
   });
+
+  Alert copyWith({String? zoneName}) => Alert(
+        deviceId: deviceId,
+        type: type,
+        event: event,
+        lat: lat,
+        lng: lng,
+        timestamp: timestamp,
+        geofenceId: geofenceId,
+        zoneName: zoneName ?? this.zoneName,
+      );
 
   factory Alert.fromJson(Map<String, dynamic> json) {
     final latVal = json['lat'] ?? json['latitude'];
@@ -27,6 +42,7 @@ class Alert {
       lat: latVal is double ? latVal : (latVal as num?)?.toDouble() ?? 0.0,
       lng: lngVal is double ? lngVal : (lngVal as num?)?.toDouble() ?? 0.0,
       timestamp: ts is int ? ts : (ts as num?)?.toInt() ?? 0,
+      geofenceId: json['geofenceId'] as String? ?? json['geofence_id'] as String?,
     );
   }
 }

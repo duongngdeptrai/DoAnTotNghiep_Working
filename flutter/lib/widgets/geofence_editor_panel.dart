@@ -15,6 +15,62 @@ class _GeofenceEditorPanelState extends State<GeofenceEditorPanel> {
   final _radiusController = TextEditingController();
   bool _saving = false;
 
+  // Track initial values to detect unsaved changes
+  String? _capturedEditingId;
+  String _initialName = '';
+  double _initialRadius = 0;
+  int _initialPathLength = 0;
+
+  void _captureInitialValues(AppProvider provider) {
+    final cfg = provider.pendingConfig;
+    _initialName = cfg.name;
+    _initialRadius = cfg.radius;
+    _initialPathLength = cfg.path.length;
+    _capturedEditingId = provider.editingGeofenceId;
+  }
+
+  bool _hasUnsavedChanges(AppProvider provider) {
+    final cfg = provider.pendingConfig;
+    return cfg.name != _initialName ||
+        cfg.radius != _initialRadius ||
+        cfg.path.length != _initialPathLength;
+  }
+
+  void _onCancel(BuildContext context, AppProvider provider) {
+    if (_hasUnsavedChanges(provider)) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: const Color(0xFF1F2937),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text('Hủy thay đổi?',
+              style: TextStyle(color: Colors.white, fontSize: 15)),
+          content: const Text(
+            'Bạn có thay đổi chưa lưu. Bạn có chắc muốn hủy không?',
+            style: TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Tiếp tục chỉnh sửa',
+                  style: TextStyle(color: Color(0xFF22D3EE))),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                provider.cancelPlanMode();
+              },
+              child: const Text('Hủy bỏ',
+                  style: TextStyle(color: Colors.redAccent)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      provider.cancelPlanMode();
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -44,6 +100,10 @@ class _GeofenceEditorPanelState extends State<GeofenceEditorPanel> {
     final provider = context.watch<AppProvider>();
 
     if (provider.isPlanMode) {
+      // Capture initial values when entering plan mode for a new/different geofence
+      if (_capturedEditingId != provider.editingGeofenceId) {
+        _captureInitialValues(provider);
+      }
       _syncFromProvider(provider);
       return _buildEditorView(context, provider);
     }
@@ -153,7 +213,7 @@ class _GeofenceEditorPanelState extends State<GeofenceEditorPanel> {
                 ),
                 const Spacer(),
                 GestureDetector(
-                  onTap: provider.cancelPlanMode,
+                  onTap: () => _onCancel(context, provider),
                   child: const Icon(Icons.close, color: Colors.white54, size: 18),
                 ),
               ],
@@ -286,7 +346,7 @@ class _GeofenceEditorPanelState extends State<GeofenceEditorPanel> {
                   children: [
                     Expanded(
                       child: GestureDetector(
-                        onTap: provider.cancelPlanMode,
+                        onTap: () => _onCancel(context, provider),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(

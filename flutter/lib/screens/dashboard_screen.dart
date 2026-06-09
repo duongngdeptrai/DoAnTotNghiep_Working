@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../widgets/top_nav.dart';
 import '../widgets/tracking_map.dart';
 import '../widgets/geofence_editor_panel.dart';
+import '../widgets/notification_toast.dart';
 import '../services/location_service.dart';
 import '../services/socket_service.dart';
 import '../utils/device_color.dart';
@@ -27,6 +28,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _showDeviceList = true;
   bool _showAlerts = false;
   String? _focusedDeviceId;
+  int _unreadCount = 0;
+  List<ToastItem> _toastAlerts = [];
 
   @override
   void initState() {
@@ -53,6 +56,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (alert != null) {
       _provider.clearLastNewAlert();
       _showAlertBanner(alert);
+      setState(() {
+        _toastAlerts = [
+          ToastItem(id: '${alert.timestamp}_${alert.deviceId}', alert: alert),
+          ..._toastAlerts.take(4),
+        ];
+        if (!_showAlerts) _unreadCount++;
+      });
     }
   }
 
@@ -62,6 +72,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _bannerTimer = Timer(const Duration(seconds: 5), () {
       if (mounted) setState(() => _bannerAlert = null);
     });
+  }
+
+  void _toggleAlerts() {
+    setState(() {
+      _showAlerts = !_showAlerts;
+      if (_showAlerts) _unreadCount = 0;
+    });
+  }
+
+  void _dismissToast(String id) {
+    setState(() => _toastAlerts.removeWhere((t) => t.id == id));
   }
 
   void _onMapTap(LatLng point) {
@@ -191,9 +212,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         const SizedBox(width: 6),
                         _IconPill(
                           icon: Icons.warning_amber_rounded,
-                          label: provider.alerts.isNotEmpty ? '${provider.alerts.length}' : null,
+                          label: _unreadCount > 0 ? '$_unreadCount' : (provider.alerts.isNotEmpty ? '${provider.alerts.length}' : null),
                           active: _showAlerts,
-                          onTap: () => setState(() => _showAlerts = !_showAlerts),
+                          onTap: _toggleAlerts,
                           color: Colors.orangeAccent,
                         ),
                         const SizedBox(width: 6),
@@ -230,7 +251,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       right: 12,
                       child: _AlertsPanel(
                         alerts: provider.alerts,
-                        onClose: () => setState(() => _showAlerts = false),
+                        onClose: _toggleAlerts,
                         onClear: provider.clearAlerts,
                       ),
                     ),
@@ -260,6 +281,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     bottom: 80,
                     child: GeofenceEditorPanel(),
                   ),
+
+                  // Toast overlay notifications (bottom right)
+                  if (_toastAlerts.isNotEmpty)
+                    NotificationToast(
+                      toasts: _toastAlerts,
+                      onDismiss: _dismissToast,
+                    ),
                 ],
               ),
             ),

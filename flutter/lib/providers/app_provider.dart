@@ -15,6 +15,7 @@ class AppProvider with ChangeNotifier {
 	SocketService? _socketService;
 	StreamSubscription<Map<String, dynamic>>? _socketMessageSub;
 	StreamSubscription<SocketStatus>? _socketStatusSub;
+	Timer? _pollTimer;
 
 	String? _token;
 	User? _currentUser;
@@ -206,6 +207,7 @@ class AppProvider with ChangeNotifier {
 		_editingGeofenceId = null;
 
 		disconnectSocket();
+		_stopPolling();
 		_locationService.stopSharing();
 
 		await _saveToStorage();
@@ -504,8 +506,22 @@ class AppProvider with ChangeNotifier {
 		_socketStatusSub?.cancel();
 		_socketStatusSub = _socketService!.statusStream.listen((status) {
 			_socketStatus = status;
+			if (status == SocketStatus.connected) {
+				_stopPolling();
+			} else if (status == SocketStatus.error) {
+				_startPolling();
+			}
 			notifyListeners();
 		});
+	}
+
+	Alert _enrichAlertWithZoneName(Alert alert) {
+		if (alert.geofenceId == null) return alert;
+		final zone = _geofenceState.geofences
+				.where((g) => g.id == alert.geofenceId)
+				.map((g) => g.name)
+				.firstOrNull;
+		return zone != null ? alert.copyWith(zoneName: zone) : alert;
 	}
 
 	void _handleSocketMessage(Map<String, dynamic> message) {
@@ -525,7 +541,7 @@ class AppProvider with ChangeNotifier {
 		} else if (type == 'alert') {
 			try {
 				final alertData = message['data'] as Map<String, dynamic>? ?? message;
-				final alert = Alert.fromJson(alertData);
+				final alert = _enrichAlertWithZoneName(Alert.fromJson(alertData));
 				_alerts.insert(0, alert);
 				if (_alerts.length > 50) _alerts.removeLast();
 				_lastNewAlert = alert;
@@ -535,7 +551,7 @@ class AppProvider with ChangeNotifier {
 			}
 		} else if (type == 'geofence_alert') {
 			try {
-				final alert = Alert.fromJson(message);
+				final alert = _enrichAlertWithZoneName(Alert.fromJson(message));
 				_alerts.insert(0, alert);
 				if (_alerts.length > 50) _alerts.removeLast();
 				_lastNewAlert = alert;
@@ -565,7 +581,29 @@ class AppProvider with ChangeNotifier {
 		_socketService = null;
 		_socketStatus = SocketStatus.disconnected;
 		_latestMessage = null;
+		_stopPolling();
 		notifyListeners();
+	}
+
+	void _startPolling() {
+		if (_pollTimer?.isActive == true) return;
+		_pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+			for (final deviceId in _trackingDeviceIds) {
+				await fetchLatestLocation(deviceId);
+			}
+		});
+	}
+
+	void _stopPolling() {
+		_pollTimer?.cancel();
+		_pollTimer = null;
+	}
+
+	@override
+	void dispose() {
+		_stopPolling();
+		disconnectSocket();
+		super.dispose();
 	}
 
 	Future<void> _saveToStorage() async {

@@ -385,8 +385,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   PolylineLayer(polylines: [
                     Polyline(
                       points: points,
-                      color: Colors.redAccent,
-                      strokeWidth: 3,
+                      color: const Color(0xFF22D3EE),
+                      strokeWidth: 5,
                     ),
                   ]),
                   MarkerLayer(markers: [
