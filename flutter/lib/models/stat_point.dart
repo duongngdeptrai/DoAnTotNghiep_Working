@@ -7,8 +7,8 @@ class StatPoint {
 
   factory StatPoint.fromJson(Map<String, dynamic> json) {
     return StatPoint(
-      lat: (json['lat'] as num).toDouble(),
-      lng: (json['lng'] as num).toDouble(),
+      lat: ((json['lat'] as num?) ?? 0).toDouble(),
+      lng: ((json['lng'] as num?) ?? 0).toDouble(),
       timestamp: json['timestamp'] as int? ?? 0,
     );
   }

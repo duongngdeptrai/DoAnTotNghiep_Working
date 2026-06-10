@@ -529,7 +529,7 @@ class AppProvider with ChangeNotifier {
 
 		if (type == 'location' || type == 'location_update') {
 			try {
-				final deviceId = message['deviceId'] ?? message['device_id'] as String?;
+				final deviceId = (message['deviceId'] ?? message['device_id']) as String?;
 				final data = message['data'] as Map<String, dynamic>? ?? message;
 				if (deviceId != null) {
 					_locations[deviceId] = LocationData.fromJson(data);
@@ -577,7 +577,7 @@ class AppProvider with ChangeNotifier {
 		_socketMessageSub = null;
 		_socketStatusSub?.cancel();
 		_socketStatusSub = null;
-		_socketService?.disconnect();
+		_socketService?.dispose();
 		_socketService = null;
 		_socketStatus = SocketStatus.disconnected;
 		_latestMessage = null;
@@ -588,8 +588,12 @@ class AppProvider with ChangeNotifier {
 	void _startPolling() {
 		if (_pollTimer?.isActive == true) return;
 		_pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
-			for (final deviceId in _trackingDeviceIds) {
-				await fetchLatestLocation(deviceId);
+			try {
+				for (final deviceId in _trackingDeviceIds) {
+					await fetchLatestLocation(deviceId);
+				}
+			} catch (e) {
+				debugPrint('Polling error: $e');
 			}
 		});
 	}

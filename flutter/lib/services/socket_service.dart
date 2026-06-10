@@ -96,6 +96,12 @@ class SocketService {
     _statusController.add(_status);
   }
 
+  void dispose() {
+    disconnect();
+    _statusController.close();
+    _messageController.close();
+  }
+
   void sendMessage(Map<String, dynamic> message) {
     if (_channel != null && _status == SocketStatus.connected) {
       _channel!.sink.add(jsonEncode(message));

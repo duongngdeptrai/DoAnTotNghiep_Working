@@ -33,9 +33,10 @@ class ApiService {
 		).timeout(const Duration(seconds: 15));
 
 		if (response.statusCode == 200) {
-			final data = jsonDecode(response.body);
-			_token = data['access_token'];
-			return User.fromJson(data['user']);
+			final data = jsonDecode(response.body) as Map<String, dynamic>;
+			_token = data['access_token'] as String?;
+			final userData = data['user'] as Map<String, dynamic>? ?? data;
+			return User.fromJson(userData);
 		} else {
 			final detail = _parseError(response);
 			throw Exception('Đăng nhập thất bại: $detail');
@@ -50,9 +51,10 @@ class ApiService {
 		).timeout(const Duration(seconds: 15));
 
 		if (response.statusCode == 200 || response.statusCode == 201) {
-			final data = jsonDecode(response.body);
-			_token = data['access_token'];
-			return User.fromJson(data['user']);
+			final data = jsonDecode(response.body) as Map<String, dynamic>;
+			_token = data['access_token'] as String?;
+			final userData = data['user'] as Map<String, dynamic>? ?? data;
+			return User.fromJson(userData);
 		} else {
 			final detail = _parseError(response);
 			throw Exception('Đăng ký thất bại: $detail');
@@ -116,6 +118,7 @@ class ApiService {
 	Future<LocationData?> fetchLatest(String deviceId) async {
 		final response = await http.get(
 			Uri.parse('$baseUrl/latest/$deviceId'),
+			headers: _headers,
 		).timeout(const Duration(seconds: 15));
 
 		if (response.statusCode == 200) {

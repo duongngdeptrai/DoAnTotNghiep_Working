@@ -28,8 +28,8 @@ class Geofence {
     final rawPath = json['path'] as List<dynamic>? ?? [];
     final parsedPath = rawPath
         .map((p) => LatLng(
-              (p['lat'] as num).toDouble(),
-              (p['lng'] as num).toDouble(),
+              ((p['lat'] as num?) ?? 0).toDouble(),
+              ((p['lng'] as num?) ?? 0).toDouble(),
             ))
         .toList();
 
