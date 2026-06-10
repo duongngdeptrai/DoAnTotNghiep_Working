@@ -26,12 +26,20 @@ class Geofence {
     final lng = json['center_lng'] ?? json['centerLng'] ?? json['lng'];
     final radius = json['radius_m'] ?? json['radiusM'] ?? json['radius'] ?? 100.0;
     final rawPath = json['path'] as List<dynamic>? ?? [];
-    final parsedPath = rawPath
-        .map((p) => LatLng(
-              ((p['lat'] as num?) ?? 0).toDouble(),
-              ((p['lng'] as num?) ?? 0).toDouble(),
-            ))
-        .toList();
+    final parsedPath = rawPath.map((p) {
+      if (p is List) {
+        // [lat, lng] format from backend internal storage
+        return LatLng(
+          ((p.isNotEmpty ? p[0] as num? : null) ?? 0).toDouble(),
+          ((p.length > 1 ? p[1] as num? : null) ?? 0).toDouble(),
+        );
+      }
+      // {"lat": ..., "lng": ...} format
+      return LatLng(
+        ((p['lat'] as num?) ?? 0).toDouble(),
+        ((p['lng'] as num?) ?? 0).toDouble(),
+      );
+    }).toList();
 
     return Geofence(
       id: json['geofence_id'] ?? json['id'] ?? '',

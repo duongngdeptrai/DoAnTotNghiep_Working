@@ -82,7 +82,12 @@ class AppProvider with ChangeNotifier {
 		_token = prefs.getString('auth_token');
 		if (_token != null) {
 			_apiService.setToken(_token!);
-			await _loadCurrentUser();
+			// Restore user info from local storage (backend has no /auth/me endpoint)
+			final savedEmail = prefs.getString('user_email');
+			final savedId = prefs.getString('user_id');
+			if (savedEmail != null && savedId != null) {
+				_currentUser = User(email: savedEmail, userId: savedId);
+			}
 			await _loadDevices();
 		}
 
@@ -99,18 +104,6 @@ class AppProvider with ChangeNotifier {
 
 		_isLoading = false;
 		notifyListeners();
-	}
-
-	Future<void> _loadCurrentUser() async {
-		if (_token == null) return;
-		try {
-			_currentUser = await _apiService.getMe();
-			notifyListeners();
-		} catch (e) {
-			_error = e.toString();
-			_isLoading = false;
-			notifyListeners();
-		}
 	}
 
 	Future<void> _loadDevices() async {
@@ -149,10 +142,13 @@ class AppProvider with ChangeNotifier {
 		try {
 			final user = await _apiService.login(email, password);
 			_token = _apiService.token;
+			if (_token == null) throw Exception('Server không trả về token đăng nhập');
 			_currentUser = user;
 
 			final prefs = await SharedPreferences.getInstance();
 			await prefs.setString('auth_token', _token!);
+			await prefs.setString('user_email', user.email);
+			await prefs.setString('user_id', user.userId);
 
 			await _loadDevices();
 			connectSocket();
@@ -175,10 +171,13 @@ class AppProvider with ChangeNotifier {
 		try {
 			final user = await _apiService.register(email, password);
 			_token = _apiService.token;
+			if (_token == null) throw Exception('Server không trả về token đăng ký');
 			_currentUser = user;
 
 			final prefs = await SharedPreferences.getInstance();
 			await prefs.setString('auth_token', _token!);
+			await prefs.setString('user_email', user.email);
+			await prefs.setString('user_id', user.userId);
 
 			await _loadDevices();
 			connectSocket();
@@ -440,7 +439,8 @@ class AppProvider with ChangeNotifier {
 		notifyListeners();
 		try {
 			final cfg = _pendingConfig;
-			final pathJson = cfg.path.map((p) => {'lat': p.latitude, 'lng': p.longitude}).toList();
+			// Send as [[lat, lng], ...] to match backend's list[list[float]] type
+			final pathJson = cfg.path.map((p) => [p.latitude, p.longitude]).toList();
 			final state = await _apiService.postGeofenceFull(
 				geofenceId: cfg.id,
 				name: cfg.name,

@@ -34,7 +34,8 @@ class ApiService {
 
 		if (response.statusCode == 200) {
 			final data = jsonDecode(response.body) as Map<String, dynamic>;
-			_token = data['access_token'] as String?;
+			// Backend may return access_token (JWT) or just user info (id, email, createdAt)
+			_token = data['access_token'] as String? ?? data['id'] as String?;
 			final userData = data['user'] as Map<String, dynamic>? ?? data;
 			return User.fromJson(userData);
 		} else {
@@ -52,7 +53,7 @@ class ApiService {
 
 		if (response.statusCode == 200 || response.statusCode == 201) {
 			final data = jsonDecode(response.body) as Map<String, dynamic>;
-			_token = data['access_token'] as String?;
+			_token = data['access_token'] as String? ?? data['id'] as String?;
 			final userData = data['user'] as Map<String, dynamic>? ?? data;
 			return User.fromJson(userData);
 		} else {

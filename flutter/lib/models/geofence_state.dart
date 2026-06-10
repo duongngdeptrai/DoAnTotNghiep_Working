@@ -33,7 +33,15 @@ class GeofenceState {
       source: json['source'] as String? ?? 'fixed',
       updatedAt: json['updated_at'] ?? json['updatedAt'],
       geofences: rawGeofences
-          .map((g) => Geofence.fromJson(g as Map<String, dynamic>))
+          .whereType<Map<String, dynamic>>()
+          .map((g) {
+            try {
+              return Geofence.fromJson(g);
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<Geofence>()
           .toList(),
     );
   }

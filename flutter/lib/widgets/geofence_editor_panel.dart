@@ -157,9 +157,22 @@ class _GeofenceEditorPanelState extends State<GeofenceEditorPanel> {
           if (geofences.isEmpty)
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Text(
-                'Chưa có vùng an toàn',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Chưa có vùng an toàn',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+                  ),
+                  if (provider.error != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      provider.error!,
+                      style: const TextStyle(color: Colors.redAccent, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ],
               ),
             )
           else

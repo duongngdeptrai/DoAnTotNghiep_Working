@@ -42,7 +42,7 @@ class GeofenceFullUpdate(BaseModel):
     radius_m: float = Field(gt=0)
     lat: float | None = Field(None, ge=-90, le=90)
     lng: float | None = Field(None, ge=-180, le=180)
-    path: list[list[float]] | None = None
+    path: list | None = None  # accepts [[lat,lng],...] or [{"lat":...,"lng":...},...]
 
 
 def _flat_geofence_state(state: dict) -> dict:
@@ -66,13 +66,23 @@ def update_full_geofence(
     request: Request,
 ) -> dict:
     geofence_service = request.app.state.geofence_service
+    # Normalize path to [[lat, lng], ...] for internal storage
+    normalized_path = None
+    if payload.path is not None:
+        normalized_path = []
+        for p in payload.path:
+            if isinstance(p, list) and len(p) >= 2:
+                normalized_path.append([float(p[0]), float(p[1])])
+            elif isinstance(p, dict):
+                normalized_path.append([float(p.get("lat", 0)), float(p.get("lng", 0))])
+
     state = geofence_service.update_full_geofence(
         geofence_id=payload.geofence_id,
         mode=payload.mode,
         radius_m=payload.radius_m,
         center_lat=payload.lat,
         center_lng=payload.lng,
-        path=payload.path,
+        path=normalized_path,
     )
     if payload.name:
         geofence_service.upsert_geofence(payload.geofence_id, name=payload.name)
