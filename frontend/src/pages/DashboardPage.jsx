@@ -209,10 +209,8 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
         }));
       }
       setAlerts((prev) => [latestMessage, ...prev].slice(0, 50));
-      const zone = geofenceState.geofences?.find((g) => g.id === latestMessage.geofenceId);
-      const zoneName = zone?.name || null;
       const toastId = Date.now() + Math.random();
-      setToastAlerts((prev) => [...prev, { id: toastId, alert: latestMessage, zoneName }].slice(-3));
+      setToastAlerts((prev) => [...prev, { id: toastId, alert: latestMessage }].slice(-3));
       setUnreadCount((prev) => prev + 1);
     }
 
@@ -561,7 +559,13 @@ export default function DashboardPage({ selectedDeviceId, deviceRole }) {
         </div>
       )}
 
-      <NotificationToast toasts={toastAlerts} onDismiss={handleDismissToast} />
+      <NotificationToast
+        toasts={toastAlerts.map((t) => ({
+          ...t,
+          zoneName: geofenceState.geofences?.find((g) => g.id === t.alert.geofenceId)?.name || null,
+        }))}
+        onDismiss={handleDismissToast}
+      />
     </section>
   );
 }

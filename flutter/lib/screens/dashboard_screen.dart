@@ -58,7 +58,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _showAlertBanner(alert);
       setState(() {
         _toastAlerts = [
-          ToastItem(id: '${alert.timestamp}_${alert.deviceId}', alert: alert),
+          ToastItem(id: '${DateTime.now().millisecondsSinceEpoch}_${alert.deviceId}', alert: alert),
           ..._toastAlerts.take(4),
         ];
         if (!_showAlerts) _unreadCount++;

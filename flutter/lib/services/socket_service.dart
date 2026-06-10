@@ -78,7 +78,7 @@ class SocketService {
       _statusController.add(_status);
       return;
     }
-    final delay = _initialDelayMs * (1 << _reconnectAttempt)
+    final delay = (_initialDelayMs * (1 << _reconnectAttempt))
         .clamp(_initialDelayMs, _maxDelayMs);
     _reconnectAttempt++;
     _status = SocketStatus.disconnected;

@@ -114,16 +114,17 @@ export function useTrackingSocket(url, trackingDeviceIds = []) {
         }
       };
 
-      socket.onclose = (event) => {
-        setStatus("disconnected");
+      socket.onclose = () => {
         socketRef.current = null;
-
-        if (shouldReconnect && !wsFailedRef.current) {
-          const delay = getBackoffDelay();
-          reconnectAttemptRef.current += 1;
-          reconnectTimerRef.current = setTimeout(() => {
-            if (shouldReconnect) connect();
-          }, delay);
+        if (!wsFailedRef.current) {
+          setStatus("disconnected");
+          if (shouldReconnect) {
+            const delay = getBackoffDelay();
+            reconnectAttemptRef.current += 1;
+            reconnectTimerRef.current = setTimeout(() => {
+              if (shouldReconnect) connect();
+            }, delay);
+          }
         }
       };
 

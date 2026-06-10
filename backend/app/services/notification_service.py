@@ -73,8 +73,10 @@ class NotificationService:
     def _get_parent_email(self, device_id: str) -> str | None:
         if self.device_config_repo:
             config = self.device_config_repo.get_config(device_id)
-            if config and config.get("alertEnabled"):
-                return config.get("parentEmail")
+            if config is not None:
+                if not config.get("alertEnabled", True):
+                    return None
+                return config.get("parentEmail") or self.settings.smtp_to_email
         return self.settings.smtp_to_email
 
     def send_geofence_alert(self, device_id: str, lat: float, lng: float, timestamp: int, event: str, geofence_id: str | None = None) -> None:
