@@ -100,6 +100,8 @@ class AppProvider with ChangeNotifier {
 
 		if (_token != null) {
 			connectSocket();
+			// Fetch vị trí ngay sau khi khôi phục tracking set
+			fetchInitialLocations();
 		}
 
 		_isLoading = false;
@@ -152,6 +154,7 @@ class AppProvider with ChangeNotifier {
 
 			await _loadDevices();
 			connectSocket();
+			fetchInitialLocations();
 
 			_isLoading = false;
 			notifyListeners();
@@ -181,6 +184,7 @@ class AppProvider with ChangeNotifier {
 
 			await _loadDevices();
 			connectSocket();
+			fetchInitialLocations();
 
 			_isLoading = false;
 			notifyListeners();
@@ -262,6 +266,7 @@ class AppProvider with ChangeNotifier {
 			_trackingDeviceIds.remove(deviceId);
 		} else {
 			_trackingDeviceIds.add(deviceId);
+			fetchLatestLocation(deviceId);
 		}
 		_saveTrackingDevices();
 		notifyListeners();
@@ -328,10 +333,15 @@ class AppProvider with ChangeNotifier {
 		try {
 			final state = await _apiService.fetchGeofenceState();
 			_geofenceState = state;
+			// Retry loading devices if the initial load failed (e.g. server was sleeping)
+			if (_devices.isEmpty) {
+				await _loadDevices();
+			}
 			// Seed tracking from geofence state if still empty
 			if (_trackingDeviceIds.isEmpty && _devices.isNotEmpty) {
 				_trackingDeviceIds = {_selectedDeviceId};
 				await _saveTrackingDevices();
+				fetchInitialLocations();
 			}
 			notifyListeners();
 		} catch (e) {
@@ -345,10 +355,33 @@ class AppProvider with ChangeNotifier {
 			final location = await _apiService.fetchLatest(deviceId);
 			if (location != null) {
 				updateLocation(deviceId, location);
+			} else if (!_locations.containsKey(deviceId)) {
+				_applyFallbackLocation(deviceId);
 			}
 		} catch (e) {
-			_error = e.toString();
-			notifyListeners();
+			debugPrint('fetchLatestLocation error ($deviceId): $e');
+			// Fallback chỉ áp dụng nếu chưa có vị trí nào
+			if (!_locations.containsKey(deviceId)) {
+				_applyFallbackLocation(deviceId);
+			}
+		}
+	}
+
+	void _applyFallbackLocation(String deviceId) {
+		final lat = _geofenceState.centerLat != 0.0 ? _geofenceState.centerLat : Env.default_lat;
+		final lng = _geofenceState.centerLng != 0.0 ? _geofenceState.centerLng : Env.default_lng;
+		_locations[deviceId] = LocationData(
+			lat: lat,
+			lng: lng,
+			insideGeofence: false,
+			timestamp: 0,
+		);
+		notifyListeners();
+	}
+
+	void fetchInitialLocations() {
+		for (final deviceId in _trackingDeviceIds) {
+			fetchLatestLocation(deviceId);
 		}
 	}
 
@@ -587,10 +620,11 @@ class AppProvider with ChangeNotifier {
 
 	void _startPolling() {
 		if (_pollTimer?.isActive == true) return;
+		fetchInitialLocations(); // poll immediately, then on interval
 		_pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
 			try {
 				for (final deviceId in _trackingDeviceIds) {
-					await fetchLatestLocation(deviceId);
+					fetchLatestLocation(deviceId);
 				}
 			} catch (e) {
 				debugPrint('Polling error: $e');

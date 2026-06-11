@@ -73,36 +73,79 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
     controller.forward();
   }
 
-  // Calculates a capsule-shaped polygon around a multi-point path with given buffer radius.
-  // Matches React's calculateCapsulePolygon() logic.
+  // Builds a capsule polygon around a multi-point path.
+  // Uses uniform degree-based radius (metersPerDegree approximation), smooth miter joins
+  // at intermediate vertices, and rounded semicircle caps at both endpoints.
   List<LatLng> _calculateCapsulePolygon(List<LatLng> points, double radiusM) {
     if (points.length < 2) return [];
-    const earthRadius = 6371000.0;
-    final left = <LatLng>[];
-    final right = <LatLng>[];
 
-    void addOffset(LatLng p1, LatLng p2, {bool usePt2 = false}) {
-      final dx = p2.longitude - p1.longitude;
-      final dy = p2.latitude - p1.latitude;
-      final len = sqrt(dx * dx + dy * dy);
-      if (len == 0) return;
-      final perpX = -dy / len;
-      final perpY = dx / len;
-      final refLat = usePt2 ? p2.latitude : p1.latitude;
-      final dLat = radiusM / earthRadius * (180 / pi);
-      final dLng = radiusM / (earthRadius * cos(refLat * pi / 180)) * (180 / pi);
-      final pt = usePt2 ? p2 : p1;
-      left.add(LatLng(pt.latitude + perpX * dLat, pt.longitude + perpY * dLng));
-      right.add(LatLng(pt.latitude - perpX * dLat, pt.longitude - perpY * dLng));
+    const metersPerDegree = 111320.0;
+    final R = radiusM / metersPerDegree;
+    const capSegs = 8;
+
+    // CCW perpendicular unit vector for segment p1→p2.
+    // Returns (northComponent, eastComponent) so callers can apply each correctly.
+    List<double> segPerp(LatLng p1, LatLng p2) {
+      final dlat = p2.latitude - p1.latitude;
+      final dlng = p2.longitude - p1.longitude;
+      final len = sqrt(dlat * dlat + dlng * dlng);
+      if (len == 0) return [0.0, 0.0];
+      // CCW rotation of direction (east=dlng, north=dlat):
+      // perp east = -dlat/len, perp north = dlng/len
+      return [dlng / len, -dlat / len]; // [northComp, eastComp]
     }
 
-    for (int i = 0; i < points.length - 1; i++) {
-      addOffset(points[i], points[i + 1]);
-    }
-    // Close with last point offsets
-    addOffset(points[points.length - 2], points[points.length - 1], usePt2: true);
+    final n = points.length;
+    final sPerps = [for (var i = 0; i < n - 1; i++) segPerp(points[i], points[i + 1])];
 
-    return [...left, ...right.reversed];
+    // Smooth normal at vertex i using miter join (average of adjacent perps).
+    List<double> normalAt(int i) {
+      if (i == 0) return sPerps[0];
+      if (i == n - 1) return sPerps[n - 2];
+      final a = sPerps[i - 1];
+      final b = sPerps[i];
+      final avgN = a[0] + b[0];
+      final avgE = a[1] + b[1];
+      final avgLen = sqrt(avgN * avgN + avgE * avgE);
+      if (avgLen < 0.001) return sPerps[i - 1];
+      return [avgN / avgLen, avgE / avgLen];
+    }
+
+    // Offset point on a circle of radius R around center at standard polar angle.
+    LatLng arcPt(LatLng center, double angle) => LatLng(
+          center.latitude + sin(angle) * R,
+          center.longitude + cos(angle) * R,
+        );
+
+    final polygon = <LatLng>[];
+
+    // Start cap: clockwise arc from right[0] → backward direction → left[0]
+    final sn = normalAt(0);
+    final startAngle = atan2(sn[0], sn[1]); // angle of left-side direction
+    for (var j = 0; j <= capSegs; j++) {
+      polygon.add(arcPt(points[0], (startAngle + pi) - j * pi / capSegs));
+    }
+
+    // Left side: vertices 1 .. n-1
+    for (var i = 1; i < n; i++) {
+      final nm = normalAt(i);
+      polygon.add(LatLng(points[i].latitude + nm[0] * R, points[i].longitude + nm[1] * R));
+    }
+
+    // End cap: clockwise arc from left[n-1] → forward direction → right[n-1]
+    final en = normalAt(n - 1);
+    final endAngle = atan2(en[0], en[1]);
+    for (var j = 0; j <= capSegs; j++) {
+      polygon.add(arcPt(points[n - 1], endAngle - j * pi / capSegs));
+    }
+
+    // Right side: vertices n-2 .. 1 (right[0] closes back to start cap automatically)
+    for (var i = n - 2; i >= 1; i--) {
+      final nm = normalAt(i);
+      polygon.add(LatLng(points[i].latitude - nm[0] * R, points[i].longitude - nm[1] * R));
+    }
+
+    return polygon;
   }
 
   void _showMarkerPopup(String deviceId, LocationData loc) {
@@ -299,18 +342,12 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
         if (capsule.isNotEmpty) {
           polygons.add(Polygon(
             points: capsule,
+            isFilled: true,
             color: const Color(0xFF22D3EE).withValues(alpha: 0.15),
             borderColor: const Color(0xFF22D3EE),
             borderStrokeWidth: 2,
           ));
         }
-        // Path centerline for reference
-        polylines.add(Polyline(
-          points: g.path,
-          color: const Color(0xFF22D3EE).withValues(alpha: 0.5),
-          strokeWidth: 1.5,
-          isDotted: true,
-        ));
       }
     }
 
@@ -324,6 +361,7 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
       if (capsule.isNotEmpty) {
         polygons.add(Polygon(
           points: capsule,
+          isFilled: true,
           color: const Color(0xFFF97316).withValues(alpha: 0.12),
           borderColor: const Color(0xFFF97316).withValues(alpha: 0.6),
           borderStrokeWidth: 2,

@@ -40,6 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _provider.fetchGeofenceState();
       _provider.connectSocket();
+      _provider.fetchInitialLocations();
     });
   }
 
@@ -132,37 +133,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ? () => Navigator.of(context).pushNamed('/statistics', arguments: provider.selectedDeviceId)
           : null,
     );
-
-    if (provider.devices.isEmpty) {
-      return Scaffold(
-        body: Container(
-          decoration: _bgDecoration,
-          child: SafeArea(
-            child: Column(
-              children: [
-                navBar,
-                const Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.info_outline, size: 64, color: Colors.white24),
-                        SizedBox(height: 16),
-                        Text('Chưa có thiết bị',
-                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-                        SizedBox(height: 8),
-                        Text('Hãy thêm thiết bị trong trang Hồ sơ',
-                            style: TextStyle(fontSize: 14, color: Colors.white54)),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
 
     return Scaffold(
       body: Container(
