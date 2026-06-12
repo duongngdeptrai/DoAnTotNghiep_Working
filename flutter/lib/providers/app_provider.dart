@@ -578,6 +578,11 @@ class AppProvider with ChangeNotifier {
 				_alerts.insert(0, alert);
 				if (_alerts.length > 50) _alerts.removeLast();
 				_lastNewAlert = alert;
+				final lat = (alertData['lat'] ?? alertData['latitude']) as num?;
+				final lng = (alertData['lng'] ?? alertData['longitude']) as num?;
+				if (alert.deviceId.isNotEmpty && lat != null && lng != null) {
+					_locations[alert.deviceId] = LocationData.fromJson(alertData);
+				}
 				notifyListeners();
 			} catch (e) {
 				debugPrint('Error handling alert message: $e');
@@ -588,6 +593,14 @@ class AppProvider with ChangeNotifier {
 				_alerts.insert(0, alert);
 				if (_alerts.length > 50) _alerts.removeLast();
 				_lastNewAlert = alert;
+				if (alert.deviceId.isNotEmpty && alert.lat != 0.0 && alert.lng != 0.0) {
+					_locations[alert.deviceId] = LocationData(
+						lat: alert.lat,
+						lng: alert.lng,
+						timestamp: alert.timestamp,
+						insideGeofence: message['insideGeofence'] as bool? ?? false,
+					);
+				}
 				notifyListeners();
 			} catch (e) {
 				debugPrint('Error handling geofence_alert message: $e');

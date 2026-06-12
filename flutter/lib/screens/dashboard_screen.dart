@@ -209,7 +209,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         devices: provider.devices,
                         trackingIds: provider.trackingDeviceIds,
                         locations: provider.locations,
+                        focusedDeviceId: _focusedDeviceId,
                         onToggle: provider.toggleTracking,
+                        onFocus: (id) => setState(() => _focusedDeviceId = id),
                         onClose: () => setState(() => _showDeviceList = false),
                       ),
                     ),
@@ -366,7 +368,9 @@ class _DeviceListPanel extends StatelessWidget {
   final List devices;
   final Set<String> trackingIds;
   final Map locations;
+  final String? focusedDeviceId;
   final void Function(String) onToggle;
+  final void Function(String) onFocus;
   final VoidCallback onClose;
 
   const _DeviceListPanel({
@@ -374,7 +378,9 @@ class _DeviceListPanel extends StatelessWidget {
     required this.trackingIds,
     required this.locations,
     required this.onToggle,
+    required this.onFocus,
     required this.onClose,
+    this.focusedDeviceId,
   });
 
   @override
@@ -411,26 +417,46 @@ class _DeviceListPanel extends StatelessWidget {
                 final device = devices[i];
                 final id = device.deviceId as String;
                 final isTracking = trackingIds.contains(id);
+                final isFocused = focusedDeviceId == id;
                 final color = getDeviceColor(id);
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Row(
-                    children: [
-                      Container(width: 10, height: 10,
-                          decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(id,
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
-                            overflow: TextOverflow.ellipsis),
+                return GestureDetector(
+                  onTap: () => onFocus(id),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isFocused ? const Color(0xFF22D3EE).withValues(alpha: 0.12) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border(
+                        left: BorderSide(
+                          color: isFocused ? const Color(0xFF22D3EE) : Colors.transparent,
+                          width: 3,
+                        ),
                       ),
-                      Switch(
-                        value: isTracking,
-                        onChanged: (_) => onToggle(id),
-                        activeColor: const Color(0xFF22D3EE),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(width: 10, height: 10,
+                            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(id,
+                              style: TextStyle(
+                                color: isFocused ? const Color(0xFF22D3EE) : Colors.white,
+                                fontSize: 12,
+                                fontWeight: isFocused ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        Switch(
+                          value: isTracking,
+                          onChanged: (_) => onToggle(id),
+                          activeColor: const Color(0xFF22D3EE),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
