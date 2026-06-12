@@ -28,6 +28,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _showDeviceList = true;
   bool _showAlerts = false;
   String? _focusedDeviceId;
+  String? _focusedGeofenceId;
   int _unreadCount = 0;
   List<ToastItem> _toastAlerts = [];
 
@@ -152,8 +153,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     pendingConfig: provider.isPlanMode ? provider.pendingConfig : null,
                     isPlanMode: provider.isPlanMode,
                     focusedDeviceId: _focusedDeviceId,
-                    onDeviceSelected: (id) => setState(() => _focusedDeviceId = id),
+                    onDeviceSelected: (id) => setState(() {
+                      _focusedDeviceId = id;
+                      _focusedGeofenceId = null;
+                    }),
                     onMapTap: _onMapTap,
+                    focusedGeofenceId: _focusedGeofenceId,
+                    onGeofenceTapped: (g) => setState(() {
+                      _focusedGeofenceId = g.id;
+                      _focusedDeviceId = null;
+                    }),
                   ),
 
                   // Status pill (top left)
@@ -204,11 +213,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   if (_showDeviceList)
                     Positioned(
                       top: 44,
+                      bottom: 4,
                       right: 12,
                       child: _DeviceListPanel(
                         devices: provider.devices,
                         trackingIds: provider.trackingDeviceIds,
-                        locations: provider.locations,
                         focusedDeviceId: _focusedDeviceId,
                         onToggle: provider.toggleTracking,
                         onFocus: (id) => setState(() => _focusedDeviceId = id),
@@ -220,6 +229,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   if (_showAlerts)
                     Positioned(
                       top: 44,
+                      bottom: 4,
                       right: 12,
                       child: _AlertsPanel(
                         alerts: provider.alerts,
@@ -250,7 +260,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   // Geofence editor panel (bottom left, always visible)
                   const Positioned(
                     left: 8,
-                    bottom: 80,
+                    top: 44,
+                    bottom: 8,
                     child: GeofenceEditorPanel(),
                   ),
 
@@ -367,7 +378,6 @@ class _IconPill extends StatelessWidget {
 class _DeviceListPanel extends StatelessWidget {
   final List devices;
   final Set<String> trackingIds;
-  final Map locations;
   final String? focusedDeviceId;
   final void Function(String) onToggle;
   final void Function(String) onFocus;
@@ -376,7 +386,6 @@ class _DeviceListPanel extends StatelessWidget {
   const _DeviceListPanel({
     required this.devices,
     required this.trackingIds,
-    required this.locations,
     required this.onToggle,
     required this.onFocus,
     required this.onClose,
@@ -387,14 +396,13 @@ class _DeviceListPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 220,
-      constraints: const BoxConstraints(maxHeight: 300),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1729).withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
@@ -481,14 +489,13 @@ class _AlertsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 240,
-      constraints: const BoxConstraints(maxHeight: 320),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1729).withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
@@ -641,61 +648,50 @@ class _ModeDock extends StatelessWidget {
   Widget build(BuildContext context) {
     final isFixed = provider.geofenceState.mode == 'fixed';
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 10, 16, bottomPadding + 10),
+      padding: EdgeInsets.fromLTRB(12, 6, 12, bottomPadding + 6),
       decoration: const BoxDecoration(
         color: Color(0xFF0F172A),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _ModeButton(
-                  label: 'Cố định',
-                  active: isFixed,
-                  onTap: () => provider.setGeofenceMode('fixed'),
-                  color: Colors.cyan,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _ModeButton(
-                  label: 'Dùng điện thoại',
-                  active: !isFixed,
-                  onTap: () => provider.setGeofenceMode('mobile'),
-                  color: Colors.orange,
-                ),
-              ),
-            ],
+          _ModeButton(
+            label: 'Cố định',
+            active: isFixed,
+            onTap: () => provider.setGeofenceMode('fixed'),
+            color: Colors.cyan,
           ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const Icon(Icons.circle, size: 6, color: Colors.cyanAccent),
-              const SizedBox(width: 6),
-              Text(
-                '${provider.geofenceState.radiusM.toStringAsFixed(0)}m · ${provider.geofenceState.mode} · ${provider.geofenceState.geofences.length} vùng',
-                style: const TextStyle(fontSize: 11, color: Colors.white54),
+          const SizedBox(width: 6),
+          _ModeButton(
+            label: 'Di động',
+            active: !isFixed,
+            onTap: () => provider.setGeofenceMode('mobile'),
+            color: Colors.orange,
+          ),
+          const SizedBox(width: 10),
+          const Icon(Icons.circle, size: 5, color: Colors.cyanAccent),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(
+              '${provider.geofenceState.radiusM.toStringAsFixed(0)}m · ${provider.geofenceState.geofences.length} vùng',
+              style: const TextStyle(fontSize: 10, color: Colors.white54),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: (provider.shareEnabled ? Colors.green : Colors.orange).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(50),
+            ),
+            child: Text(
+              provider.shareEnabled ? 'Chia sẻ: Bật' : 'Chia sẻ: Tắt',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: provider.shareEnabled ? Colors.greenAccent : Colors.orangeAccent,
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: (provider.shareEnabled ? Colors.green : Colors.orange).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(50),
-                ),
-                child: Text(
-                  'Chia sẻ: ${provider.shareEnabled ? "Bật" : "Tắt"}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: provider.shareEnabled ? Colors.greenAccent : Colors.orangeAccent,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -717,10 +713,10 @@ class _ModeButton extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(
           color: active ? color : Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: active ? color : Colors.white.withValues(alpha: 0.12),
             width: active ? 1.5 : 1,
@@ -728,9 +724,8 @@ class _ModeButton extends StatelessWidget {
         ),
         child: Text(
           label,
-          textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.bold,
             color: active ? const Color(0xFF0B0F1A) : Colors.white.withValues(alpha: 0.5),
           ),

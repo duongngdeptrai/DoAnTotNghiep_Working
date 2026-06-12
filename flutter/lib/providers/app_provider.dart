@@ -16,6 +16,7 @@ class AppProvider with ChangeNotifier {
 	StreamSubscription<Map<String, dynamic>>? _socketMessageSub;
 	StreamSubscription<SocketStatus>? _socketStatusSub;
 	Timer? _pollTimer;
+	Timer? _locationNotifyTimer;
 
 	String? _token;
 	User? _currentUser;
@@ -33,7 +34,6 @@ class AppProvider with ChangeNotifier {
 	List<Alert> _alerts = [];
 	Alert? _lastNewAlert;
 	SocketStatus _socketStatus = SocketStatus.disconnected;
-	Map<String, dynamic>? _latestMessage;
 	bool _shareEnabled = false;
 	bool _isLoading = false;
 	String? _error;
@@ -62,7 +62,6 @@ class AppProvider with ChangeNotifier {
 	List<Alert> get alerts => _alerts;
 	Alert? get lastNewAlert => _lastNewAlert;
 	SocketStatus get socketStatus => _socketStatus;
-	Map<String, dynamic>? get latestMessage => _latestMessage;
 	bool get shareEnabled => _shareEnabled;
 	bool get isLoading => _isLoading;
 	String? get error => _error;
@@ -266,6 +265,14 @@ class AppProvider with ChangeNotifier {
 			_trackingDeviceIds.remove(deviceId);
 		} else {
 			_trackingDeviceIds.add(deviceId);
+			// Set fallback location immediately so the marker appears in the first rebuild.
+			// This prevents the PolylineLayer from appearing in a separate delayed rebuild
+			// (which would cause shader compilation jank when ≥2 devices are tracked).
+			if (!_locations.containsKey(deviceId)) {
+				final lat = _geofenceState.centerLat != 0.0 ? _geofenceState.centerLat : Env.default_lat;
+				final lng = _geofenceState.centerLng != 0.0 ? _geofenceState.centerLng : Env.default_lng;
+				_locations[deviceId] = LocationData(lat: lat, lng: lng, insideGeofence: false, timestamp: 0);
+			}
 			fetchLatestLocation(deviceId);
 		}
 		_saveTrackingDevices();
@@ -279,9 +286,18 @@ class AppProvider with ChangeNotifier {
 
 	// --- Location ---
 
+	void _scheduleLocationNotify() {
+		if (_locationNotifyTimer?.isActive != true) {
+			_locationNotifyTimer = Timer(
+				const Duration(milliseconds: 100),
+				notifyListeners,
+			);
+		}
+	}
+
 	void updateLocation(String deviceId, LocationData location) {
 		_locations[deviceId] = location;
-		notifyListeners();
+		_scheduleLocationNotify();
 	}
 
 	// --- Alerts ---
@@ -376,7 +392,7 @@ class AppProvider with ChangeNotifier {
 			insideGeofence: false,
 			timestamp: 0,
 		);
-		notifyListeners();
+		_scheduleLocationNotify();
 	}
 
 	void fetchInitialLocations() {
@@ -564,9 +580,9 @@ class AppProvider with ChangeNotifier {
 			try {
 				final deviceId = (message['deviceId'] ?? message['device_id']) as String?;
 				final data = message['data'] as Map<String, dynamic>? ?? message;
-				if (deviceId != null) {
+				if (deviceId != null && _trackingDeviceIds.contains(deviceId)) {
 					_locations[deviceId] = LocationData.fromJson(data);
-					notifyListeners();
+					_scheduleLocationNotify();
 				}
 			} catch (e) {
 				debugPrint('Error handling location message: $e');
@@ -580,7 +596,8 @@ class AppProvider with ChangeNotifier {
 				_lastNewAlert = alert;
 				final lat = (alertData['lat'] ?? alertData['latitude']) as num?;
 				final lng = (alertData['lng'] ?? alertData['longitude']) as num?;
-				if (alert.deviceId.isNotEmpty && lat != null && lng != null) {
+				if (alert.deviceId.isNotEmpty && lat != null && lng != null &&
+						_trackingDeviceIds.contains(alert.deviceId)) {
 					_locations[alert.deviceId] = LocationData.fromJson(alertData);
 				}
 				notifyListeners();
@@ -593,7 +610,8 @@ class AppProvider with ChangeNotifier {
 				_alerts.insert(0, alert);
 				if (_alerts.length > 50) _alerts.removeLast();
 				_lastNewAlert = alert;
-				if (alert.deviceId.isNotEmpty && alert.lat != 0.0 && alert.lng != 0.0) {
+				if (alert.deviceId.isNotEmpty && alert.lat != 0.0 && alert.lng != 0.0 &&
+					_trackingDeviceIds.contains(alert.deviceId)) {
 					_locations[alert.deviceId] = LocationData(
 						lat: alert.lat,
 						lng: alert.lng,
@@ -613,12 +631,11 @@ class AppProvider with ChangeNotifier {
 				debugPrint('Error handling geofence_state_update: $e');
 			}
 		}
-
-		_latestMessage = message;
-		notifyListeners();
 	}
 
 	void disconnectSocket() {
+		_locationNotifyTimer?.cancel();
+		_locationNotifyTimer = null;
 		_socketMessageSub?.cancel();
 		_socketMessageSub = null;
 		_socketStatusSub?.cancel();
@@ -626,22 +643,28 @@ class AppProvider with ChangeNotifier {
 		_socketService?.dispose();
 		_socketService = null;
 		_socketStatus = SocketStatus.disconnected;
-		_latestMessage = null;
 		_stopPolling();
 		notifyListeners();
 	}
 
 	void _startPolling() {
 		if (_pollTimer?.isActive == true) return;
-		fetchInitialLocations(); // poll immediately, then on interval
+		fetchInitialLocations();
 		_pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
-			try {
-				for (final deviceId in _trackingDeviceIds) {
-					fetchLatestLocation(deviceId);
+			final ids = _trackingDeviceIds.toList();
+			bool changed = false;
+			await Future.wait(ids.map((id) async {
+				try {
+					final location = await _apiService.fetchLatest(id);
+					if (location != null) {
+						_locations[id] = location;
+						changed = true;
+					}
+				} catch (e) {
+					debugPrint('Polling error ($id): $e');
 				}
-			} catch (e) {
-				debugPrint('Polling error: $e');
-			}
+			}));
+			if (changed) notifyListeners();
 		});
 	}
 
@@ -650,8 +673,10 @@ class AppProvider with ChangeNotifier {
 		_pollTimer = null;
 	}
 
+
 	@override
 	void dispose() {
+		_locationNotifyTimer?.cancel();
 		_stopPolling();
 		disconnectSocket();
 		super.dispose();

@@ -33,7 +33,11 @@ class ApiService {
 		).timeout(const Duration(seconds: 15));
 
 		if (response.statusCode == 200) {
-			final data = jsonDecode(response.body) as Map<String, dynamic>;
+			final decoded = jsonDecode(response.body);
+			if (decoded == null || decoded is! Map<String, dynamic>) {
+				throw Exception('Đăng nhập thất bại: Server trả về dữ liệu không hợp lệ');
+			}
+			final data = decoded;
 			// Backend may return access_token (JWT) or just user info (id, email, createdAt)
 			_token = data['access_token'] as String? ?? data['id'] as String?;
 			final userData = data['user'] as Map<String, dynamic>? ?? data;
@@ -52,7 +56,11 @@ class ApiService {
 		).timeout(const Duration(seconds: 15));
 
 		if (response.statusCode == 200 || response.statusCode == 201) {
-			final data = jsonDecode(response.body) as Map<String, dynamic>;
+			final decoded = jsonDecode(response.body);
+			if (decoded == null || decoded is! Map<String, dynamic>) {
+				throw Exception('Đăng ký thất bại: Server trả về dữ liệu không hợp lệ');
+			}
+			final data = decoded;
 			_token = data['access_token'] as String? ?? data['id'] as String?;
 			final userData = data['user'] as Map<String, dynamic>? ?? data;
 			return User.fromJson(userData);
@@ -69,7 +77,11 @@ class ApiService {
 		).timeout(const Duration(seconds: 15));
 
 		if (response.statusCode == 200) {
-			return User.fromJson(jsonDecode(response.body));
+			final decoded = jsonDecode(response.body);
+			if (decoded == null || decoded is! Map<String, dynamic>) {
+				throw Exception('Không thể lấy thông tin user: Server trả về dữ liệu không hợp lệ');
+			}
+			return User.fromJson(decoded);
 		} else {
 			final detail = _parseError(response);
 			throw Exception('Không thể lấy thông tin user: $detail');
@@ -83,8 +95,12 @@ class ApiService {
 		).timeout(const Duration(seconds: 15));
 
 		if (response.statusCode == 200) {
-			final List<dynamic> data = jsonDecode(response.body);
-			return data.map((json) => Device.fromJson(json)).toList();
+			final decoded = jsonDecode(response.body);
+			if (decoded == null || decoded is! List) return [];
+			return decoded
+					.whereType<Map<String, dynamic>>()
+					.map((json) => Device.fromJson(json))
+					.toList();
 		} else {
 			final detail = _parseError(response);
 			throw Exception('Không thể lấy danh sách thiết bị: $detail');
@@ -142,7 +158,7 @@ class ApiService {
 		).timeout(const Duration(seconds: 15));
 
 		if (response.statusCode == 200) {
-			return GeofenceState.fromJson(jsonDecode(response.body));
+			return GeofenceState.fromJson(_decodeBodyAsMap(response));
 		} else {
 			final detail = _parseError(response);
 			throw Exception('Không thể cập nhật chế độ geofence: $detail');
@@ -156,7 +172,7 @@ class ApiService {
 		).timeout(const Duration(seconds: 15));
 
 		if (response.statusCode == 200) {
-			return GeofenceState.fromJson(jsonDecode(response.body));
+			return GeofenceState.fromJson(_decodeBodyAsMap(response));
 		} else {
 			final detail = _parseError(response);
 			throw Exception('Không thể lấy trạng thái geofence: $detail');
@@ -171,7 +187,7 @@ class ApiService {
 		).timeout(const Duration(seconds: 15));
 
 		if (response.statusCode == 200) {
-			return GeofenceState.fromJson(jsonDecode(response.body));
+			return GeofenceState.fromJson(_decodeBodyAsMap(response));
 		} else {
 			final detail = _parseError(response);
 			throw Exception('Không thể cập nhật bán kính: $detail');
@@ -186,7 +202,7 @@ class ApiService {
 		).timeout(const Duration(seconds: 15));
 
 		if (response.statusCode == 200) {
-			return GeofenceState.fromJson(jsonDecode(response.body));
+			return GeofenceState.fromJson(_decodeBodyAsMap(response));
 		} else {
 			final detail = _parseError(response);
 			throw Exception('Không thể cập nhật tâm vùng: $detail');
@@ -202,7 +218,7 @@ class ApiService {
 		final uri = Uri.parse('$baseUrl/stats/$deviceId').replace(queryParameters: params.isEmpty ? null : params);
 		final response = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 15));
 		if (response.statusCode == 200) {
-			return DeviceStats.fromJson(jsonDecode(response.body));
+			return DeviceStats.fromJson(_decodeBodyAsMap(response));
 		} else {
 			throw Exception('Không thể lấy thống kê: ${_parseError(response)}');
 		}
@@ -215,8 +231,12 @@ class ApiService {
 		final uri = Uri.parse('$baseUrl/stats/$deviceId/aggregated').replace(queryParameters: params);
 		final response = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 15));
 		if (response.statusCode == 200) {
-			final List<dynamic> data = jsonDecode(response.body);
-			return data.map((j) => AggregatedStat.fromJson(j as Map<String, dynamic>)).toList();
+			final decoded = jsonDecode(response.body);
+			if (decoded == null || decoded is! List) return [];
+			return decoded
+					.whereType<Map<String, dynamic>>()
+					.map((j) => AggregatedStat.fromJson(j))
+					.toList();
 		} else {
 			throw Exception('Không thể lấy thống kê tổng hợp: ${_parseError(response)}');
 		}
@@ -254,7 +274,7 @@ class ApiService {
 			headers: _headers,
 		).timeout(const Duration(seconds: 15));
 		if (response.statusCode == 200) {
-			return DeviceConfig.fromJson(jsonDecode(response.body));
+			return DeviceConfig.fromJson(_decodeBodyAsMap(response));
 		} else {
 			throw Exception('Không thể lấy cấu hình: ${_parseError(response)}');
 		}
@@ -307,7 +327,7 @@ class ApiService {
 			body: jsonEncode(body),
 		).timeout(const Duration(seconds: 15));
 		if (response.statusCode == 200) {
-			return GeofenceState.fromJson(jsonDecode(response.body));
+			return GeofenceState.fromJson(_decodeBodyAsMap(response));
 		} else {
 			throw Exception('Không thể lưu geofence: ${_parseError(response)}');
 		}
@@ -319,10 +339,18 @@ class ApiService {
 			headers: _headers,
 		).timeout(const Duration(seconds: 15));
 		if (response.statusCode == 200) {
-			return GeofenceState.fromJson(jsonDecode(response.body));
+			return GeofenceState.fromJson(_decodeBodyAsMap(response));
 		} else {
 			throw Exception('Không thể xóa geofence: ${_parseError(response)}');
 		}
+	}
+
+	Map<String, dynamic> _decodeBodyAsMap(http.Response response) {
+		final decoded = jsonDecode(response.body);
+		if (decoded == null || decoded is! Map<String, dynamic>) {
+			throw Exception('Server trả về dữ liệu không hợp lệ (${response.statusCode})');
+		}
+		return decoded;
 	}
 
 	String _parseError(http.Response response) {

@@ -1,7 +1,7 @@
 name: child_tracking_app
 description: Real-time child tracking Flutter app with geofence alerts.
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.2+3
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

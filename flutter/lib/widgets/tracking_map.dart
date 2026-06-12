@@ -15,6 +15,8 @@ class TrackingMap extends StatefulWidget {
   final Function(String deviceId)? onDeviceSelected;
   final String? focusedDeviceId;
   final Function(LatLng)? onMapTap;
+  final Function(Geofence)? onGeofenceTapped;
+  final String? focusedGeofenceId;
 
   const TrackingMap({
     super.key,
@@ -27,6 +29,8 @@ class TrackingMap extends StatefulWidget {
     this.onDeviceSelected,
     this.focusedDeviceId,
     this.onMapTap,
+    this.onGeofenceTapped,
+    this.focusedGeofenceId,
   });
 
   @override
@@ -43,6 +47,11 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
         widget.focusedDeviceId != oldWidget.focusedDeviceId) {
       final loc = widget.locations[widget.focusedDeviceId!];
       if (loc != null) _flyTo(LatLng(loc.lat, loc.lng));
+    }
+    if (widget.focusedGeofenceId != null &&
+        widget.focusedGeofenceId != oldWidget.focusedGeofenceId) {
+      final g = widget.geofences.where((g) => g.id == widget.focusedGeofenceId).firstOrNull;
+      if (g != null) _flyToGeofence(g);
     }
   }
 
@@ -73,76 +82,172 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
     controller.forward();
   }
 
+  void _flyToGeofence(Geofence g) {
+    if (g.mode == 'fixed' && g.centerLat != null && g.centerLng != null) {
+      _flyTo(LatLng(g.centerLat!, g.centerLng!), zoom: _zoomForRadius(g.radiusM));
+    } else if (g.mode == 'mobile' && g.path.isNotEmpty) {
+      _flyTo(_centroidOf(g.path), zoom: _zoomForPath(g.path));
+    }
+  }
+
+  double _zoomForRadius(double radiusM) {
+    if (radiusM < 50) return 18;
+    if (radiusM < 150) return 17;
+    if (radiusM < 500) return 15;
+    if (radiusM < 2000) return 14;
+    return 13;
+  }
+
+  LatLng _centroidOf(List<LatLng> pts) {
+    final lat = pts.map((p) => p.latitude).reduce((a, b) => a + b) / pts.length;
+    final lng = pts.map((p) => p.longitude).reduce((a, b) => a + b) / pts.length;
+    return LatLng(lat, lng);
+  }
+
+  double _zoomForPath(List<LatLng> pts) {
+    final minLat = pts.map((p) => p.latitude).reduce(min);
+    final maxLat = pts.map((p) => p.latitude).reduce(max);
+    final minLng = pts.map((p) => p.longitude).reduce(min);
+    final maxLng = pts.map((p) => p.longitude).reduce(max);
+    final span = max(maxLat - minLat, maxLng - minLng);
+    if (span < 0.001) return 17;
+    if (span < 0.005) return 15;
+    if (span < 0.02) return 13;
+    return 12;
+  }
+
+  void _showGeofencePopup(Geofence g) {
+    final center = g.mode == 'fixed' && g.centerLat != null
+        ? '${g.centerLat!.toStringAsFixed(5)}, ${g.centerLng!.toStringAsFixed(5)}'
+        : '${g.path.length} điểm';
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1F2937),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        title: Row(
+          children: [
+            const Icon(Icons.shield_outlined, color: Color(0xFF22D3EE), size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                g.name.isNotEmpty ? g.name : g.id,
+                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Divider(color: Colors.white12),
+            _PopupRow(label: 'Loại', value: g.mode == 'fixed' ? 'Vùng cố định' : 'Đường di chuyển'),
+            _PopupRow(label: 'Bán kính', value: '${g.radiusM.toStringAsFixed(0)} m'),
+            _PopupRow(label: 'Vị trí', value: center),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Đóng', style: TextStyle(color: Color(0xFF22D3EE))),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Builds a capsule polygon around a multi-point path.
-  // Uses uniform degree-based radius (metersPerDegree approximation), smooth miter joins
-  // at intermediate vertices, and rounded semicircle caps at both endpoints.
+  // All geometry is computed in a local flat metric space (metres, x=east, y=north)
+  // using cos(lat) to correctly scale longitude degrees, then converted back to LatLng.
+  // This matches the backend's haversine-based _distance_to_segment check exactly.
   List<LatLng> _calculateCapsulePolygon(List<LatLng> points, double radiusM) {
     if (points.length < 2) return [];
 
-    const metersPerDegree = 111320.0;
-    final R = radiusM / metersPerDegree;
-    const capSegs = 8;
+    const metersPerDegLat = 111320.0;
+    final double cosLat = cos(points[0].latitude * pi / 180.0);
+    final double metersPerDegLng = metersPerDegLat * cosLat;
+    final LatLng orig = points[0];
 
-    // CCW perpendicular unit vector for segment p1→p2.
-    // Returns (northComponent, eastComponent) so callers can apply each correctly.
-    List<double> segPerp(LatLng p1, LatLng p2) {
-      final dlat = p2.latitude - p1.latitude;
-      final dlng = p2.longitude - p1.longitude;
-      final len = sqrt(dlat * dlat + dlng * dlng);
-      if (len == 0) return [0.0, 0.0];
-      // CCW rotation of direction (east=dlng, north=dlat):
-      // perp east = -dlat/len, perp north = dlng/len
-      return [dlng / len, -dlat / len]; // [northComp, eastComp]
-    }
+    // Convert LatLng → local metric (x=east metres, y=north metres) relative to orig.
+    double toX(LatLng p) => (p.longitude - orig.longitude) * metersPerDegLng;
+    double toY(LatLng p) => (p.latitude - orig.latitude) * metersPerDegLat;
+
+    // Convert local metric back to LatLng.
+    LatLng fromXY(double x, double y) => LatLng(
+          orig.latitude + y / metersPerDegLat,
+          orig.longitude + x / metersPerDegLng,
+        );
 
     final n = points.length;
-    final sPerps = [for (var i = 0; i < n - 1; i++) segPerp(points[i], points[i + 1])];
+    const capSegs = 8;
+    final R = radiusM; // radius in metres
 
-    // Smooth normal at vertex i using miter join (average of adjacent perps).
+    // CCW unit perpendicular of segment i→i+1 in metric space [px, py].
+    List<double> segPerp(int i) {
+      final dx = toX(points[i + 1]) - toX(points[i]);
+      final dy = toY(points[i + 1]) - toY(points[i]);
+      final len = sqrt(dx * dx + dy * dy);
+      if (len == 0) return [0.0, 0.0];
+      // CCW 90° rotation of (dx, dy) → (-dy, dx)
+      return [-dy / len, dx / len]; // [px=east, py=north]
+    }
+
+    final sPerps = [for (var i = 0; i < n - 1; i++) segPerp(i)];
+
+    // Smooth normal at vertex i via miter join.
     List<double> normalAt(int i) {
       if (i == 0) return sPerps[0];
       if (i == n - 1) return sPerps[n - 2];
       final a = sPerps[i - 1];
       final b = sPerps[i];
-      final avgN = a[0] + b[0];
-      final avgE = a[1] + b[1];
-      final avgLen = sqrt(avgN * avgN + avgE * avgE);
-      if (avgLen < 0.001) return sPerps[i - 1];
-      return [avgN / avgLen, avgE / avgLen];
+      final mx = a[0] + b[0];
+      final my = a[1] + b[1];
+      final mlen = sqrt(mx * mx + my * my);
+      if (mlen < 0.001) return sPerps[i - 1];
+      return [mx / mlen, my / mlen];
     }
 
-    // Offset point on a circle of radius R around center at standard polar angle.
-    LatLng arcPt(LatLng center, double angle) => LatLng(
-          center.latitude + sin(angle) * R,
-          center.longitude + cos(angle) * R,
-        );
+    // Point on a circle of radius R at angle from the x-axis (standard math convention).
+    LatLng arcPt(double cx, double cy, double angle) =>
+        fromXY(cx + cos(angle) * R, cy + sin(angle) * R);
 
     final polygon = <LatLng>[];
 
-    // Start cap: clockwise arc from right[0] → backward direction → left[0]
+    // Start cap: arc from right[0] → backward → left[0]
     final sn = normalAt(0);
-    final startAngle = atan2(sn[0], sn[1]); // angle of left-side direction
+    final x0 = toX(points[0]);
+    final y0 = toY(points[0]);
+    final startAngle = atan2(sn[1], sn[0]); // angle of left-side normal
     for (var j = 0; j <= capSegs; j++) {
-      polygon.add(arcPt(points[0], (startAngle + pi) - j * pi / capSegs));
+      polygon.add(arcPt(x0, y0, (startAngle + pi) - j * pi / capSegs));
     }
 
     // Left side: vertices 1 .. n-1
     for (var i = 1; i < n; i++) {
       final nm = normalAt(i);
-      polygon.add(LatLng(points[i].latitude + nm[0] * R, points[i].longitude + nm[1] * R));
+      final xi = toX(points[i]);
+      final yi = toY(points[i]);
+      polygon.add(fromXY(xi + nm[0] * R, yi + nm[1] * R));
     }
 
-    // End cap: clockwise arc from left[n-1] → forward direction → right[n-1]
+    // End cap: arc from left[n-1] → forward → right[n-1]
     final en = normalAt(n - 1);
-    final endAngle = atan2(en[0], en[1]);
+    final xn = toX(points[n - 1]);
+    final yn = toY(points[n - 1]);
+    final endAngle = atan2(en[1], en[0]);
     for (var j = 0; j <= capSegs; j++) {
-      polygon.add(arcPt(points[n - 1], endAngle - j * pi / capSegs));
+      polygon.add(arcPt(xn, yn, endAngle - j * pi / capSegs));
     }
 
-    // Right side: vertices n-2 .. 1 (right[0] closes back to start cap automatically)
+    // Right side: vertices n-2 .. 1
     for (var i = n - 2; i >= 1; i--) {
       final nm = normalAt(i);
-      polygon.add(LatLng(points[i].latitude - nm[0] * R, points[i].longitude - nm[1] * R));
+      final xi = toX(points[i]);
+      final yi = toY(points[i]);
+      polygon.add(fromXY(xi - nm[0] * R, yi - nm[1] * R));
     }
 
     return polygon;
@@ -301,6 +406,45 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
       }
     }
 
+    // ── Geofence tap markers ──────────────────────────────────────────────────
+    for (final g in widget.geofences) {
+      LatLng? tapCenter;
+      if (g.mode == 'fixed' && g.centerLat != null && g.centerLng != null) {
+        tapCenter = LatLng(g.centerLat!, g.centerLng!);
+      } else if (g.mode == 'mobile' && g.path.isNotEmpty) {
+        tapCenter = _centroidOf(g.path);
+      }
+      if (tapCenter == null) continue;
+
+      final isFocused = widget.focusedGeofenceId == g.id;
+      markers.add(Marker(
+        point: tapCenter,
+        width: isFocused ? 40 : 30,
+        height: isFocused ? 40 : 30,
+        child: GestureDetector(
+          onTap: () {
+            widget.onGeofenceTapped?.call(g);
+            _showGeofencePopup(g);
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF22D3EE).withValues(alpha: isFocused ? 0.25 : 0.12),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: const Color(0xFF22D3EE).withValues(alpha: isFocused ? 0.9 : 0.45),
+                width: isFocused ? 2 : 1.5,
+              ),
+            ),
+            child: Icon(
+              Icons.shield_outlined,
+              color: const Color(0xFF22D3EE).withValues(alpha: isFocused ? 1.0 : 0.65),
+              size: isFocused ? 20 : 15,
+            ),
+          ),
+        ),
+      ));
+    }
+
     // ── Center marker (orange) ────────────────────────────────────────────────
     final centerMarkers = <CircleMarker>[
       CircleMarker(
@@ -387,7 +531,6 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
         points: devicePoints,
         color: const Color(0xFF94A3B8).withValues(alpha: 0.6),
         strokeWidth: 1.5,
-        isDotted: true,
       ));
     }
 
@@ -410,7 +553,7 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
           userAgentPackageName: 'com.child.tracking',
         ),
         if (polygons.isNotEmpty) PolygonLayer(polygons: polygons),
-        if (polylines.isNotEmpty) PolylineLayer(polylines: polylines),
+        PolylineLayer(polylines: polylines),
         if (circleMarkers.isNotEmpty) CircleLayer(circles: circleMarkers),
         CircleLayer(circles: centerMarkers),
         MarkerLayer(markers: markers),

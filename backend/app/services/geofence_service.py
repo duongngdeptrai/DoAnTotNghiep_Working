@@ -177,19 +177,28 @@ class GeofenceService:
         return self.haversine_distance_m(center_lat, center_lng, lat, lng)
 
     def _distance_to_segment(self, p: tuple[float, float], a: tuple[float, float], b: tuple[float, float]) -> float:
-        px, py = p
-        ax, ay = a
-        bx, by = b
+        px, py = p   # (lat, lng)
+        ax, ay = a   # (lat, lng)
+        bx, by = b   # (lat, lng)
 
-        dx, dy = bx - ax, by - ay
-        if dx == 0 and dy == 0:
+        if (bx - ax) == 0 and (by - ay) == 0:
             return self.haversine_distance_m(px, py, ax, ay)
 
-        t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)
+        # Scale lng differences by cos(lat) so both axes are in comparable degree-equivalent units.
+        # Without this, the dot-product mixes lat degrees with lng degrees which have
+        # different metric lengths (~111.3 km/° lat vs ~103.9 km/° lng at Vietnam's latitude).
+        cos_lat = math.cos(math.radians((ax + bx) / 2))
+
+        dx = bx - ax
+        dy = (by - ay) * cos_lat   # scaled to be comparable to lat degrees
+        qx = px - ax
+        qy = (py - ay) * cos_lat
+
+        t = (qx * dx + qy * dy) / (dx * dx + dy * dy)
         t = max(0.0, min(1.0, t))
 
-        nearest_lat = ax + t * dx
-        nearest_lng = ay + t * dy
+        nearest_lat = ax + t * (bx - ax)
+        nearest_lng = ay + t * (by - ay)
 
         return self.haversine_distance_m(px, py, nearest_lat, nearest_lng)
 

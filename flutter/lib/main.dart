@@ -10,10 +10,9 @@ import 'screens/statistics_screen.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Set portrait mode only
   SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
   ]);
 
   // Set system UI overlay style

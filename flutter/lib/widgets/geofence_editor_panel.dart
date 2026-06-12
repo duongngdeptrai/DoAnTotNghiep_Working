@@ -116,14 +116,13 @@ class _GeofenceEditorPanelState extends State<GeofenceEditorPanel> {
 
     return Container(
       width: 210,
-      constraints: const BoxConstraints(maxHeight: 380),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1729).withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
@@ -233,11 +232,12 @@ class _GeofenceEditorPanelState extends State<GeofenceEditorPanel> {
             ),
           ),
           const Divider(color: Colors.white12, height: 1),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 // Name field
                 _buildLabel('Tên vùng'),
                 const SizedBox(height: 4),
@@ -398,6 +398,7 @@ class _GeofenceEditorPanelState extends State<GeofenceEditorPanel> {
               ],
             ),
           ),
+        ),
         ],
       ),
     );
