@@ -1,15 +1,16 @@
+#include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 
-// ============ PIN CONFIG ============
-#define MODEM_TX        26
+// ============ PIN CONFIG (iMaker ESP32 SIM7600CE-M1S) ============
 #define MODEM_RX        27
+#define MODEM_TX        26
 #define MODEM_RESET_PIN 25
 #define LED_PIN         2
 #define mySerial        Serial2
 
-// ============ WIFI — điền SSID và mật khẩu của bạn ============
+// ============ WIFI ============
 const char* WIFI_SSID     = "Viettel_Minh Dong";
 const char* WIFI_PASSWORD = "29122004";
 
@@ -30,7 +31,7 @@ PubSubClient     mqttClient(secureClient);
 struct GpsData {
   double   lat      = 0.0;
   double   lon      = 0.0;
-  uint32_t unixTime = 0;   // Unix epoch (UTC), 0 nếu chưa parse được
+  uint32_t unixTime = 0;
   bool     valid    = false;
 };
 
@@ -38,7 +39,7 @@ struct GpsData {
 
 static void drainSerial() {
   uint32_t t = millis();
-  while (mySerial.available() && millis() - t < 200)
+  while (mySerial.available() && millis() - t < 100)
     mySerial.read();
 }
 
@@ -69,19 +70,25 @@ static String queryAT(const char* cmd, uint32_t timeoutMs = 3000) {
   drainSerial();
   mySerial.print(cmd);
   mySerial.print("\r");
-  return readUntilDone(timeoutMs);
+  String   buf;
+  uint32_t start = millis();
+  while (millis() - start < timeoutMs) {
+    while (mySerial.available()) buf += (char)mySerial.read();
+    if (buf.indexOf("OK") >= 0 || buf.indexOf("ERROR") >= 0) break;
+    delay(5);
+  }
+  return buf;
 }
 
 // ============ GPS PARSE ============
 
-// Chuyển định dạng NMEA (DDMM.MMMMM) sang decimal degrees
 static double nmeaToDeg(const String& nmea) {
   double raw = nmea.toDouble();
   int    deg = (int)(raw / 100);
   return deg + (raw - deg * 100.0) / 60.0;
 }
 
-// Tính Unix epoch (UTC) từ date DDMMYY và time HHMMSS.S
+// Tính Unix epoch UTC từ date DDMMYY và time HHMMSS.S của GPS
 static uint32_t gpsToUnixTime(const String& dateStr, const String& timeStr) {
   if (dateStr.length() < 6 || timeStr.length() < 6) return 0;
 
@@ -94,7 +101,6 @@ static uint32_t gpsToUnixTime(const String& dateStr, const String& timeStr) {
 
   if (day < 1 || day > 31 || month < 1 || month > 12 || year < 2020) return 0;
 
-  // Đếm ngày từ 1970-01-01 đến đầu năm (UTC, tránh mktime vì mktime dùng local time)
   static const int days_in_month[] = {31,28,31,30,31,30,31,31,30,31,30,31};
   uint32_t days = 0;
   for (int y = 1970; y < year; y++) {
@@ -111,9 +117,7 @@ static uint32_t gpsToUnixTime(const String& dateStr, const String& timeStr) {
   return days * 86400UL + hour * 3600UL + min * 60UL + sec;
 }
 
-// Đọc tọa độ và thời gian từ SIM7600 qua AT+CGNSSINFO
-// Response: +CGNSSINFO: mode,gps_sv,glo_sv,bd_sv,lat,N/S,lon,E/W,date,time,alt,speed,course,...
-//            index:        0     1      2      3    4    5    6    7    8    9   10   11    12
+// Parse +CGNSSINFO: mode,gps_sv,glo_sv,bd_sv,lat,N/S,lon,E/W,date,time,alt,speed,course,...
 static bool readGPS(GpsData& out) {
   String buf = queryAT("AT+CGNSSINFO", 3000);
 
@@ -129,8 +133,6 @@ static bool readGPS(GpsData& out) {
 
   String data = line.substring(start + 2);
   data.trim();
-
-  // Nếu bắt đầu bằng ',' → chưa có fix
   if (data.startsWith(",")) { out.valid = false; return false; }
 
   String fields[13];
@@ -142,7 +144,6 @@ static bool readGPS(GpsData& out) {
     pos = c + 1;
   }
 
-  // fields[0]=mode: 2=2D fix, 3=3D fix; cần >= 2 và có lat
   if (n < 10 || fields[0].toInt() < 2 || fields[4].length() == 0) {
     out.valid = false;
     return false;
@@ -152,10 +153,7 @@ static bool readGPS(GpsData& out) {
   if (fields[5] == "S") out.lat = -out.lat;
   out.lon = nmeaToDeg(fields[6]);
   if (fields[7] == "W") out.lon = -out.lon;
-
-  // Parse GPS date/time → Unix epoch UTC
   out.unixTime = gpsToUnixTime(fields[8], fields[9]);
-
   out.valid = true;
   return true;
 }
@@ -165,11 +163,14 @@ static bool readGPS(GpsData& out) {
 static void modemReset() {
   Serial.println("[RST] Resetting modem...");
   pinMode(MODEM_RESET_PIN, OUTPUT);
+
+  // Sequence đúng theo tài liệu board iMaker SIM7600CE-M1S
   digitalWrite(MODEM_RESET_PIN, HIGH);
   delay(50);
   digitalWrite(MODEM_RESET_PIN, LOW);
   delay(1000);
   digitalWrite(MODEM_RESET_PIN, HIGH);
+
   Serial.println("[RST] Waiting for boot (10s)...");
   delay(10000);
   drainSerial();
@@ -230,7 +231,6 @@ void setup() {
 
   Serial.begin(115200);
   delay(500);
-
   Serial.println("\n=== ESP32 GPS Tracker (WiFi + MQTT) ===");
 
   mySerial.setRxBufferSize(2048);
@@ -243,10 +243,9 @@ void setup() {
 
   connectWiFi();
 
-  // setInsecure() bỏ qua xác thực cert TLS — đủ dùng cho prototype
   secureClient.setInsecure();
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-  mqttClient.setBufferSize(512);  // tăng buffer tránh bị cắt payload
+  mqttClient.setBufferSize(512);
   connectMQTT();
 
   Serial.println("[SYS] Ready!\n");
@@ -262,13 +261,19 @@ void loop() {
   if (millis() - lastPublishMs < PUBLISH_INTERVAL_MS) return;
   lastPublishMs = millis();
 
+  // Tự bật lại GPS nếu module tự tắt sau fix
+  String gpsSt = queryAT("AT+CGPS?", 1000);
+  if (gpsSt.indexOf("+CGPS: 0") >= 0) {
+    Serial.println("[GPS] Auto-disabled detected, re-enabling...");
+    sendAT("AT+CGPS=1,1", "OK", 3000);
+  }
+
   GpsData gps;
   if (!readGPS(gps)) {
     Serial.println("[GPS] No fix...");
     return;
   }
 
-  // Dùng GPS Unix time; fallback về millis()/1000 nếu chưa parse được
   uint32_t ts = (gps.unixTime > 0) ? gps.unixTime : (millis() / 1000);
 
   char payload[256];
