@@ -79,6 +79,28 @@ class NotificationService:
                 return config.get("parentEmail") or self.settings.smtp_to_email
         return self.settings.smtp_to_email
 
+    def send_sos_alert(self, device_id: str, lat: float, lng: float, timestamp: int, no_gps: bool = False) -> None:
+        from datetime import datetime, timezone
+        dt = datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%d/%m/%Y %H:%M:%S UTC")
+        if no_gps:
+            message = (
+                f"🆘 SOS KHẨN CẤP!\n"
+                f"Thiết bị: {device_id}\n"
+                f"⚠️ Chưa có tín hiệu GPS\n"
+                f"Thời gian: {dt}"
+            )
+        else:
+            maps_url = f"https://maps.google.com/?q={lat:.6f},{lng:.6f}"
+            message = (
+                f"🆘 SOS KHẨN CẤP!\n"
+                f"Thiết bị: {device_id}\n"
+                f"Vị trí: {lat:.6f}, {lng:.6f}\n"
+                f"Thời gian: {dt}\n"
+                f"🗺 {maps_url}"
+            )
+        logger.warning("SOS received from %s: lat=%s lng=%s", device_id, lat, lng)
+        self.send_telegram(message)
+
     def send_geofence_alert(self, device_id: str, lat: float, lng: float, timestamp: int, event: str, geofence_id: str | None = None) -> None:
         parent_email = self._get_parent_email(device_id)
         if not parent_email:

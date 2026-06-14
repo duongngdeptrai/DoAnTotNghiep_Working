@@ -6,14 +6,16 @@ import paho.mqtt.client as mqtt
 
 from app.core.config import Settings
 from app.services.location_processor import LocationProcessor
+from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
 
 class MQTTService:
-    def __init__(self, settings: Settings, processor: LocationProcessor) -> None:
+    def __init__(self, settings: Settings, processor: LocationProcessor, notification_service: NotificationService) -> None:
         self.settings = settings
         self.processor = processor
+        self.notification_service = notification_service
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self._is_started = False
 
@@ -72,7 +74,8 @@ class MQTTService:
     def _on_connect(self, client: mqtt.Client, userdata, flags, reason_code, properties) -> None:
         if reason_code == 0:
             client.subscribe(self.settings.mqtt_topic)
-            logger.info("[MQTT:CONNECT] Connected and subscribed to: %s", self.settings.mqtt_topic)
+            client.subscribe("sos/#")
+            logger.info("[MQTT:CONNECT] Connected and subscribed to: %s + sos/#", self.settings.mqtt_topic)
         else:
             logger.error("[MQTT:CONNECT] Connection failed with code: %s", reason_code)
 
@@ -83,7 +86,17 @@ class MQTTService:
         try:
             payload = json.loads(msg.payload.decode("utf-8"))
             logger.debug("[MQTT:MSG] %s: %s", msg.topic, payload)
-            self.processor.process(payload)
+
+            if msg.topic.startswith("sos/"):
+                self.notification_service.send_sos_alert(
+                    device_id=payload.get("deviceId", msg.topic.split("/")[-1]),
+                    lat=float(payload.get("lat", 0)),
+                    lng=float(payload.get("lng", 0)),
+                    timestamp=int(payload.get("timestamp", 0)),
+                    no_gps=bool(payload.get("noGps", False)),
+                )
+            else:
+                self.processor.process(payload)
         except json.JSONDecodeError as exc:
             logger.error("[MQTT:ERR] JSON decode failed on topic %s: %s", msg.topic, exc)
         except Exception as exc:

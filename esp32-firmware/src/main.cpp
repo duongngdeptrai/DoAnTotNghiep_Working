@@ -203,7 +203,7 @@ static void sendSOS(const GpsData& gps) {
   }
 
   Serial.printf("[SOS] Publishing: %s\n", payload);
-  bool ok = mqttClient.publish(MQTT_SOS_TOPIC, payload, /*retain=*/true);
+  bool ok = mqttClient.publish(MQTT_SOS_TOPIC, payload, /*retain=*/false);
   Serial.printf("[SOS] %s\n", ok ? "SENT" : "FAILED");
   blinkSOS();
 }

@@ -105,7 +105,7 @@ async def on_startup() -> None:
     app.state.device_permission_repository = device_permission_repository
 
     logger.info("Starting MQTT subscriber...")
-    mqtt_service = MQTTService(settings, location_processor)
+    mqtt_service = MQTTService(settings, location_processor, notification_service)
     mqtt_service.start()
     logger.info(f" -> MQTT: {settings.mqtt_host}:{settings.mqtt_port}")
     logger.info(f" -> Topic: {settings.mqtt_topic}")
