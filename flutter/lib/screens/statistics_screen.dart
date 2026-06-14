@@ -258,16 +258,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final s = _stats!;
     final cards = [
       ('Tổng quãng đường', _formatDistance(s.totalDistanceM), Icons.route),
-      ('Số điểm vị trí', '${s.pointCount}', Icons.location_on_outlined),
       ('Tốc độ TB', '${s.avgSpeedKmh.toStringAsFixed(1)} km/h', Icons.speed),
-      ('Tốc độ tối đa', '${s.maxSpeedKmh.toStringAsFixed(1)} km/h', Icons.flash_on),
+      ('Ra ngoài vùng an toàn', '${s.outsideCount} lần', Icons.gps_off),
     ];
 
     return GridView.count(
-      crossAxisCount: 2,
-      childAspectRatio: 1.6,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
+      crossAxisCount: 3,
+      childAspectRatio: 1.1,
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: cards.map((c) => _StatCard(label: c.$1, value: c.$2, icon: c.$3)).toList(),

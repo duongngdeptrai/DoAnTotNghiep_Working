@@ -17,6 +17,7 @@ class TrackingMap extends StatefulWidget {
   final Function(LatLng)? onMapTap;
   final Function(Geofence)? onGeofenceTapped;
   final String? focusedGeofenceId;
+  final bool isMobileMode;
 
   const TrackingMap({
     super.key,
@@ -31,6 +32,7 @@ class TrackingMap extends StatefulWidget {
     this.onMapTap,
     this.onGeofenceTapped,
     this.focusedGeofenceId,
+    this.isMobileMode = false,
   });
 
   @override
@@ -407,7 +409,7 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
     }
 
     // ── Geofence tap markers ──────────────────────────────────────────────────
-    for (final g in widget.geofences) {
+    if (!widget.isMobileMode) for (final g in widget.geofences) {
       LatLng? tapCenter;
       if (g.mode == 'fixed' && g.centerLat != null && g.centerLng != null) {
         tapCenter = LatLng(g.centerLat!, g.centerLng!);
@@ -458,7 +460,19 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
     ];
 
     // ── Confirmed circle geofences ────────────────────────────────────────────
-    final circleMarkers = geofences_to_circles(widget.geofences);
+    final circleMarkers = widget.isMobileMode
+        ? <CircleMarker>[]
+        : geofences_to_circles(widget.geofences);
+    if (widget.isMobileMode) {
+      circleMarkers.add(CircleMarker(
+        point: widget.center,
+        radius: 50.0,
+        useRadiusInMeter: true,
+        color: const Color(0xFFF97316).withValues(alpha: 0.15),
+        borderColor: const Color(0xFFF97316),
+        borderStrokeWidth: 2.5,
+      ));
+    }
 
     // ── Preview pending circle in plan mode ────────────────────────────────────
     if (widget.isPlanMode &&
@@ -480,7 +494,7 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
     final polygons = <Polygon>[];
     final polylines = <Polyline>[];
 
-    for (final g in widget.geofences) {
+    if (!widget.isMobileMode) for (final g in widget.geofences) {
       if (g.mode == 'mobile' && g.path.length > 1) {
         final capsule = _calculateCapsulePolygon(g.path, g.radiusM);
         if (capsule.isNotEmpty) {

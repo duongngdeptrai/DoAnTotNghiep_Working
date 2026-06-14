@@ -17,6 +17,8 @@ class AppProvider with ChangeNotifier {
 	StreamSubscription<SocketStatus>? _socketStatusSub;
 	Timer? _pollTimer;
 	Timer? _locationNotifyTimer;
+	StreamSubscription<dynamic>? _locationSub;
+	Timer? _locationSyncTimer;
 
 	String? _token;
 	User? _currentUser;
@@ -211,6 +213,7 @@ class AppProvider with ChangeNotifier {
 		disconnectSocket();
 		_stopPolling();
 		_locationService.stopSharing();
+		_cancelPositionSubscription();
 
 		await _saveToStorage();
 		notifyListeners();
@@ -325,6 +328,29 @@ class AppProvider with ChangeNotifier {
 
 	// --- Geofence mode ---
 
+	void _subscribeToPosition() {
+		_locationSub?.cancel();
+		_locationSub = _locationService.positionStream.listen((_) {
+			notifyListeners();
+			_scheduleGeofenceCenterSync();
+		});
+	}
+
+	void _scheduleGeofenceCenterSync() {
+		_locationSyncTimer?.cancel();
+		_locationSyncTimer = Timer(const Duration(seconds: 10), () {
+			final pos = _locationService.currentPosition;
+			if (pos != null) updateGeofenceCenter(pos.latitude, pos.longitude);
+		});
+	}
+
+	void _cancelPositionSubscription() {
+		_locationSub?.cancel();
+		_locationSub = null;
+		_locationSyncTimer?.cancel();
+		_locationSyncTimer = null;
+	}
+
 	Future<void> setGeofenceMode(String mode) async {
 		if (_token == null) return;
 		try {
@@ -333,9 +359,11 @@ class AppProvider with ChangeNotifier {
 			if (mode == 'mobile') {
 				_shareEnabled = true;
 				_locationService.startSharing();
+				_subscribeToPosition();
 			} else {
 				_shareEnabled = false;
 				_locationService.stopSharing();
+				_cancelPositionSubscription();
 			}
 			notifyListeners();
 		} catch (e) {
@@ -349,6 +377,11 @@ class AppProvider with ChangeNotifier {
 		try {
 			final state = await _apiService.fetchGeofenceState();
 			_geofenceState = state;
+			if (state.mode == 'mobile' && !_shareEnabled) {
+				_shareEnabled = true;
+				_locationService.startSharing();
+				_subscribeToPosition();
+			}
 			// Retry loading devices if the initial load failed (e.g. server was sleeping)
 			if (_devices.isEmpty) {
 				await _loadDevices();
@@ -625,7 +658,17 @@ class AppProvider with ChangeNotifier {
 			}
 		} else if (type == 'geofence_state_update') {
 			try {
-				_geofenceState = GeofenceState.fromJson(message);
+				final newState = GeofenceState.fromJson(message);
+				_geofenceState = newState;
+				if (newState.mode == 'mobile' && !_shareEnabled) {
+					_shareEnabled = true;
+					_locationService.startSharing();
+					_subscribeToPosition();
+				} else if (newState.mode != 'mobile' && _shareEnabled) {
+					_shareEnabled = false;
+					_locationService.stopSharing();
+					_cancelPositionSubscription();
+				}
 				notifyListeners();
 			} catch (e) {
 				debugPrint('Error handling geofence_state_update: $e');
@@ -677,6 +720,7 @@ class AppProvider with ChangeNotifier {
 	@override
 	void dispose() {
 		_locationNotifyTimer?.cancel();
+		_cancelPositionSubscription();
 		_stopPolling();
 		disconnectSocket();
 		super.dispose();

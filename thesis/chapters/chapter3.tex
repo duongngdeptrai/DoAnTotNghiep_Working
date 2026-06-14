@@ -1,0 +1,368 @@
+\chapter{Phân Tích và Thiết Kế Hệ Thống}
+
+\section{Phân tích yêu cầu}
+
+\subsection{Yêu cầu chức năng}
+
+\textbf{Đối với phụ huynh (người dùng cuối):}
+
+\begin{enumerate}
+  \item \textbf{Đăng ký / Đăng nhập:} Tạo tài khoản bằng email, đăng nhập bảo mật.
+  \item \textbf{Quản lý thiết bị:} Thêm, xóa thiết bị theo dõi; chia sẻ quyền truy cập với tài khoản khác (ví dụ: ông bà, người thân).
+  \item \textbf{Theo dõi thời gian thực:} Xem vị trí hiện tại của thiết bị trên bản đồ với độ trễ $<$5 giây.
+  \item \textbf{Lịch sử di chuyển:} Xem đường di chuyển trong khoảng thời gian tùy chọn.
+  \item \textbf{Quản lý vùng an toàn:}
+    \begin{itemize}[noitemsep]
+      \item Tạo vùng an toàn hình tròn (tĩnh) với bán kính tùy chỉnh.
+      \item Tạo vùng an toàn di động (theo vị trí phụ huynh).
+      \item Xóa vùng an toàn.
+    \end{itemize}
+  \item \textbf{Cảnh báo:} Nhận thông báo tức thời (in-app, email, Telegram) khi trẻ rời khỏi/trở về vùng an toàn.
+  \item \textbf{Thống kê:} Xem thống kê di chuyển (tổng quãng đường, thời gian, heatmap vị trí).
+\end{enumerate}
+
+\textbf{Đối với thiết bị GPS (ESP32):}
+
+\begin{enumerate}
+  \item Thu thập tọa độ GPS định kỳ (5 giây/lần).
+  \item Kết nối mạng di động qua SIM và gửi dữ liệu lên MQTT broker.
+  \item Tự động kết nối lại khi mất mạng.
+  \item Hoạt động liên tục 8--12 giờ với pin dung lượng phù hợp.
+\end{enumerate}
+
+\subsection{Yêu cầu phi chức năng}
+
+\begin{table}[H]
+\centering
+\caption{Yêu cầu phi chức năng}
+\label{tab:nonfunctional}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Nhóm} & \textbf{Chỉ số} & \textbf{Yêu cầu} \\
+\midrule
+Hiệu năng & Độ trễ end-to-end & $<$5 giây từ GPS đến màn hình \\
+          & Thời gian phản hồi API & $<$500\,ms (p95) \\
+          & Tải đồng thời & $\geq$50 thiết bị/tài khoản \\
+\midrule
+Độ chính xác & GPS ngoài trời & 3--5\,m CEP \\
+             & Geofence & Bán kính tối thiểu 20\,m \\
+\midrule
+Độ tin cậy & Uptime backend & $\geq$99\% \\
+           & Tự phục hồi kết nối & $<$30 giây \\
+\midrule
+Bảo mật & Xác thực & Token-based (JWT) \\
+        & Truyền dữ liệu & HTTPS/TLS cho REST và MQTT \\
+\midrule
+Khả dụng & Nền tảng app & Android 7.0+, iOS 12+ \\
+         & Offline & Cache dữ liệu gần nhất \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Kiến trúc tổng thể hệ thống}
+
+Hệ thống áp dụng kiến trúc \textbf{ba lớp phân tán} (Three-tier Distributed Architecture) kết hợp mô hình IoT pipeline:
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=1.2cm and 2cm,
+  box/.style={rectangle, rounded corners=5pt, minimum width=3cm, minimum height=0.9cm,
+              text centered, draw=black!60, font=\small},
+  cloud/.style={box, fill=blue!8},
+  hw/.style={box, fill=orange!15},
+  app/.style={box, fill=green!10},
+  arrow/.style={-Stealth, thick, draw=black!70}
+]
+  % Hardware layer
+  \node[hw] (esp32) {ESP32};
+  \node[hw, below=0.3cm of esp32] (sim) {SIM7000G};
+  \node[hw, above=0.3cm of esp32] (gps) {GPS Module};
+  \node[draw=orange!60, dashed, rounded corners, fit=(gps)(esp32)(sim),
+        label=left:\rotatebox{90}{\small Thiết bị}] (hw) {};
+
+  % MQTT Broker
+  \node[cloud, right=2.5cm of esp32] (mqtt) {MQTT Broker\\(HiveMQ Cloud)};
+
+  % Backend
+  \node[cloud, right=2.5cm of mqtt] (backend) {FastAPI\\Backend};
+  \node[cloud, below=0.8cm of backend] (mongodb) {MongoDB};
+  \node[cloud, above=0.8cm of backend] (notif) {Notifications\\(Email/Telegram)};
+  \node[draw=blue!40, dashed, rounded corners, fit=(notif)(backend)(mongodb),
+        label=above:\small Cloud Backend] (cloud) {};
+
+  % Clients
+  \node[app, right=2.5cm of backend] (flutter) {Flutter App\\(Android/iOS)};
+  \node[app, above=0.4cm of flutter] (web) {Web Browser\\(React)};
+  \node[draw=green!40, dashed, rounded corners, fit=(web)(flutter),
+        label=right:\small Clients] (clients) {};
+
+  % Arrows
+  \draw[arrow] (esp32) -- node[above]{\tiny MQTT/TLS} (mqtt);
+  \draw[arrow] (mqtt)  -- node[above]{\tiny Subscribe} (backend);
+  \draw[arrow] (backend) -- (mongodb);
+  \draw[arrow] (backend) -- (notif);
+  \draw[arrow] (backend) -- node[above]{\tiny WS/REST} (flutter);
+  \draw[arrow] (backend) -- (web);
+\end{tikzpicture}
+\caption{Kiến trúc tổng thể hệ thống}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Luồng dữ liệu chính}
+
+\begin{enumerate}
+  \item ESP32 đọc tọa độ GPS từ module SIM7000G (lệnh \texttt{AT+CGNSSINFO}) mỗi 5 giây.
+  \item ESP32 publish gói JSON lên MQTT topic \texttt{gps/child\_01} qua kết nối GPRS.
+  \item Backend subscribe topic \texttt{gps/\#}, nhận và parse payload.
+  \item \texttt{LocationProcessor} kiểm tra lọc nhiễu, tính khoảng cách đến geofence, cập nhật trạng thái cảnh báo.
+  \item Vị trí được lưu vào MongoDB; nếu phát sinh cảnh báo, gửi email/Telegram.
+  \item Backend broadcast \texttt{location\_update} qua WebSocket đến tất cả client đang kết nối.
+  \item Flutter app cập nhật marker trên bản đồ và alert history.
+\end{enumerate}
+
+\section{Thiết kế phần cứng}
+
+\subsection{Sơ đồ kết nối phần cứng}
+
+\begin{table}[H]
+\centering
+\caption{Sơ đồ kết nối ESP32 -- SIM7000G}
+\label{tab:hardware_pinout}
+\begin{tabular}{l l l}
+\toprule
+\textbf{ESP32 Pin} & \textbf{SIM7000G Pin} & \textbf{Chức năng} \\
+\midrule
+GPIO 27 (RX) & TX & Nhận dữ liệu AT response \\
+GPIO 26 (TX) & RX & Gửi lệnh AT \\
+GPIO 25     & RST & Reset module \\
+GPIO 2      & --  & LED trạng thái \\
+GND         & GND & Mass chung \\
+3.3V/5V     & VCC & Nguồn (qua LDO 3.7V) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Sơ đồ khối phần cứng}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  block/.style={rectangle, draw, minimum width=2.5cm, minimum height=1cm,
+                text centered, font=\small, fill=gray!10},
+  arrow/.style={-Stealth, thick}
+]
+  \node[block] (bat) {Pin LiPo\\3.7V 2000mAh};
+  \node[block, right=1.5cm of bat] (pmic) {Mạch sạc\\TP4056};
+  \node[block, right=1.5cm of pmic] (esp) {ESP32\\Dev Board};
+  \node[block, below=1.2cm of esp] (sim) {SIM7000G\\Module};
+  \node[block, right=1.5cm of sim] (ant_gps) {Anten\\GPS};
+  \node[block, left=1.5cm of sim] (ant_gsm) {Anten\\GSM};
+
+  \draw[arrow] (bat) -- (pmic);
+  \draw[arrow] (pmic) -- (esp);
+  \draw[arrow] (pmic) -- ++(0,-1.5) -| (sim);
+  \draw[arrow, <->] (esp) -- node[right]{\small UART} (sim);
+  \draw[arrow] (sim) -- (ant_gps);
+  \draw[arrow] (sim) -- (ant_gsm);
+\end{tikzpicture}
+\caption{Sơ đồ khối phần cứng thiết bị GPS}
+\label{fig:hardware_block}
+\end{figure}
+
+\section{Thiết kế backend}
+
+\subsection{Cấu trúc module}
+
+Backend được tổ chức theo mô hình phân lớp (Layered Architecture) với bốn lớp chính:
+
+\begin{description}
+  \item[API Layer (\texttt{api/routes.py}):] Định nghĩa các endpoint REST và WebSocket. Nhận và validate request, trả về response.
+  \item[Service Layer (\texttt{services/}):] Chứa logic nghiệp vụ -- xử lý MQTT, tính geofence, quản lý trạng thái cảnh báo, gửi thông báo.
+  \item[Repository Layer (\texttt{repositories/}):] Trừu tượng hóa truy cập CSDL, cung cấp CRUD operations cho từng collection.
+  \item[Model Layer (\texttt{models/}):] Định nghĩa schema dữ liệu bằng Pydantic, dùng cho validation và serialization.
+\end{description}
+
+\subsection{Thiết kế API}
+
+\begin{table}[H]
+\centering
+\caption{Thiết kế các endpoint REST chính}
+\label{tab:api_design}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Method} & \textbf{Endpoint} & \textbf{Mô tả} \\
+\midrule
+POST & \texttt{/auth/register} & Đăng ký tài khoản \\
+POST & \texttt{/auth/login}    & Đăng nhập, trả về token \\
+\midrule
+GET  & \texttt{/latest/\{device\_id\}}      & Vị trí GPS mới nhất \\
+GET  & \texttt{/history/\{device\_id\}}     & Lịch sử di chuyển \\
+\midrule
+GET  & \texttt{/geofence/state}          & Trạng thái vùng an toàn \\
+POST & \texttt{/geofence/update}         & Cập nhật cấu hình geofence \\
+DELETE & \texttt{/geofence/\{id\}}       & Xóa vùng an toàn \\
+\midrule
+GET  & \texttt{/devices}                 & Danh sách thiết bị \\
+POST & \texttt{/devices}                 & Thêm thiết bị \\
+POST & \texttt{/devices/\{id\}/share}    & Chia sẻ với tài khoản khác \\
+\midrule
+GET  & \texttt{/stats/\{device\_id\}}           & Thống kê tổng hợp \\
+GET  & \texttt{/stats/\{device\_id\}/heatmap}   & Dữ liệu heatmap \\
+\midrule
+WS   & \texttt{/ws}                      & Kết nối WebSocket real-time \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Thiết kế Geofence}
+
+Hệ thống hỗ trợ hai chế độ vùng an toàn:
+
+\textbf{Chế độ tĩnh (Fixed Mode):} Vùng an toàn là hình tròn với tâm cố định $(lat_c, lng_c)$ và bán kính $r$. Thiết bị được xem là \textit{bên trong} nếu:
+\begin{equation}
+  d\big((lat_{gps}, lng_{gps}),\, (lat_c, lng_c)\big) \leq r
+  \label{eq:geofence_fixed}
+\end{equation}
+
+\textbf{Chế độ di động (Mobile Mode):} Vùng an toàn di chuyển theo vị trí của phụ huynh. Tâm geofence được cập nhật liên tục qua REST API từ ứng dụng di động của phụ huynh. Hữu ích khi đón/đưa trẻ.
+
+\subsection{Thiết kế máy trạng thái cảnh báo}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  state/.style={circle, draw, minimum size=2cm, text centered, font=\small},
+  arrow/.style={-Stealth, thick, draw=black!70},
+  label/.style={font=\footnotesize, midway}
+]
+  \node[state, fill=green!20] (inside) {Bên\\trong};
+  \node[state, fill=red!20, right=4cm of inside] (outside) {Bên\\ngoài};
+
+  \draw[arrow, bend left=20] (inside) to
+    node[label, above]{\textit{outside\_entered}} (outside);
+  \draw[arrow, bend left=20] (outside) to
+    node[label, below]{\textit{inside\_entered}} (inside);
+  \draw[arrow, loop right] (outside) to
+    node[label, right]{\textit{outside\_reminder}\\(sau cooldown)} (outside);
+\end{tikzpicture}
+\caption{Máy trạng thái quản lý cảnh báo geofence}
+\label{fig:alert_state_machine}
+\end{figure}
+
+Cơ chế \textbf{cooldown} (mặc định 300 giây) ngăn hệ thống gửi quá nhiều cảnh báo khi thiết bị di chuyển qua lại ranh giới vùng an toàn.
+
+\section{Thiết kế cơ sở dữ liệu}
+
+\subsection{Các collection MongoDB}
+
+\textbf{Collection \texttt{locations}:}
+\begin{lstlisting}[language=json, caption=Schema collection locations]
+{
+  "deviceId":            "child_01",    // ID thiết bị
+  "lat":                 21.0285,       // Vĩ độ (decimal degrees)
+  "lng":                 105.8542,      // Kinh độ (decimal degrees)
+  "timestamp":           1718000000,    // Unix timestamp (giây, UTC)
+  "insideGeofence":      true,          // Có trong vùng an toàn không
+  "distanceFromCenterM": 45.3,          // Khoảng cách đến tâm geofence (m)
+  "geofenceId":          "default",     // ID vùng an toàn áp dụng
+  "receivedAt":          "2024-06-10T08:00:00Z"  // Thời điểm backend nhận
+}
+\end{lstlisting}
+
+\textbf{Index:} \texttt{\{deviceId: 1, timestamp: -1\}} (unique) -- đảm bảo không trùng lặp và truy vấn nhanh theo thời gian.
+
+\textbf{Collection \texttt{geofence\_configs}:}
+\begin{lstlisting}[language=json, caption=Schema collection geofence\_configs]
+{
+  "geofences": [
+    {
+      "id":        "default",
+      "mode":      "fixed",          // "fixed" | "mobile"
+      "centerLat": 21.0285,
+      "centerLng": 105.8542,
+      "radiusM":   100.0,
+      "path":      [],               // Dùng cho mobile mode
+      "updatedAt": 1718000000
+    }
+  ],
+  "updatedAt": "2024-06-10T08:00:00Z"
+}
+\end{lstlisting}
+
+\textbf{Collection \texttt{users}:}
+\begin{lstlisting}[language=json, caption=Schema collection users]
+{
+  "email":        "parent@email.com",
+  "passwordHash": "$2b$12$...",      // bcrypt hash
+  "createdAt":    "2024-06-10T08:00:00Z"
+}
+\end{lstlisting}
+
+\textbf{Collection \texttt{device\_configs}:}
+\begin{lstlisting}[language=json, caption=Schema collection device\_configs]
+{
+  "deviceId":     "child_01",
+  "parentEmail":  "parent@email.com",
+  "alertEnabled": true,
+  "createdAt":    "2024-06-10T08:00:00Z"
+}
+\end{lstlisting}
+
+\section{Thiết kế ứng dụng di động}
+
+\subsection{Kiến trúc ứng dụng Flutter}
+
+Ứng dụng sử dụng mô hình \textbf{MVVM nhẹ} (Model-View-ViewModel light) thông qua Provider:
+
+\begin{description}
+  \item[View (Screens/Widgets):] Dashboard, Profile, Statistics. Không chứa logic nghiệp vụ.
+  \item[ViewModel (AppProvider):] Quản lý trạng thái toàn cục: vị trí, geofence, thiết bị, cảnh báo, kết nối WebSocket.
+  \item[Model:] Plain Dart objects (LocationData, Device, Geofence, Alert).
+  \item[Services:] ApiService (HTTP), SocketService (WebSocket), LocationService (GPS máy).
+\end{description}
+
+\subsection{Màn hình chính (Dashboard)}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\footnotesize]
+  % Phone frame
+  \draw[rounded corners=8pt, thick] (0,0) rectangle (6,10);
+  % Status bar
+  \fill[gray!30] (0.1,9.5) rectangle (5.9,9.9);
+  \node at (3,9.7) {Status bar -- WebSocket status};
+
+  % Map area
+  \fill[blue!5] (0.1,3.5) rectangle (5.9,9.4);
+  \node at (3, 6.5) {[Bản đồ OpenStreetMap]};
+  \draw[dashed, blue!60] (3,6) circle (1cm);
+  \node[fill=red!80, circle, minimum size=6pt, inner sep=0] at (3,6) {};
+  \node[font=\tiny] at (3,5.6) {GPS Marker};
+  \node[font=\tiny, blue!60] at (3.8,6) {Geofence};
+
+  % Bottom panel
+  \fill[gray!15] (0.1,0.1) rectangle (5.9,3.4);
+  \node at (3,3) {[Panel điều khiển Geofence]};
+  \node at (3,2.4) {Bán kính: --- m};
+  \draw (0.5,2.0) rectangle (2.5,2.3); \node at (1.5,2.15) {\tiny Tĩnh};
+  \draw (3.5,2.0) rectangle (5.5,2.3); \node at (4.5,2.15) {\tiny Di động};
+  \node at (3,1.5) {[Danh sách thiết bị]};
+  \node at (3,0.8) {[Lịch sử cảnh báo]};
+\end{tikzpicture}
+\caption{Bố cục màn hình Dashboard ứng dụng Flutter}
+\label{fig:flutter_dashboard}
+\end{figure}
+
+\subsection{Luồng xử lý WebSocket trong ứng dụng}
+
+\begin{enumerate}
+  \item Khi mở app, \texttt{SocketService} kết nối đến \texttt{ws://\{host\}/ws}.
+  \item Nhận message JSON, parse theo trường \texttt{type}:
+    \begin{itemize}[noitemsep]
+      \item \texttt{location\_update}: Cập nhật marker GPS trên bản đồ.
+      \item \texttt{geofence\_alert}: Hiển thị toast notification + thêm vào lịch sử.
+      \item \texttt{geofence\_state\_update}: Vẽ lại vùng an toàn trên bản đồ.
+    \end{itemize}
+  \item Nếu kết nối WebSocket thất bại, fallback sang HTTP polling 3 giây/lần.
+\end{enumerate}

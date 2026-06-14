@@ -112,7 +112,7 @@ class GeofenceService:
         return self.upsert_geofence("default", mode="fixed", source="fixed")
 
     def set_mobile_mode(self) -> dict:
-        return self.upsert_geofence("default", mode="mobile")
+        return self.upsert_geofence("default", mode="mobile", radiusM=50.0)
 
     def update_mobile_center(self, lat: float, lng: float) -> dict:
         return self.upsert_geofence("default", mode="mobile", centerLat=lat, centerLng=lng, source="mobile")

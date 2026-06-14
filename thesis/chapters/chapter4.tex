@@ -1,0 +1,373 @@
+\chapter{Triển Khai}
+
+\section{Môi trường phát triển}
+
+\begin{table}[H]
+\centering
+\caption{Môi trường phát triển và công cụ sử dụng}
+\label{tab:dev_env}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Thành phần} & \textbf{Phiên bản} & \textbf{Mục đích} \\
+\midrule
+Python        & 3.10.x    & Backend development \\
+FastAPI       & 0.115.12  & Web framework \\
+Motor/PyMongo & 3.x       & MongoDB driver \\
+Paho-MQTT     & 2.x       & MQTT client Python \\
+Uvicorn       & 0.30.x    & ASGI server \\
+\midrule
+Dart          & 3.x       & Flutter language \\
+Flutter SDK   & 3.22.x    & Mobile framework \\
+flutter\_map  & 6.x       & Leaflet map wrapper \\
+\midrule
+PlatformIO    & 6.x       & Embedded IDE \\
+Arduino-ESP32 & 2.0.x     & ESP32 framework \\
+\midrule
+MongoDB       & 6.0       & Database \\
+Mosquitto     & 2.0       & Local MQTT broker \\
+Docker        & 24.x      & Containerization \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Triển khai firmware ESP32}
+
+\subsection{Cấu trúc firmware}
+
+Firmware được viết bằng Arduino C++ và quản lý bằng PlatformIO. Cấu hình môi trường trong \texttt{platformio.ini}:
+
+\begin{lstlisting}[language=bash, caption=platformio.ini]
+[env:esp32dev]
+platform  = espressif32
+board     = esp32dev
+framework = arduino
+monitor_speed = 115200
+lib_deps  =
+    knolleary/PubSubClient @ ^2.8
+    bblanchon/ArduinoJson @ ^7.0
+\end{lstlisting}
+
+\subsection{Vòng lặp chính firmware}
+
+\begin{lstlisting}[language=C++, caption=Vòng lặp chính main.cpp (rút gọn)]
+void loop() {
+    // (1) Duy trì kết nối MQTT
+    if (!mqttClient.connected()) reconnectMQTT();
+    mqttClient.loop();
+
+    // (2) Đọc GPS định kỳ
+    if (millis() - lastPublish >= PUBLISH_INTERVAL_MS) {
+        GPSData gps = readGPS();          // AT+CGNSSINFO
+        if (gps.valid) {
+            String payload = buildPayload(gps);
+            mqttClient.publish(MQTT_TOPIC, payload.c_str());
+            blinkLED();
+        }
+        lastPublish = millis();
+    }
+}
+\end{lstlisting}
+
+\subsection{Quy trình khởi động thiết bị}
+
+\begin{enumerate}
+  \item \textbf{Khởi tạo UART:} Mở cổng Serial2 (GPIO 27/26) tốc độ 115200 để giao tiếp với SIM7000G.
+  \item \textbf{Reset module:} Kéo chân RST (GPIO 25) xuống thấp 1 giây, rồi thả ra, chờ module khởi động (3--5 giây).
+  \item \textbf{Bật GPS:} Gửi lệnh \texttt{AT+CGPS=1,1}, chờ phản hồi \texttt{OK}. Module mất 30--60 giây để bắt tín hiệu vệ tinh lần đầu (cold start).
+  \item \textbf{Kết nối GPRS:} Cấu hình APN của nhà mạng (ví dụ: \texttt{v-internet} cho Viettel), thiết lập kết nối dữ liệu.
+  \item \textbf{Kết nối MQTT/TLS:} Kết nối đến HiveMQ Cloud (cổng 8883, TLS 1.2) với thông tin xác thực.
+\end{enumerate}
+
+\subsection{Đọc và parse dữ liệu GPS}
+
+Kết quả lệnh \texttt{AT+CGNSSINFO} trả về định dạng:
+\begin{lstlisting}[caption=Ví dụ phản hồi AT+CGNSSINFO]
++CGNSSINFO: 2,09,00,00,2101.71140,N,10551.25368,E,
+            100624,151523.0,69.5,0.0,0.0,1
+\end{lstlisting}
+
+\textbf{Giải thích các trường:} mode, số vệ tinh GPS/GLONASS/BeiDou, vĩ độ (DDmm.mmmm), hướng N/S, kinh độ (DDDmm.mmmm), hướng E/W, ngày (DDMMYY), giờ UTC (HHMMSS), độ cao (m), tốc độ (knot), hướng di chuyển, HDOP.
+
+\begin{lstlisting}[language=C++, caption=Hàm parse tọa độ NMEA sang decimal degrees]
+double parseNMEA(double raw, char hemi) {
+    int deg = (int)(raw / 100);
+    double min = raw - deg * 100.0;
+    double decimal = deg + min / 60.0;
+    if (hemi == 'S' || hemi == 'W') decimal = -decimal;
+    return decimal;
+}
+// Ví dụ: 2101.71140 N -> deg=21, min=1.7114 -> 21.028523 N
+\end{lstlisting}
+
+\subsection{Định dạng payload MQTT}
+
+\begin{lstlisting}[language=json, caption=JSON payload gửi lên MQTT]
+{
+  "deviceId":  "child_01",
+  "lat":       21.028523,
+  "lng":       105.854267,
+  "timestamp": 1718000123
+}
+\end{lstlisting}
+
+\section{Triển khai backend}
+
+\subsection{Khởi động ứng dụng và vòng đời}
+
+\begin{lstlisting}[language=python, caption=backend/app/main.py -- startup/shutdown events]
+@app.on_event("startup")
+async def startup():
+    await mongo.connect()          # Kết nối MongoDB
+    mqtt_service.start()           # Khởi động MQTT subscriber thread
+    logger.info("Backend started")
+
+@app.on_event("shutdown")
+async def shutdown():
+    mqtt_service.stop()
+    await mongo.close()
+\end{lstlisting}
+
+\subsection{MQTT Subscriber}
+
+\begin{lstlisting}[language=python, caption=services/mqtt\_service.py -- callback xử lý tin nhắn]
+def on_message(client, userdata, msg):
+    try:
+        payload = json.loads(msg.payload.decode())
+        asyncio.run_coroutine_threadsafe(
+            location_processor.process(payload),
+            asyncio.get_event_loop()
+        )
+    except Exception as e:
+        logger.error(f"MQTT parse error: {e}")
+\end{lstlisting}
+
+\subsection{LocationProcessor -- xử lý điểm GPS}
+
+\begin{lstlisting}[language=python, caption=Lõi xử lý trong location\_processor.py]
+async def process(self, payload: dict):
+    loc = LocationIn(**payload)
+
+    # (1) Lọc nhiễu: bỏ qua nếu di chuyển < 5m so với điểm trước
+    last = await location_repo.get_latest(loc.deviceId)
+    if last and haversine(last, loc) < NOISE_THRESHOLD_M:
+        return
+
+    # (2) Kiểm tra geofence
+    cfg = await geofence_repo.get_config()
+    inside, dist, gf_id = geofence_svc.check(loc, cfg)
+
+    # (3) Cập nhật máy trạng thái cảnh báo
+    alert_event = alert_state_svc.update(loc.deviceId, inside, gf_id)
+
+    # (4) Lưu vào MongoDB
+    await location_repo.insert(loc, inside, dist, gf_id)
+
+    # (5) Gửi thông báo nếu có cảnh báo
+    if alert_event:
+        await notif_svc.send(loc.deviceId, alert_event, loc)
+
+    # (6) Broadcast qua WebSocket
+    await ws_manager.broadcast_location(loc, inside, dist)
+    if alert_event:
+        await ws_manager.broadcast_alert(loc.deviceId, alert_event)
+\end{lstlisting}
+
+\subsection{Geofence Service -- thuật toán kiểm tra}
+
+\begin{lstlisting}[language=python, caption=services/geofence\_service.py]
+def haversine(lat1, lng1, lat2, lng2) -> float:
+    R = 6_371_000  # bán kính Trái Đất (m)
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lng2 - lng1)
+    a = (math.sin(dphi/2)**2
+         + math.cos(phi1) * math.cos(phi2) * math.sin(dlam/2)**2)
+    return 2 * R * math.asin(math.sqrt(a))
+
+def check(loc: LocationIn, cfg: GeofenceConfig):
+    min_dist, inside, gf_id = float('inf'), False, None
+    for gf in cfg.geofences:
+        d = haversine(loc.lat, loc.lng, gf.centerLat, gf.centerLng)
+        if d < min_dist:
+            min_dist, gf_id = d, gf.id
+            inside = (d <= gf.radiusM)
+    return inside, min_dist, gf_id
+\end{lstlisting}
+
+\subsection{WebSocket broadcast}
+
+\begin{lstlisting}[language=python, caption=ws/connection\_manager.py]
+class ConnectionManager:
+    def __init__(self):
+        self.active: list[WebSocket] = []
+
+    async def connect(self, ws: WebSocket):
+        await ws.accept()
+        self.active.append(ws)
+
+    async def broadcast_location(self, loc, inside, dist):
+        msg = json.dumps({
+            "type": "location_update",
+            "deviceId": loc.deviceId,
+            "lat": loc.lat, "lng": loc.lng,
+            "timestamp": loc.timestamp,
+            "insideGeofence": inside,
+            "distanceM": dist
+        })
+        for ws in list(self.active):
+            try:
+                await ws.send_text(msg)
+            except:
+                self.active.remove(ws)
+\end{lstlisting}
+
+\subsection{Notification Service}
+
+\begin{lstlisting}[language=python, caption=Gửi cảnh báo qua Email và Telegram]
+async def send_email(device_id: str, event: str, loc: LocationIn):
+    subject = f"[ChildTrack] Cảnh báo: {EVENT_LABELS[event]}"
+    body = (f"Thiết bị: {device_id}\n"
+            f"Sự kiện: {EVENT_LABELS[event]}\n"
+            f"Vị trí: {loc.lat:.6f}, {loc.lng:.6f}\n"
+            f"Thời gian: {datetime.fromtimestamp(loc.timestamp)}")
+    # Gửi qua SMTP (port 587, STARTTLS)
+    with smtplib.SMTP(SMTP_HOST, 587) as server:
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASS)
+        server.sendmail(SMTP_FROM, [parent_email], msg.as_string())
+
+async def send_telegram(device_id: str, event: str, loc: LocationIn):
+    text = f"[{event}] {device_id} - {EVENT_LABELS[event]}"
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    # POST request đến Telegram Bot API
+\end{lstlisting}
+
+\section{Triển khai ứng dụng Flutter}
+
+\subsection{Cấu trúc Provider (AppProvider)}
+
+\begin{lstlisting}[language=dart, caption=Các trường trạng thái trong AppProvider]
+class AppProvider with ChangeNotifier {
+  // Xác thực
+  String?       _token;
+  UserModel?    _currentUser;
+  // Thiết bị
+  List<Device>  _devices = [];
+  // Vị trí real-time
+  Map<String, LocationData> _locations = {};
+  // Geofence
+  GeofenceState? _geofenceState;
+  // Cảnh báo
+  List<Alert>   _alerts = [];
+  // Trạng thái kết nối
+  SocketStatus  _socketStatus = SocketStatus.disconnected;
+  // ...getters, setters, business methods
+}
+\end{lstlisting}
+
+\subsection{Hiển thị bản đồ thời gian thực}
+
+\begin{lstlisting}[language=dart, caption=Widget bản đồ với marker và geofence circle]
+FlutterMap(
+  options: MapOptions(
+    initialCenter: LatLng(21.0285, 105.8542),
+    initialZoom: 16,
+    onTap: (_, latlng) => onMapTap(latlng),  // Đặt tâm geofence
+  ),
+  children: [
+    TileLayer(urlTemplate:
+      "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
+
+    // Vòng tròn geofence
+    if (geofenceState != null)
+      CircleLayer(circles: [
+        CircleMarker(
+          point: LatLng(geofenceState!.centerLat,
+                        geofenceState!.centerLng),
+          radius: geofenceState!.radiusM,
+          useRadiusInMeter: true,
+          color: Colors.cyan.withOpacity(0.15),
+          borderColor: Colors.cyan,
+          borderStrokeWidth: 2,
+        )
+      ]),
+
+    // Marker vị trí thiết bị
+    MarkerLayer(markers: buildMarkers(locations)),
+
+    // Đường di chuyển
+    PolylineLayer(polylines: buildPolylines(history)),
+  ],
+)
+\end{lstlisting}
+
+\subsection{Kết nối WebSocket}
+
+\begin{lstlisting}[language=dart, caption=SocketService -- kết nối và xử lý message]
+void connect() {
+  _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+  _channel!.stream.listen(
+    (data) => _handleMessage(jsonDecode(data)),
+    onError: (_) => _startPollingFallback(),
+    onDone:  () => _reconnect(),
+  );
+}
+
+void _handleMessage(Map<String, dynamic> msg) {
+  switch (msg['type']) {
+    case 'location_update':
+      provider.updateLocation(LocationData.fromJson(msg)); break;
+    case 'geofence_alert':
+      provider.addAlert(Alert.fromJson(msg)); break;
+    case 'geofence_state_update':
+      provider.updateGeofenceState(GeofenceState.fromJson(msg)); break;
+  }
+}
+\end{lstlisting>
+
+\section{Hạ tầng và triển khai cloud}
+
+\subsection{Local development}
+
+\begin{lstlisting}[language=yaml, caption=docker-compose.yml]
+services:
+  mongodb:
+    image: mongo:6.0
+    ports: ["27017:27017"]
+    volumes: ["mongodb_data:/data/db"]
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    ports: ["1883:1883", "9001:9001"]
+    volumes: ["./infra/mosquitto.conf:/mosquitto/config/mosquitto.conf"]
+\end{lstlisting}
+
+\subsection{Triển khai production (Render.com + Cloud)}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  svc/.style={rectangle, draw, rounded corners=4pt, minimum width=3.5cm,
+              minimum height=0.9cm, text centered, font=\small, fill=gray!8},
+  arrow/.style={-Stealth, thick, draw=black!60}
+]
+  \node[svc, fill=orange!15] (esp) {ESP32 + SIM7000G};
+  \node[svc, fill=blue!10, right=2cm of esp] (hivemq) {HiveMQ Cloud\\(MQTT, TLS 8883)};
+  \node[svc, fill=green!10, right=2cm of hivemq] (render) {Render.com\\(FastAPI)};
+  \node[svc, fill=purple!10, below=1cm of render] (atlas) {MongoDB Atlas\\(M0 Free)};
+  \node[svc, fill=cyan!10, right=2cm of render] (flutter) {Flutter App};
+
+  \draw[arrow] (esp)    -- node[above]{\tiny GPRS/4G} (hivemq);
+  \draw[arrow] (hivemq) -- node[above]{\tiny Subscribe} (render);
+  \draw[arrow] (render) -- (atlas);
+  \draw[arrow] (render) -- node[above]{\tiny WS/REST} (flutter);
+\end{tikzpicture}
+\caption{Kiến trúc triển khai production}
+\label{fig:deployment}
+\end{figure}
+
+\begin{description}
+  \item[HiveMQ Cloud (Free):] MQTT broker đám mây, hỗ trợ TLS 8883, 100 kết nối đồng thời.
+  \item[Render.com (Web Service):] Chạy FastAPI trên Python 3.10, auto-deploy từ GitHub.
+  \item[MongoDB Atlas (M0):] 512\,MB dung lượng miễn phí, đủ cho $\sim$3 triệu điểm GPS.
+\end{description}

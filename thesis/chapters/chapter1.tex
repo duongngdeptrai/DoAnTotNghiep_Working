@@ -1,0 +1,62 @@
+\chapter{Giới Thiệu}
+
+\section{Bối cảnh và động lực nghiên cứu}
+
+Trong bối cảnh xã hội hiện đại, sự an toàn của trẻ em trở thành một trong những mối quan tâm hàng đầu của các bậc phụ huynh. Theo thống kê của Cục Trẻ em Việt Nam, số vụ trẻ em bị lạc, mất tích hoặc gặp tai nạn ngoài đường vẫn ở mức đáng lo ngại, đặc biệt tại các đô thị lớn. Cùng với đó, nhịp sống bận rộn khiến phụ huynh không thể thường xuyên có mặt bên cạnh con em trong mọi hoàn cảnh.
+
+Sự bùng nổ của Internet of Things (IoT) và mạng di động thế hệ mới đã mở ra cơ hội ứng dụng công nghệ vào giải quyết vấn đề này. Các thiết bị theo dõi GPS giá thành ngày càng thấp, cùng với hạ tầng điện toán đám mây và ứng dụng di động mạnh mẽ, tạo điều kiện xây dựng hệ thống giám sát vị trí trẻ em hoàn chỉnh và khả thi.
+
+\section{Mục tiêu đề tài}
+
+Đề tài đặt ra các mục tiêu cụ thể sau:
+
+\begin{enumerate}
+  \item \textbf{Thiết bị phần cứng:} Thiết kế và lập trình thiết bị nhúng dựa trên vi điều khiển ESP32 tích hợp module GPS và kết nối mạng di động (SIM), có khả năng hoạt động độc lập và gửi dữ liệu vị trí liên tục.
+
+  \item \textbf{Hạ tầng backend:} Xây dựng hệ thống máy chủ nhận, lưu trữ và xử lý dữ liệu GPS thời gian thực, thực hiện kiểm tra vùng an toàn (geofence) và gửi cảnh báo.
+
+  \item \textbf{Ứng dụng di động:} Phát triển ứng dụng Flutter đa nền tảng cho phép phụ huynh theo dõi vị trí trẻ em trực tuyến, định cấu hình vùng an toàn và nhận thông báo tức thời.
+
+  \item \textbf{Tích hợp hệ thống:} Đảm bảo sự kết hợp liên thông và ổn định giữa ba thành phần trên qua các giao thức chuẩn (MQTT, REST, WebSocket).
+\end{enumerate}
+
+\section{Phạm vi nghiên cứu}
+
+\textbf{Phạm vi thực hiện:}
+\begin{itemize}[noitemsep]
+  \item Thiết kế phần cứng và lập trình firmware cho thiết bị ESP32 + GPS + SIM7000.
+  \item Xây dựng backend API (FastAPI) và cơ sở dữ liệu (MongoDB).
+  \item Triển khai dịch vụ MQTT broker và xử lý luồng dữ liệu IoT.
+  \item Phát triển ứng dụng di động Flutter (Android/iOS).
+  \item Tích hợp thông báo qua email và Telegram.
+  \item Kiểm thử và đánh giá hệ thống trong điều kiện thực tế.
+\end{itemize}
+
+\textbf{Phạm vi ngoài đề tài:}
+\begin{itemize}[noitemsep]
+  \item Không bao gồm thiết kế PCB chuyên dụng (sử dụng module phát triển).
+  \item Không triển khai hệ thống trên quy mô thương mại lớn.
+  \item Không tích hợp AI/ML cho nhận diện bất thường.
+\end{itemize}
+
+\section{Phương pháp nghiên cứu}
+
+Đề tài sử dụng phương pháp nghiên cứu kết hợp:
+\begin{itemize}
+  \item \textbf{Nghiên cứu lý thuyết:} Tổng quan tài liệu về kiến trúc IoT, giao thức MQTT, thuật toán geofence (Haversine), công nghệ GPS và các hệ thống theo dõi hiện có.
+  \item \textbf{Thực nghiệm:} Xây dựng prototype phần cứng, phát triển phần mềm theo mô hình Agile, kiểm thử tích hợp và kiểm thử chấp nhận người dùng.
+  \item \textbf{Đánh giá:} Đo lường các chỉ số hiệu năng (độ trễ, độ chính xác GPS, tải hệ thống) và so sánh với yêu cầu đề ra.
+\end{itemize}
+
+\section{Cấu trúc đồ án}
+
+Đồ án được tổ chức thành sáu chương:
+
+\begin{description}[style=nextline]
+  \item[Chương 1 – Giới Thiệu] Trình bày bối cảnh, mục tiêu, phạm vi và phương pháp nghiên cứu.
+  \item[Chương 2 – Công Nghệ Nền Tảng] Tổng quan các công nghệ sử dụng: IoT, MQTT, GPS, FastAPI, Flutter, MongoDB.
+  \item[Chương 3 – Phân Tích và Thiết Kế Hệ Thống] Phân tích yêu cầu, kiến trúc tổng thể, thiết kế chi tiết từng thành phần.
+  \item[Chương 4 – Triển Khai] Mô tả quá trình cài đặt phần cứng, lập trình firmware, backend và ứng dụng di động.
+  \item[Chương 5 – Kiểm Thử và Đánh Giá] Trình bày kết quả kiểm thử, đo lường hiệu năng và nhận xét.
+  \item[Chương 6 – Kết Luận] Tổng kết, đóng góp của đề tài và định hướng phát triển.
+\end{description}

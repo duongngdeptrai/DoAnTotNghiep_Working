@@ -1,0 +1,203 @@
+\chapter{Công Nghệ Nền Tảng}
+
+\section{Internet of Things (IoT) và theo dõi vị trí}
+
+\subsection{Tổng quan IoT}
+
+Internet of Things (IoT) là mạng lưới các thiết bị vật lý được nhúng cảm biến, phần mềm và kết nối mạng, cho phép thu thập và trao đổi dữ liệu \cite{atzori2010iot}. Kiến trúc IoT điển hình gồm bốn lớp:
+
+\begin{enumerate}
+  \item \textbf{Lớp thiết bị (Device Layer):} Cảm biến, bộ truyền động và vi điều khiển thu thập dữ liệu vật lý.
+  \item \textbf{Lớp kết nối (Connectivity Layer):} Giao thức truyền thông (WiFi, 4G/LTE, LoRa, Zigbee).
+  \item \textbf{Lớp xử lý (Processing Layer):} Edge computing hoặc cloud server xử lý và lưu trữ dữ liệu.
+  \item \textbf{Lớp ứng dụng (Application Layer):} Giao diện người dùng, phân tích và điều khiển.
+\end{enumerate}
+
+\subsection{Hệ thống định vị GPS}
+
+Global Positioning System (GPS) là hệ thống định vị vệ tinh toàn cầu do Bộ Quốc phòng Hoa Kỳ vận hành. Nguyên lý hoạt động dựa trên phép đo thời gian truyền tín hiệu từ ít nhất bốn vệ tinh để xác định tọa độ ba chiều của thiết bị thu.
+
+Dữ liệu GPS được biểu diễn theo chuẩn NMEA (National Marine Electronics Association) với các câu dữ liệu như \texttt{GPRMC}, \texttt{GPGGA}. Định dạng tọa độ NMEA sử dụng ký hiệu \texttt{DDmm.mmmm} (độ-phút thập phân), cần chuyển đổi sang độ thập phân:
+
+\begin{equation}
+  \text{Độ thập phân} = \left\lfloor \frac{\text{NMEA}}{100} \right\rfloor + \frac{\text{NMEA} \bmod 100}{60}
+  \label{eq:nmea_convert}
+\end{equation}
+
+Độ chính xác GPS dân dụng thông thường đạt 3--5\,m trong điều kiện bầu trời thoáng, và có thể giảm xuống 10--30\,m trong môi trường đô thị do hiệu ứng đa đường (multipath).
+
+\section{Giao thức MQTT}
+
+\subsection{Giới thiệu MQTT}
+
+MQTT (Message Queuing Telemetry Transport) là giao thức nhắn tin nhẹ theo mô hình publish/subscribe, được thiết kế cho môi trường băng thông thấp và độ tin cậy cao \cite{banks2019mqtt}. Giao thức được phát triển năm 1999 bởi IBM và hiện là tiêu chuẩn OASIS.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=2cm,
+  box/.style={rectangle, rounded corners, minimum width=2.5cm, minimum height=1cm,
+              text centered, draw=black, fill=blue!10},
+  arrow/.style={-Stealth, thick}
+]
+  \node[box] (pub) {Thiết bị GPS\\(Publisher)};
+  \node[box, right=3cm of pub] (broker) {MQTT Broker};
+  \node[box, above right=1cm and 2cm of broker] (sub1) {Backend\\(Subscriber)};
+  \node[box, below right=1cm and 2cm of broker] (sub2) {App khác\\(Subscriber)};
+
+  \draw[arrow] (pub) -- node[above]{\small \texttt{gps/child\_01}} (broker);
+  \draw[arrow] (broker) -- (sub1);
+  \draw[arrow] (broker) -- (sub2);
+\end{tikzpicture}
+\caption{Mô hình Publish/Subscribe của MQTT}
+\label{fig:mqtt_model}
+\end{figure}
+
+\subsection{Các khái niệm cốt lõi}
+
+\begin{description}
+  \item[Topic:] Chuỗi phân cấp xác định kênh truyền tin (ví dụ: \texttt{gps/child\_01}). Hỗ trợ ký tự đại diện \texttt{+} (một cấp) và \texttt{\#} (nhiều cấp).
+  \item[QoS (Quality of Service):] Ba mức đảm bảo giao tin: QoS 0 (at most once), QoS 1 (at least once), QoS 2 (exactly once).
+  \item[Retain:] Broker lưu giữ tin nhắn cuối cùng của topic để gửi cho subscriber mới.
+  \item[Keep Alive:] Cơ chế giám sát kết nối bằng gói PINGREQ/PINGRESP.
+\end{description}
+
+\subsection{Tại sao chọn MQTT cho IoT GPS?}
+
+So với HTTP REST polling, MQTT có ưu điểm vượt trội cho hệ thống IoT:
+
+\begin{table}[H]
+\centering
+\caption{So sánh MQTT và HTTP REST cho ứng dụng IoT}
+\label{tab:mqtt_vs_http}
+\begin{tabularx}{\textwidth}{l X X}
+\toprule
+\textbf{Tiêu chí} & \textbf{MQTT} & \textbf{HTTP REST} \\
+\midrule
+Kích thước header & 2 byte (tối thiểu) & 200--800 byte \\
+Mô hình & Push (event-driven) & Pull (polling) \\
+Băng thông & Rất thấp & Cao \\
+Độ trễ & $<$100\,ms & 200--1000\,ms \\
+Pin thiết bị & Tiết kiệm & Tốn nhiều \\
+Kết nối lâu dài & Có & Không (stateless) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Vi điều khiển ESP32}
+
+ESP32 là dòng vi điều khiển 32-bit dual-core (Xtensa LX6 @ 240\,MHz) của Espressif Systems, tích hợp sẵn WiFi 802.11 b/g/n và Bluetooth 4.2/BLE \cite{espressif2023esp32}. Đặc điểm kỹ thuật chính:
+
+\begin{itemize}[noitemsep]
+  \item CPU: Dual-core Xtensa LX6, 240\,MHz
+  \item RAM: 520\,KB SRAM
+  \item Flash: 4\,MB (module thông dụng)
+  \item GPIO: 34 chân đa chức năng (UART, SPI, I2C, ADC, DAC)
+  \item Điện áp: 3.3\,V, nguồn cấp 5\,V qua USB
+  \item Tiêu thụ điện: 80\,mA (hoạt động đầy đủ), 10\,$\mu$A (deep sleep)
+\end{itemize}
+
+ESP32 được chọn vì giá thành thấp ($<$5 USD), cộng đồng lớn, hỗ trợ Arduino/PlatformIO và tích hợp nhiều giao tiếp ngoại vi phù hợp để kết nối module GPS và SIM.
+
+\section{Module GSM/GPRS SIM7000}
+
+\subsection{Tổng quan SIM7000}
+
+SIM7000 là module IoT tích hợp đa chuẩn của SIMCom, hỗ trợ LTE Cat-M1, NB-IoT và GPRS \cite{simcom2023sim7000}. Đặc biệt, phiên bản SIM7000G bao gồm bộ thu GPS tích hợp, cho phép một module thực hiện cả hai chức năng: định vị và kết nối mạng di động.
+
+\textbf{Thông số kỹ thuật chính:}
+\begin{itemize}[noitemsep]
+  \item Chuẩn mạng: LTE Cat-M1/NB-IoT, GPRS/EDGE
+  \item GPS: Tích hợp, hỗ trợ GPS/GLONASS/BeiDou
+  \item Giao tiếp: UART (AT commands), tốc độ 115200 baud
+  \item Nguồn: 3.4--4.4\,V (điển hình 3.7\,V LiPo)
+  \item SIM: Nano-SIM
+  \item Băng tần: B1/B2/B3/B4/B5/B8/B12/B13/B18/B19/B20/B25/B26/B28
+\end{itemize}
+
+\subsection{Giao tiếp AT Command}
+
+Thiết bị giao tiếp với SIM7000 qua lệnh AT (Hayes command set). Các lệnh quan trọng cho ứng dụng theo dõi GPS:
+
+\begin{lstlisting}[language=bash, caption=Các lệnh AT cơ bản cho SIM7000]
+AT+CGPS=1,1      ; Bật GPS (chế độ độc lập)
+AT+CGNSSINFO     ; Truy vấn thông tin GPS (vị trí, tốc độ, thời gian)
+AT+SAPBR=3,1,"CONTYPE","GPRS"  ; Cấu hình kết nối GPRS
+AT+CSTT="m-vnpt","",""         ; Thiết lập APN (Viettel: v-internet)
+AT+CIPSTART="TCP","host",1883  ; Kết nối TCP đến MQTT broker
+\end{lstlisting}
+
+\section{FastAPI và kiến trúc REST}
+
+FastAPI là framework Python hiện đại để xây dựng API, dựa trên tiêu chuẩn OpenAPI và JSON Schema \cite{ramirez2021fastapi}. Đặc điểm nổi bật:
+
+\begin{itemize}
+  \item \textbf{Hiệu năng cao:} Dựa trên Starlette (ASGI) và Uvicorn, hiệu năng tương đương NodeJS và Go.
+  \item \textbf{Type hints:} Khai báo kiểu dữ liệu Python tự động sinh validation và tài liệu API.
+  \item \textbf{Async/Await:} Hỗ trợ lập trình bất đồng bộ native, phù hợp xử lý nhiều kết nối đồng thời.
+  \item \textbf{Pydantic:} Tích hợp validation dữ liệu và serialization tự động.
+  \item \textbf{WebSocket:} Hỗ trợ kết nối WebSocket song song với REST endpoint.
+\end{itemize}
+
+\section{MongoDB}
+
+MongoDB là hệ quản trị cơ sở dữ liệu NoSQL hướng tài liệu (document-oriented), lưu trữ dữ liệu dưới dạng BSON (Binary JSON) \cite{banker2011mongodb}. Lý do lựa chọn MongoDB cho hệ thống:
+
+\begin{itemize}[noitemsep]
+  \item Schema linh hoạt -- phù hợp dữ liệu GPS có thể mở rộng thêm trường (tốc độ, độ cao, v.v.).
+  \item Hỗ trợ chỉ mục địa lý (2dsphere) cho truy vấn không gian.
+  \item Hiệu năng ghi cao -- cần thiết cho luồng dữ liệu GPS liên tục (1 điểm/5 giây/thiết bị).
+  \item Truy vấn aggregation pipeline mạnh mẽ cho thống kê và heatmap.
+\end{itemize}
+
+\section{Flutter}
+
+Flutter là framework phát triển ứng dụng đa nền tảng (Android, iOS, Web, Desktop) từ cùng một codebase Dart, do Google phát triển \cite{flutter2023}. Ứng dụng Flutter được biên dịch trực tiếp sang mã máy native, không sử dụng WebView hay bridge JavaScript, đảm bảo hiệu năng cao và trải nghiệm mượt mà.
+
+Hệ thống quản lý trạng thái sử dụng \texttt{Provider} -- một pattern đơn giản, hiệu quả để chia sẻ và lắng nghe thay đổi trạng thái giữa các widget.
+
+\section{WebSocket}
+
+WebSocket là giao thức truyền thông hai chiều (full-duplex) qua kết nối TCP duy nhất, được chuẩn hóa trong RFC 6455 \cite{fette2011websocket}. Trong hệ thống này, WebSocket đóng vai trò kênh đẩy (push channel) từ backend đến ứng dụng Flutter, cho phép server chủ động gửi cập nhật vị trí và cảnh báo mà không cần client polling.
+
+\section{Thuật toán Haversine}
+
+Thuật toán Haversine tính khoảng cách đường tròn lớn (great-circle distance) giữa hai điểm trên mặt cầu, dựa trên vĩ độ/kinh độ \cite{sinnott1984virtues}:
+
+\begin{equation}
+  a = \sin^2\!\left(\frac{\Delta\varphi}{2}\right) + \cos\varphi_1 \cdot \cos\varphi_2 \cdot \sin^2\!\left(\frac{\Delta\lambda}{2}\right)
+  \label{eq:haversine_a}
+\end{equation}
+
+\begin{equation}
+  d = 2R \cdot \arcsin\!\left(\sqrt{a}\right)
+  \label{eq:haversine_d}
+\end{equation}
+
+Trong đó: $\varphi$ là vĩ độ (radian), $\lambda$ là kinh độ (radian), $R = 6{,}371{,}000$\,m là bán kính Trái Đất. Thuật toán này được dùng để kiểm tra xem thiết bị GPS có nằm trong vùng an toàn hay không.
+
+\section{Tổng quan các công nghệ liên quan}
+
+Bảng \ref{tab:tech_summary} tổng hợp stack công nghệ sử dụng trong hệ thống:
+
+\begin{table}[H]
+\centering
+\caption{Tổng hợp công nghệ sử dụng}
+\label{tab:tech_summary}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Thành phần} & \textbf{Công nghệ} & \textbf{Vai trò} \\
+\midrule
+Phần cứng     & ESP32 + SIM7000G  & Vi điều khiển + GPS/GPRS \\
+Firmware      & Arduino C++ (PlatformIO) & Lập trình nhúng \\
+MQTT Broker   & Mosquitto / HiveMQ Cloud & Nhận GPS payload từ thiết bị \\
+Backend API   & FastAPI (Python)   & REST API, xử lý geofence \\
+Cơ sở dữ liệu & MongoDB           & Lưu trữ vị trí, cấu hình \\
+Real-time     & WebSocket          & Đẩy cập nhật tới app \\
+Mobile App    & Flutter (Dart)     & Giao diện người dùng \\
+Bản đồ        & flutter\_map + OSM & Hiển thị vị trí trực quan \\
+Thông báo     & SMTP / Telegram Bot & Cảnh báo ra ngoài vùng \\
+Deploy        & Render.com + MongoDB Atlas & Hạ tầng cloud \\
+\bottomrule
+\end{tabularx}
+\end{table}

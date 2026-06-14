@@ -1,4 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+
+VN_TZ = timezone(timedelta(hours=7))
 from typing import Optional
 from pymongo.errors import DuplicateKeyError
 import math
@@ -69,6 +71,7 @@ class LocationRepository:
                 "activeDurationSec": 0,
                 "avgSpeedKmh": None,
                 "stopCount": 0,
+                "outsideCount": 0,
             }
 
         total_points = len(points)
@@ -100,12 +103,27 @@ class LocationRepository:
             if avg_speed_kmh < 0.01:  # effectively zero
                 avg_speed_kmh = 0.0
 
+        # Count inside→outside geofence transitions
+        geofence_cursor = self.collection.find(
+            {"deviceId": device_id, "timestamp": {"$gte": start, "$lte": end}},
+            projection={"_id": 0, "insideGeofence": 1},
+        ).sort("timestamp", 1)
+
+        outside_count = 0
+        prev_inside: bool | None = None
+        for gp in geofence_cursor:
+            inside = gp.get("insideGeofence", True)
+            if prev_inside is True and inside is False:
+                outside_count += 1
+            prev_inside = inside
+
         return {
             "totalPoints": total_points,
             "totalDistanceM": round(total_distance_m, 2),
             "activeDurationSec": duration_sec,
             "avgSpeedKmh": round(avg_speed_kmh, 2) if avg_speed_kmh is not None else None,
             "stopCount": stop_count,
+            "outsideCount": outside_count,
         }
 
     def get_aggregated_stats(
@@ -114,8 +132,6 @@ class LocationRepository:
         """Get aggregated statistics based on the provided interval (hour, day, week, year).
         Returns all intervals in range, filling missing ones with zeros.
         """
-        from datetime import datetime, timedelta
-
         # Get all points in range sorted by timestamp
         cursor = self.collection.find(
             {"deviceId": device_id, "timestamp": {"$gte": start, "$lte": end}},
@@ -136,19 +152,19 @@ class LocationRepository:
                 return dt.strftime("%Y")
             return dt.strftime("%Y-%m-%d")
 
-        # Group points by the chosen interval
+        # Group points by the chosen interval — use VN_TZ so day boundaries align with Vietnam time
         aggregated_groups = {}
         for p in points:
-            dt = datetime.fromtimestamp(p["timestamp"], tz=timezone.utc)
+            dt = datetime.fromtimestamp(p["timestamp"], tz=VN_TZ)
             label = format_label(dt, interval)
             if label not in aggregated_groups:
                 aggregated_groups[label] = []
             aggregated_groups[label].append(p)
 
-        # Generate ALL labels in range
+        # Generate ALL labels in range (also in VN_TZ)
         all_labels = []
-        current = datetime.fromtimestamp(start, tz=timezone.utc)
-        end_dt = datetime.fromtimestamp(end, tz=timezone.utc)
+        current = datetime.fromtimestamp(start, tz=VN_TZ)
+        end_dt = datetime.fromtimestamp(end, tz=VN_TZ)
 
         while current <= end_dt:
             label = format_label(current, interval)

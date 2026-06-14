@@ -191,7 +191,7 @@ def update_geofence_center(
 ) -> dict:
     geofence_service = request.app.state.geofence_service
     state = geofence_service.upsert_geofence(
-        "default", mode="fixed", centerLat=payload.lat, centerLng=payload.lng, source="fixed"
+        "default", centerLat=payload.lat, centerLng=payload.lng
     )
     flat = _flat_geofence_state(state)
     ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})

@@ -152,6 +152,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     geofences: provider.geofenceState.geofences,
                     pendingConfig: provider.isPlanMode ? provider.pendingConfig : null,
                     isPlanMode: provider.isPlanMode,
+                    isMobileMode: provider.geofenceState.mode == 'mobile',
                     focusedDeviceId: _focusedDeviceId,
                     onDeviceSelected: (id) => setState(() {
                       _focusedDeviceId = id;

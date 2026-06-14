@@ -1,0 +1,158 @@
+%% ============================================================
+%% SOICT – HUST  Đồ Án Tốt Nghiệp
+%% Hệ thống theo dõi vị trí trẻ em theo thời gian thực
+%% ============================================================
+\documentclass[13pt, a4paper]{report}
+
+%% ── Encoding & Language ──────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese,english]{babel}
+
+%% ── Page Layout ─────────────────────────────────────────────
+\usepackage[
+  top=3.5cm, bottom=3cm,
+  left=3.5cm, right=2cm,
+  headheight=15pt
+]{geometry}
+
+%% ── Typography ───────────────────────────────────────────────
+\usepackage{times}           % Times New Roman
+\usepackage{setspace}
+\onehalfspacing              % 1.5 line spacing
+
+%% ── Graphics & Colors ────────────────────────────────────────
+\usepackage{graphicx}
+\usepackage[dvipsnames,svgnames,table]{xcolor}
+\graphicspath{{images/}}
+
+%% ── Tables ───────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+
+%% ── Math ─────────────────────────────────────────────────────
+\usepackage{amsmath, amssymb, amsfonts}
+
+%% ── Code Listings ────────────────────────────────────────────
+\usepackage{listings}
+\usepackage{lstautogobble}
+\definecolor{codegray}{rgb}{0.95,0.95,0.95}
+\definecolor{keywordblue}{RGB}{0,0,200}
+\definecolor{commentgreen}{RGB}{0,128,0}
+\definecolor{stringred}{RGB}{163,21,21}
+\lstdefinestyle{mystyle}{
+  backgroundcolor=\color{codegray},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{keywordblue}\bfseries,
+  commentstyle=\color{commentgreen}\itshape,
+  stringstyle=\color{stringred},
+  breakatwhitespace=false,
+  breaklines=true,
+  captionpos=b,
+  keepspaces=true,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  numbersep=5pt,
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  tabsize=2,
+  frame=single,
+  rulecolor=\color{black!20},
+  autogobble=true
+}
+\lstset{style=mystyle}
+
+%% ── Hyperlinks ───────────────────────────────────────────────
+\usepackage[
+  hidelinks,
+  unicode,
+  bookmarks=true,
+  bookmarksnumbered=true,
+  pdfauthor={Nguyễn Văn A},
+  pdftitle={Hệ thống theo dõi vị trí trẻ em theo thời gian thực}
+]{hyperref}
+\usepackage{url}
+
+%% ── Headers & Footers ────────────────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\leftmark}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+%% ── Chapter Titles ───────────────────────────────────────────
+\usepackage{titlesec}
+\titleformat{\chapter}[hang]
+  {\normalfont\Large\bfseries}
+  {CHƯƠNG \thechapter.}{0.5em}{}
+\titlespacing*{\chapter}{0pt}{-20pt}{20pt}
+
+%% ── Captions ─────────────────────────────────────────────────
+\usepackage{caption}
+\captionsetup{font=small, labelfont=bf, skip=6pt}
+
+%% ── Diagrams ─────────────────────────────────────────────────
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds}
+
+%% ── Misc ─────────────────────────────────────────────────────
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{pdfpages}
+\usepackage{tocloft}
+\usepackage[nottoc]{tocbibind}
+
+%% ── Custom Commands ──────────────────────────────────────────
+\newcommand{\systemname}{Hệ thống theo dõi vị trí trẻ em theo thời gian thực}
+\newcommand{\projectname}{ChildTrack}
+\newcommand{\authorname}{[Họ và Tên Sinh Viên]}
+\newcommand{\mssv}{[Mã số sinh viên]}
+\newcommand{\advisor}{[Tên Giảng Viên Hướng Dẫn]}
+\newcommand{\department}{Viện Công nghệ Thông tin và Truyền thông (SOICT)}
+\newcommand{\university}{Trường Đại học Bách khoa Hà Nội}
+\newcommand{\academicyear}{2024 – 2025}
+
+%% ============================================================
+\begin{document}
+\selectlanguage{vietnamese}
+
+%% ── Front Matter ─────────────────────────────────────────────
+\pagenumbering{roman}
+\include{frontmatter/cover}
+\include{frontmatter/abstract}
+\include{frontmatter/acknowledgements}
+
+\tableofcontents
+\clearpage
+\listoffigures
+\clearpage
+\listoftables
+\clearpage
+
+%% ── Main Matter ──────────────────────────────────────────────
+\pagenumbering{arabic}
+\pagestyle{fancy}
+
+\include{chapters/chapter1}   % Giới thiệu
+\include{chapters/chapter2}   % Công nghệ nền tảng
+\include{chapters/chapter3}   % Phân tích và thiết kế hệ thống
+\include{chapters/chapter4}   % Triển khai
+\include{chapters/chapter5}   % Kiểm thử và đánh giá
+\include{chapters/chapter6}   % Kết luận
+
+%% ── References ───────────────────────────────────────────────
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+%% ── Appendices ───────────────────────────────────────────────
+\appendix
+\include{appendices/appendix_a}
+
+\end{document}

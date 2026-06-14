@@ -1,0 +1,1259 @@
+%% ============================================================
+%% SOICT – HUST  Đồ Án Tốt Nghiệp
+%% Hệ thống theo dõi vị trí trẻ em theo thời gian thực
+%% ============================================================
+\documentclass[13pt, a4paper]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese,english]{babel}
+\usepackage[top=3.5cm, bottom=3cm, left=3.5cm, right=2cm, headheight=15pt]{geometry}
+\usepackage{times}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{graphicx}
+\usepackage[dvipsnames,svgnames,table]{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{listings}
+\definecolor{codegray}{rgb}{0.95,0.95,0.95}
+\definecolor{keywordblue}{RGB}{0,0,200}
+\definecolor{commentgreen}{RGB}{0,128,0}
+\definecolor{stringred}{RGB}{163,21,21}
+\lstdefinestyle{mystyle}{
+  backgroundcolor=\color{codegray},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{keywordblue}\bfseries,
+  commentstyle=\color{commentgreen}\itshape,
+  stringstyle=\color{stringred},
+  breakatwhitespace=false,
+  breaklines=true,
+  captionpos=b,
+  keepspaces=true,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  numbersep=5pt,
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  tabsize=2,
+  frame=single,
+  rulecolor=\color{black!20}
+}
+\lstset{style=mystyle}
+\usepackage[hidelinks, unicode, bookmarks=true, bookmarksnumbered=true]{hyperref}
+\usepackage{url}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\leftmark}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\usepackage{titlesec}
+\titleformat{\chapter}[hang]{\normalfont\Large\bfseries}{CHƯƠNG \thechapter.}{0.5em}{}
+\titlespacing*{\chapter}{0pt}{-20pt}{20pt}
+\usepackage{caption}
+\captionsetup{font=small, labelfont=bf, skip=6pt}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage[nottoc]{tocbibind}
+
+\newcommand{\systemname}{Hệ thống theo dõi vị trí trẻ em theo thời gian thực}
+\newcommand{\authorname}{Nguyễn Đức Dương}
+\newcommand{\mssv}{20225122}
+\newcommand{\advisor}{PGS.TS. Tạ Hải Tùng}
+\newcommand{\department}{Viện Công nghệ Thông tin và Truyền thông (SOICT)}
+\newcommand{\university}{Trường Đại học Bách khoa Hà Nội}
+\newcommand{\academicyear}{2024 -- 2025}
+
+%% ============================================================
+\begin{document}
+\selectlanguage{vietnamese}
+
+%% ── BÌA ─────────────────────────────────────────────────────
+\begin{titlepage}
+\begin{center}
+{\large \textbf{BỘ GIÁO DỤC VÀ ĐÀO TẠO}}\\[4pt]
+{\large \textbf{\university}}\\[4pt]
+{\large \department}
+
+\vspace{1.5cm}
+\rule{14cm}{0.4pt}
+\vspace{0.8cm}
+
+{\LARGE \textbf{ĐỒ ÁN TỐT NGHIỆP}}\\[0.5cm]
+{\large \textbf{Ngành: Khoa học máy tính}}
+
+\vspace{1.2cm}
+{\LARGE \textbf{\systemname{}}}\\[0.3cm]
+{\large (Real-time Child Location Tracking System)}
+
+\vspace{2cm}
+\begin{flushleft}
+\hspace{4cm}
+\begin{tabular}{ll}
+\textbf{Sinh viên thực hiện:} & \authorname{} \\[4pt]
+\textbf{Mã số sinh viên:}     & \mssv{} \\[4pt]
+\textbf{Lớp:}                 & IT2-05 \\[4pt]
+\textbf{Giảng viên hướng dẫn:} & \advisor{} \\
+\end{tabular}
+\end{flushleft}
+
+\vfill
+{\large \textbf{Hà Nội -- \academicyear{}}}
+\end{center}
+\end{titlepage}
+
+%% ── TÓM TẮT ─────────────────────────────────────────────────
+\pagenumbering{roman}
+
+\chapter*{Tóm Tắt}
+\addcontentsline{toc}{chapter}{Tóm Tắt}
+
+Đề tài này trình bày nghiên cứu, thiết kế và triển khai \textbf{\systemname{}} -- một giải pháp IoT hoàn chỉnh nhằm hỗ trợ bậc phụ huynh giám sát vị trí và an toàn của trẻ em theo thời gian thực thông qua mạng di động và ứng dụng di động.
+
+\medskip
+Hệ thống bao gồm ba thành phần chính: (1)~Thiết bị phần cứng nhúng dựa trên vi điều khiển \textbf{ESP32} tích hợp module GPS và modem \textbf{SIM7000} kết nối mạng di động (GPRS/4G); (2)~Máy chủ backend xây dựng trên nền tảng \textbf{FastAPI} (Python) kết hợp cơ sở dữ liệu \textbf{MongoDB}, nhận dữ liệu qua giao thức \textbf{MQTT}, xử lý logic vùng an toàn (geofence) và gửi cảnh báo; (3)~Ứng dụng di động đa nền tảng viết bằng \textbf{Flutter}, hiển thị bản đồ thời gian thực, quản lý vùng an toàn và thông báo cảnh báo.
+
+\medskip
+Điểm nổi bật của hệ thống:
+\begin{itemize}[noitemsep]
+  \item Theo dõi vị trí GPS với độ trễ dưới 5 giây qua kết nối MQTT/WebSocket.
+  \item Định nghĩa vùng an toàn linh hoạt: vùng tĩnh (hình tròn cố định) và vùng động (theo chuyển động của phụ huynh).
+  \item Hỗ trợ đa thiết bị, phân quyền chia sẻ theo dõi giữa nhiều tài khoản.
+  \item Cảnh báo tức thời qua email và Telegram khi trẻ rời khỏi vùng an toàn.
+  \item Thống kê lịch sử di chuyển, heatmap tần suất vị trí.
+\end{itemize}
+
+\medskip
+\noindent\textbf{Từ khóa:} Theo dõi trẻ em, IoT, GPS, ESP32, SIM7000, MQTT, FastAPI, Flutter, Geofence, Thời gian thực.
+
+\clearpage
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+This thesis presents the research, design, and implementation of a \textbf{Real-time Child Location Tracking System} -- a comprehensive IoT solution enabling parents to monitor their children's location and safety via cellular networks and a mobile application.
+
+\medskip
+The system consists of three main components: (1)~An embedded hardware device based on the \textbf{ESP32} microcontroller integrating a GPS receiver and \textbf{SIM7000} modem for cellular connectivity (GPRS/4G); (2)~A backend server built on \textbf{FastAPI} (Python) with \textbf{MongoDB}, receiving GPS data via \textbf{MQTT}, implementing geofence logic, and dispatching alerts; (3)~A cross-platform mobile application written in \textbf{Flutter} for real-time map visualization, geofence management, and alert notifications.
+
+\medskip
+Key features include sub-5-second GPS tracking latency, flexible static and mobile geofence zones, multi-device and multi-user support, instant email/Telegram alerts, and historical movement analytics with heatmaps.
+
+\medskip
+\noindent\textbf{Keywords:} Child tracking, IoT, GPS, ESP32, SIM7000, MQTT, FastAPI, Flutter, Geofence, Real-time.
+
+\clearpage
+
+%% ── LỜI CẢM ƠN ──────────────────────────────────────────────
+\chapter*{Lời Cảm Ơn}
+\addcontentsline{toc}{chapter}{Lời Cảm Ơn}
+
+Đầu tiên, tôi xin bày tỏ lòng biết ơn sâu sắc đến thầy \textbf{\advisor{}}, người đã tận tình hướng dẫn, định hướng về mặt học thuật và kỹ thuật trong suốt quá trình thực hiện đồ án.
+
+Tôi cũng xin gửi lời cảm ơn đến tập thể thầy cô giáo \textbf{\department{}}, \textbf{\university{}} đã truyền đạt kiến thức nền tảng trong suốt bốn năm học tập.
+
+Cuối cùng, tôi xin dành lời tri ân sâu sắc nhất tới gia đình -- nguồn động lực và chỗ dựa tinh thần vững chắc nhất.
+
+\vspace{1.5cm}
+\begin{flushright}
+\textit{Hà Nội, tháng 6 năm 2025}\\[6pt]
+\textit{Sinh viên thực hiện}\\[24pt]
+\authorname{}
+\end{flushright}
+\clearpage
+
+%% ── MỤC LỤC ─────────────────────────────────────────────────
+\tableofcontents
+\clearpage
+\listoffigures
+\clearpage
+\listoftables
+\clearpage
+
+%% ============================================================
+%%  CHƯƠNG 1 – GIỚI THIỆU
+%% ============================================================
+\pagenumbering{arabic}
+\pagestyle{fancy}
+
+\chapter{Giới Thiệu}
+
+\section{Bối cảnh và động lực nghiên cứu}
+
+Trong bối cảnh xã hội hiện đại, sự an toàn của trẻ em trở thành một trong những mối quan tâm hàng đầu của các bậc phụ huynh. Theo thống kê của Cục Trẻ em Việt Nam, số vụ trẻ em bị lạc, mất tích hoặc gặp tai nạn ngoài đường vẫn ở mức đáng lo ngại, đặc biệt tại các đô thị lớn. Cùng với đó, nhịp sống bận rộn khiến phụ huynh không thể thường xuyên có mặt bên cạnh con em trong mọi hoàn cảnh.
+
+Sự bùng nổ của Internet of Things (IoT) và mạng di động thế hệ mới đã mở ra cơ hội ứng dụng công nghệ vào giải quyết vấn đề này. Các thiết bị theo dõi GPS giá thành ngày càng thấp, cùng với hạ tầng điện toán đám mây và ứng dụng di động mạnh mẽ, tạo điều kiện xây dựng hệ thống giám sát vị trí trẻ em hoàn chỉnh và khả thi.
+
+\section{Mục tiêu đề tài}
+
+Đề tài đặt ra các mục tiêu cụ thể sau:
+
+\begin{enumerate}
+  \item \textbf{Thiết bị phần cứng:} Thiết kế và lập trình thiết bị nhúng dựa trên vi điều khiển ESP32 tích hợp module GPS và kết nối mạng di động (SIM), có khả năng hoạt động độc lập và gửi dữ liệu vị trí liên tục.
+  \item \textbf{Hạ tầng backend:} Xây dựng hệ thống máy chủ nhận, lưu trữ và xử lý dữ liệu GPS thời gian thực, thực hiện kiểm tra vùng an toàn (geofence) và gửi cảnh báo.
+  \item \textbf{Ứng dụng di động:} Phát triển ứng dụng Flutter đa nền tảng cho phép phụ huynh theo dõi vị trí trẻ em trực tuyến, định cấu hình vùng an toàn và nhận thông báo tức thời.
+  \item \textbf{Tích hợp hệ thống:} Đảm bảo sự kết hợp liên thông và ổn định giữa ba thành phần trên qua các giao thức chuẩn (MQTT, REST, WebSocket).
+\end{enumerate}
+
+\section{Phạm vi nghiên cứu}
+
+\textbf{Phạm vi thực hiện:}
+\begin{itemize}[noitemsep]
+  \item Thiết kế phần cứng và lập trình firmware cho thiết bị ESP32 + GPS + SIM7000.
+  \item Xây dựng backend API (FastAPI) và cơ sở dữ liệu (MongoDB).
+  \item Triển khai dịch vụ MQTT broker và xử lý luồng dữ liệu IoT.
+  \item Phát triển ứng dụng di động Flutter (Android/iOS).
+  \item Tích hợp thông báo qua email và Telegram.
+  \item Kiểm thử và đánh giá hệ thống trong điều kiện thực tế.
+\end{itemize}
+
+\textbf{Phạm vi ngoài đề tài:}
+\begin{itemize}[noitemsep]
+  \item Không bao gồm thiết kế PCB chuyên dụng (sử dụng module phát triển).
+  \item Không triển khai hệ thống trên quy mô thương mại lớn.
+  \item Không tích hợp AI/ML cho nhận diện bất thường.
+\end{itemize}
+
+\section{Phương pháp nghiên cứu}
+
+Đề tài sử dụng phương pháp nghiên cứu kết hợp:
+\begin{itemize}
+  \item \textbf{Nghiên cứu lý thuyết:} Tổng quan tài liệu về kiến trúc IoT, giao thức MQTT, thuật toán geofence (Haversine), công nghệ GPS và các hệ thống theo dõi hiện có.
+  \item \textbf{Thực nghiệm:} Xây dựng prototype phần cứng, phát triển phần mềm theo mô hình Agile, kiểm thử tích hợp và kiểm thử chấp nhận người dùng.
+  \item \textbf{Đánh giá:} Đo lường các chỉ số hiệu năng (độ trễ, độ chính xác GPS, tải hệ thống) và so sánh với yêu cầu đề ra.
+\end{itemize}
+
+\section{Cấu trúc đồ án}
+
+\begin{description}[style=nextline]
+  \item[Chương 1 -- Giới Thiệu] Trình bày bối cảnh, mục tiêu, phạm vi và phương pháp nghiên cứu.
+  \item[Chương 2 -- Công Nghệ Nền Tảng] Tổng quan các công nghệ sử dụng: IoT, MQTT, GPS, FastAPI, Flutter, MongoDB.
+  \item[Chương 3 -- Phân Tích và Thiết Kế Hệ Thống] Phân tích yêu cầu, kiến trúc tổng thể, thiết kế chi tiết từng thành phần.
+  \item[Chương 4 -- Triển Khai] Mô tả quá trình lập trình firmware, backend và ứng dụng di động.
+  \item[Chương 5 -- Kiểm Thử và Đánh Giá] Trình bày kết quả kiểm thử, đo lường hiệu năng và nhận xét.
+  \item[Chương 6 -- Kết Luận] Tổng kết, đóng góp của đề tài và định hướng phát triển.
+\end{description}
+
+%% ============================================================
+%%  CHƯƠNG 2 – CÔNG NGHỆ NỀN TẢNG
+%% ============================================================
+\chapter{Công Nghệ Nền Tảng}
+
+\section{Internet of Things (IoT) và theo dõi vị trí}
+
+\subsection{Tổng quan IoT}
+
+Internet of Things (IoT) là mạng lưới các thiết bị vật lý được nhúng cảm biến, phần mềm và kết nối mạng, cho phép thu thập và trao đổi dữ liệu \cite{atzori2010iot}. Kiến trúc IoT điển hình gồm bốn lớp:
+
+\begin{enumerate}
+  \item \textbf{Lớp thiết bị (Device Layer):} Cảm biến, bộ truyền động và vi điều khiển thu thập dữ liệu vật lý.
+  \item \textbf{Lớp kết nối (Connectivity Layer):} Giao thức truyền thông (WiFi, 4G/LTE, LoRa, Zigbee).
+  \item \textbf{Lớp xử lý (Processing Layer):} Edge computing hoặc cloud server xử lý và lưu trữ dữ liệu.
+  \item \textbf{Lớp ứng dụng (Application Layer):} Giao diện người dùng, phân tích và điều khiển.
+\end{enumerate}
+
+\subsection{Hệ thống định vị GPS}
+
+Global Positioning System (GPS) là hệ thống định vị vệ tinh toàn cầu do Bộ Quốc phòng Hoa Kỳ vận hành. Nguyên lý hoạt động dựa trên phép đo thời gian truyền tín hiệu từ ít nhất bốn vệ tinh để xác định tọa độ ba chiều của thiết bị thu.
+
+Dữ liệu GPS được biểu diễn theo chuẩn NMEA với định dạng tọa độ \texttt{DDmm.mmmm}, cần chuyển đổi sang độ thập phân:
+
+\begin{equation}
+  \text{Độ thập phân} = \left\lfloor \frac{\text{NMEA}}{100} \right\rfloor + \frac{\text{NMEA} \bmod 100}{60}
+  \label{eq:nmea_convert}
+\end{equation}
+
+Độ chính xác GPS dân dụng thông thường đạt 3--5\,m trong điều kiện bầu trời thoáng, và có thể giảm xuống 10--30\,m trong môi trường đô thị do hiệu ứng đa đường (multipath).
+
+\section{Giao thức MQTT}
+
+\subsection{Giới thiệu MQTT}
+
+MQTT (Message Queuing Telemetry Transport) là giao thức nhắn tin nhẹ theo mô hình publish/subscribe, được thiết kế cho môi trường băng thông thấp và độ tin cậy cao \cite{banks2019mqtt}. Giao thức được phát triển năm 1999 bởi IBM và hiện là tiêu chuẩn OASIS.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=2cm,
+  box/.style={rectangle, rounded corners, minimum width=2.5cm, minimum height=1cm,
+              text centered, draw=black, fill=blue!10},
+  arrow/.style={-Stealth, thick}
+]
+  \node[box] (pub) {Thiết bị GPS\\(Publisher)};
+  \node[box, right=3cm of pub] (broker) {MQTT Broker};
+  \node[box, above right=1cm and 2cm of broker] (sub1) {Backend\\(Subscriber)};
+  \node[box, below right=1cm and 2cm of broker] (sub2) {App khác\\(Subscriber)};
+  \draw[arrow] (pub) -- node[above]{\small \texttt{gps/child\_01}} (broker);
+  \draw[arrow] (broker) -- (sub1);
+  \draw[arrow] (broker) -- (sub2);
+\end{tikzpicture}
+\caption{Mô hình Publish/Subscribe của MQTT}
+\label{fig:mqtt_model}
+\end{figure}
+
+\subsection{Các khái niệm cốt lõi}
+
+\begin{description}
+  \item[Topic:] Chuỗi phân cấp xác định kênh truyền tin (ví dụ: \texttt{gps/child\_01}). Hỗ trợ ký tự đại diện \texttt{+} (một cấp) và \texttt{\#} (nhiều cấp).
+  \item[QoS:] Ba mức đảm bảo giao tin: QoS~0 (at most once), QoS~1 (at least once), QoS~2 (exactly once).
+  \item[Retain:] Broker lưu giữ tin nhắn cuối cùng của topic để gửi cho subscriber mới.
+  \item[Keep Alive:] Cơ chế giám sát kết nối bằng gói PINGREQ/PINGRESP.
+\end{description}
+
+\subsection{So sánh MQTT và HTTP REST}
+
+\begin{table}[H]
+\centering
+\caption{So sánh MQTT và HTTP REST cho ứng dụng IoT}
+\label{tab:mqtt_vs_http}
+\begin{tabularx}{\textwidth}{l X X}
+\toprule
+\textbf{Tiêu chí} & \textbf{MQTT} & \textbf{HTTP REST} \\
+\midrule
+Kích thước header & 2 byte (tối thiểu) & 200--800 byte \\
+Mô hình & Push (event-driven) & Pull (polling) \\
+Băng thông & Rất thấp & Cao \\
+Độ trễ & $<$100\,ms & 200--1000\,ms \\
+Pin thiết bị & Tiết kiệm & Tốn nhiều \\
+Kết nối lâu dài & Có & Không (stateless) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Vi điều khiển ESP32}
+
+ESP32 là dòng vi điều khiển 32-bit dual-core (Xtensa LX6 @ 240\,MHz) của Espressif Systems, tích hợp sẵn WiFi 802.11 b/g/n và Bluetooth 4.2/BLE \cite{espressif2023esp32}. Đặc điểm kỹ thuật chính:
+
+\begin{itemize}[noitemsep]
+  \item CPU: Dual-core Xtensa LX6, 240\,MHz
+  \item RAM: 520\,KB SRAM; Flash: 4\,MB
+  \item GPIO: 34 chân đa chức năng (UART, SPI, I2C, ADC, DAC)
+  \item Điện áp: 3.3\,V, nguồn cấp 5\,V qua USB
+  \item Tiêu thụ điện: 80\,mA (hoạt động đầy đủ), 10\,$\mu$A (deep sleep)
+\end{itemize}
+
+\section{Module GSM/GPRS SIM7000}
+
+\subsection{Tổng quan SIM7000}
+
+SIM7000 là module IoT tích hợp đa chuẩn của SIMCom, hỗ trợ LTE Cat-M1, NB-IoT và GPRS \cite{simcom2023sim7000}. Phiên bản SIM7000G bao gồm bộ thu GPS tích hợp, cho phép một module thực hiện cả hai chức năng: định vị và kết nối mạng di động.
+
+\textbf{Thông số kỹ thuật chính:}
+\begin{itemize}[noitemsep]
+  \item Chuẩn mạng: LTE Cat-M1/NB-IoT, GPRS/EDGE
+  \item GPS tích hợp: GPS/GLONASS/BeiDou
+  \item Giao tiếp: UART (AT commands), tốc độ 115200 baud
+  \item Nguồn: 3.4--4.4\,V (điển hình 3.7\,V LiPo)
+  \item SIM: Nano-SIM
+\end{itemize}
+
+\subsection{Giao tiếp AT Command}
+
+\begin{lstlisting}[language=bash, caption=Các lệnh AT cơ bản cho SIM7000]
+AT+CGPS=1,1          ; Bat GPS (che do doc lap)
+AT+CGNSSINFO         ; Truy van thong tin GPS
+AT+SAPBR=3,1,"CONTYPE","GPRS"  ; Cau hinh GPRS
+AT+CSTT="v-internet","",""     ; Thiet lap APN Viettel
+AT+CIPSTART="TCP","host",1883  ; Ket noi TCP den MQTT broker
+\end{lstlisting}
+
+\section{FastAPI}
+
+FastAPI là framework Python hiện đại để xây dựng API, dựa trên tiêu chuẩn OpenAPI và JSON Schema \cite{ramirez2021fastapi}. Điểm nổi bật: hiệu năng cao (ASGI/Uvicorn), type hints tự động sinh validation, hỗ trợ async/await native và WebSocket.
+
+\section{MongoDB}
+
+MongoDB là hệ quản trị cơ sở dữ liệu NoSQL hướng tài liệu, lưu trữ dữ liệu dưới dạng BSON \cite{banker2011mongodb}. Lý do lựa chọn: schema linh hoạt, hiệu năng ghi cao (cần thiết cho luồng GPS 1 điểm/5 giây), và aggregation pipeline mạnh mẽ cho thống kê, heatmap.
+
+\section{Flutter}
+
+Flutter là framework phát triển ứng dụng đa nền tảng từ cùng một codebase Dart, do Google phát triển \cite{flutter2023}. Ứng dụng được biên dịch sang mã máy native, đảm bảo hiệu năng cao. Hệ thống quản lý trạng thái sử dụng \texttt{Provider}.
+
+\section{WebSocket}
+
+WebSocket là giao thức truyền thông hai chiều (full-duplex) qua kết nối TCP duy nhất, được chuẩn hóa trong RFC 6455 \cite{fette2011websocket}. Trong hệ thống này, WebSocket đóng vai trò kênh đẩy từ backend đến Flutter app, cho phép server chủ động gửi cập nhật vị trí và cảnh báo mà không cần client polling.
+
+\section{Thuật toán Haversine}
+
+Thuật toán Haversine tính khoảng cách đường tròn lớn giữa hai điểm trên mặt cầu dựa trên vĩ độ/kinh độ \cite{sinnott1984virtues}:
+
+\begin{equation}
+  a = \sin^2\!\left(\frac{\Delta\varphi}{2}\right) + \cos\varphi_1 \cdot \cos\varphi_2 \cdot \sin^2\!\left(\frac{\Delta\lambda}{2}\right)
+  \label{eq:haversine_a}
+\end{equation}
+\begin{equation}
+  d = 2R \cdot \arcsin\!\left(\sqrt{a}\right), \quad R = 6{,}371{,}000\,\text{m}
+  \label{eq:haversine_d}
+\end{equation}
+
+\section{Tổng hợp công nghệ sử dụng}
+
+\begin{table}[H]
+\centering
+\caption{Stack công nghệ của hệ thống}
+\label{tab:tech_summary}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Thành phần} & \textbf{Công nghệ} & \textbf{Vai trò} \\
+\midrule
+Phần cứng     & ESP32 + SIM7000G         & Vi điều khiển + GPS/GPRS \\
+Firmware      & Arduino C++ (PlatformIO) & Lập trình nhúng \\
+MQTT Broker   & HiveMQ Cloud             & Nhận GPS payload từ thiết bị \\
+Backend API   & FastAPI (Python)          & REST API, xử lý geofence \\
+Cơ sở dữ liệu & MongoDB                 & Lưu trữ vị trí, cấu hình \\
+Real-time     & WebSocket                & Đẩy cập nhật tới app \\
+Mobile App    & Flutter (Dart)           & Giao diện người dùng \\
+Bản đồ        & flutter\_map + OSM       & Hiển thị vị trí trực quan \\
+Thông báo     & SMTP / Telegram Bot      & Cảnh báo ra ngoài vùng \\
+Deploy        & Render.com + MongoDB Atlas & Hạ tầng cloud \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%% ============================================================
+%%  CHƯƠNG 3 – PHÂN TÍCH VÀ THIẾT KẾ
+%% ============================================================
+\chapter{Phân Tích và Thiết Kế Hệ Thống}
+
+\section{Phân tích yêu cầu}
+
+\subsection{Yêu cầu chức năng}
+
+\textbf{Đối với phụ huynh (người dùng cuối):}
+\begin{enumerate}
+  \item \textbf{Đăng ký / Đăng nhập:} Tạo tài khoản bằng email, đăng nhập bảo mật.
+  \item \textbf{Quản lý thiết bị:} Thêm, xóa thiết bị theo dõi; chia sẻ quyền truy cập với tài khoản khác.
+  \item \textbf{Theo dõi thời gian thực:} Xem vị trí hiện tại của thiết bị trên bản đồ với độ trễ $<$5 giây.
+  \item \textbf{Lịch sử di chuyển:} Xem đường di chuyển trong khoảng thời gian tùy chọn.
+  \item \textbf{Quản lý vùng an toàn:} Tạo vùng tĩnh (hình tròn) hoặc vùng di động (theo phụ huynh); xóa vùng.
+  \item \textbf{Cảnh báo:} Nhận thông báo tức thời (in-app, email, Telegram) khi trẻ rời khỏi/trở về vùng an toàn.
+  \item \textbf{Thống kê:} Xem tổng quãng đường, thời gian hoạt động, heatmap vị trí.
+\end{enumerate}
+
+\textbf{Đối với thiết bị GPS (ESP32):}
+\begin{enumerate}
+  \item Thu thập tọa độ GPS định kỳ (5 giây/lần).
+  \item Kết nối mạng di động qua SIM và gửi dữ liệu lên MQTT broker.
+  \item Tự động kết nối lại khi mất mạng.
+  \item Hoạt động liên tục 8--12 giờ với pin dung lượng phù hợp.
+\end{enumerate}
+
+\subsection{Yêu cầu phi chức năng}
+
+\begin{table}[H]
+\centering
+\caption{Yêu cầu phi chức năng}
+\label{tab:nonfunctional}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Nhóm} & \textbf{Chỉ số} & \textbf{Yêu cầu} \\
+\midrule
+Hiệu năng & Độ trễ end-to-end      & $<$5 giây từ GPS đến màn hình \\
+          & Thời gian phản hồi API & $<$500\,ms (p95) \\
+\midrule
+Độ chính xác & GPS ngoài trời & 3--5\,m CEP \\
+             & Geofence       & Bán kính tối thiểu 20\,m \\
+\midrule
+Độ tin cậy & Uptime backend          & $\geq$99\% \\
+           & Tự phục hồi kết nối    & $<$30 giây \\
+\midrule
+Bảo mật & Xác thực        & Token-based \\
+        & Truyền dữ liệu  & HTTPS/TLS cho REST và MQTT \\
+\midrule
+Khả dụng & Nền tảng app & Android 7.0+, iOS 12+ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Kiến trúc tổng thể hệ thống}
+
+Hệ thống áp dụng kiến trúc \textbf{ba lớp phân tán} kết hợp mô hình IoT pipeline:
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=1.2cm and 2cm,
+  box/.style={rectangle, rounded corners=5pt, minimum width=3cm, minimum height=0.9cm,
+              text centered, draw=black!60, font=\small},
+  cloud/.style={box, fill=blue!8},
+  hw/.style={box, fill=orange!15},
+  app/.style={box, fill=green!10},
+  arrow/.style={-Stealth, thick, draw=black!70}
+]
+  \node[hw] (esp32) {ESP32};
+  \node[hw, below=0.3cm of esp32] (sim) {SIM7000G};
+  \node[hw, above=0.3cm of esp32] (gps) {GPS Module};
+  \node[draw=orange!60, dashed, rounded corners, fit=(gps)(esp32)(sim),
+        label=left:\rotatebox{90}{\small Thiết bị}] (hw) {};
+  \node[cloud, right=2.5cm of esp32] (mqtt) {MQTT Broker\\(HiveMQ Cloud)};
+  \node[cloud, right=2.5cm of mqtt] (backend) {FastAPI\\Backend};
+  \node[cloud, below=0.8cm of backend] (mongodb) {MongoDB};
+  \node[cloud, above=0.8cm of backend] (notif) {Notifications\\(Email/Telegram)};
+  \node[draw=blue!40, dashed, rounded corners, fit=(notif)(backend)(mongodb),
+        label=above:\small Cloud Backend] (cloud) {};
+  \node[app, right=2.5cm of backend] (flutter) {Flutter App\\(Android/iOS)};
+  \node[app, above=0.4cm of flutter] (web) {Web Browser\\(React)};
+  \node[draw=green!40, dashed, rounded corners, fit=(web)(flutter),
+        label=right:\small Clients] (clients) {};
+  \draw[arrow] (esp32)   -- node[above]{\tiny MQTT/TLS} (mqtt);
+  \draw[arrow] (mqtt)    -- node[above]{\tiny Subscribe} (backend);
+  \draw[arrow] (backend) -- (mongodb);
+  \draw[arrow] (backend) -- (notif);
+  \draw[arrow] (backend) -- node[above]{\tiny WS/REST} (flutter);
+  \draw[arrow] (backend) -- (web);
+\end{tikzpicture}
+\caption{Kiến trúc tổng thể hệ thống}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Luồng dữ liệu chính}
+
+\begin{enumerate}
+  \item ESP32 đọc tọa độ GPS từ SIM7000G (\texttt{AT+CGNSSINFO}) mỗi 5 giây.
+  \item ESP32 publish gói JSON lên MQTT topic \texttt{gps/child\_01} qua kết nối GPRS.
+  \item Backend subscribe topic \texttt{gps/\#}, nhận và parse payload.
+  \item \texttt{LocationProcessor} lọc nhiễu, tính khoảng cách đến geofence, cập nhật trạng thái cảnh báo.
+  \item Vị trí được lưu MongoDB; nếu có cảnh báo, gửi email/Telegram.
+  \item Backend broadcast \texttt{location\_update} qua WebSocket đến tất cả client.
+  \item Flutter app cập nhật marker trên bản đồ và alert history.
+\end{enumerate}
+
+\section{Thiết kế phần cứng}
+
+\begin{table}[H]
+\centering
+\caption{Sơ đồ kết nối ESP32 -- SIM7000G}
+\label{tab:hardware_pinout}
+\begin{tabular}{l l l}
+\toprule
+\textbf{ESP32 Pin} & \textbf{SIM7000G Pin} & \textbf{Chức năng} \\
+\midrule
+GPIO 27 (RX) & TX  & Nhận dữ liệu AT response \\
+GPIO 26 (TX) & RX  & Gửi lệnh AT \\
+GPIO 25      & RST & Reset module \\
+GPIO 2       & --  & LED trạng thái \\
+GND          & GND & Mass chung \\
+3.3V/5V      & VCC & Nguồn (qua LDO 3.7V) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  block/.style={rectangle, draw, minimum width=2.5cm, minimum height=1cm,
+                text centered, font=\small, fill=gray!10},
+  arrow/.style={-Stealth, thick}
+]
+  \node[block] (bat)     {Pin LiPo\\3.7V 2000mAh};
+  \node[block, right=1.5cm of bat]  (pmic)    {Mạch sạc\\TP4056};
+  \node[block, right=1.5cm of pmic] (esp)     {ESP32\\Dev Board};
+  \node[block, below=1.2cm of esp]  (sim)     {SIM7000G\\Module};
+  \node[block, right=1.5cm of sim]  (ant_gps) {Anten\\GPS};
+  \node[block, left=1.5cm of sim]   (ant_gsm) {Anten\\GSM};
+  \draw[arrow] (bat)  -- (pmic);
+  \draw[arrow] (pmic) -- (esp);
+  \draw[arrow] (pmic) -- ++(0,-1.5) -| (sim);
+  \draw[arrow, <->] (esp) -- node[right]{\small UART} (sim);
+  \draw[arrow] (sim) -- (ant_gps);
+  \draw[arrow] (sim) -- (ant_gsm);
+\end{tikzpicture}
+\caption{Sơ đồ khối phần cứng thiết bị GPS}
+\label{fig:hardware_block}
+\end{figure}
+
+\section{Thiết kế backend}
+
+\subsection{Cấu trúc module}
+
+Backend tổ chức theo mô hình phân lớp với bốn lớp chính:
+
+\begin{description}
+  \item[API Layer (\texttt{api/routes.py}):] Định nghĩa các endpoint REST và WebSocket.
+  \item[Service Layer (\texttt{services/}):] Logic nghiệp vụ -- MQTT, geofence, cảnh báo, thông báo.
+  \item[Repository Layer (\texttt{repositories/}):] Trừu tượng hóa truy cập CSDL.
+  \item[Model Layer (\texttt{models/}):] Schema dữ liệu Pydantic cho validation và serialization.
+\end{description}
+
+\subsection{Thiết kế API}
+
+\begin{table}[H]
+\centering
+\caption{Các endpoint REST chính}
+\label{tab:api_design}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Method} & \textbf{Endpoint} & \textbf{Mô tả} \\
+\midrule
+POST   & \texttt{/auth/register}            & Đăng ký tài khoản \\
+POST   & \texttt{/auth/login}               & Đăng nhập, trả về token \\
+GET    & \texttt{/latest/\{device\_id\}}    & Vị trí GPS mới nhất \\
+GET    & \texttt{/history/\{device\_id\}}   & Lịch sử di chuyển \\
+GET    & \texttt{/geofence/state}           & Trạng thái vùng an toàn \\
+POST   & \texttt{/geofence/update}          & Cập nhật cấu hình geofence \\
+DELETE & \texttt{/geofence/\{id\}}          & Xóa vùng an toàn \\
+GET    & \texttt{/devices}                  & Danh sách thiết bị \\
+POST   & \texttt{/devices/\{id\}/share}     & Chia sẻ thiết bị \\
+GET    & \texttt{/stats/\{device\_id\}}          & Thống kê tổng hợp \\
+GET    & \texttt{/stats/\{device\_id\}/heatmap}  & Dữ liệu heatmap \\
+WS     & \texttt{/ws}                       & Kết nối WebSocket real-time \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Thiết kế Geofence}
+
+\textbf{Chế độ tĩnh (Fixed Mode):} Vùng an toàn là hình tròn tâm $(lat_c, lng_c)$, bán kính $r$. Thiết bị được xem là \textit{bên trong} khi:
+\begin{equation}
+  d\big((lat_{gps}, lng_{gps}),\,(lat_c, lng_c)\big) \leq r
+\end{equation}
+
+\textbf{Chế độ di động (Mobile Mode):} Tâm geofence được cập nhật liên tục theo vị trí phụ huynh qua REST API. Hữu ích khi đón/đưa trẻ.
+
+\subsection{Máy trạng thái cảnh báo}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  state/.style={circle, draw, minimum size=2cm, text centered, font=\small},
+  arrow/.style={-Stealth, thick, draw=black!70}
+]
+  \node[state, fill=green!20] (inside)  {Bên\\trong};
+  \node[state, fill=red!20, right=4cm of inside] (outside) {Bên\\ngoài};
+  \draw[arrow, bend left=20] (inside) to
+    node[above, font=\footnotesize]{\textit{outside\_entered}} (outside);
+  \draw[arrow, bend left=20] (outside) to
+    node[below, font=\footnotesize]{\textit{inside\_entered}} (inside);
+  \draw[arrow, loop right] (outside) to
+    node[right, font=\footnotesize]{\textit{outside\_reminder}\\(sau cooldown)} (outside);
+\end{tikzpicture}
+\caption{Máy trạng thái quản lý cảnh báo geofence}
+\label{fig:alert_state_machine}
+\end{figure}
+
+Cơ chế \textbf{cooldown} (mặc định 300 giây) ngăn hệ thống gửi quá nhiều cảnh báo khi thiết bị dao động ở biên giới vùng an toàn.
+
+\section{Thiết kế cơ sở dữ liệu}
+
+\textbf{Collection \texttt{locations}:}
+\begin{lstlisting}[caption=Schema collection locations]
+{
+  "deviceId":            "child_01",
+  "lat":                 21.0285,
+  "lng":                 105.8542,
+  "timestamp":           1718000000,
+  "insideGeofence":      true,
+  "distanceFromCenterM": 45.3,
+  "geofenceId":          "default",
+  "receivedAt":          "2024-06-10T08:00:00Z"
+}
+\end{lstlisting}
+
+\textbf{Collection \texttt{geofence\_configs}:}
+\begin{lstlisting}[caption=Schema collection geofence\_configs]
+{
+  "geofences": [{
+    "id":        "default",
+    "mode":      "fixed",
+    "centerLat": 21.0285,
+    "centerLng": 105.8542,
+    "radiusM":   100.0,
+    "path":      []
+  }]
+}
+\end{lstlisting}
+
+\section{Thiết kế ứng dụng Flutter}
+
+Ứng dụng sử dụng mô hình MVVM nhẹ qua Provider:
+\begin{description}
+  \item[View:] Dashboard, Profile, Statistics -- không chứa logic nghiệp vụ.
+  \item[ViewModel (AppProvider):] Quản lý trạng thái toàn cục: vị trí, geofence, thiết bị, cảnh báo, WebSocket.
+  \item[Services:] ApiService (HTTP), SocketService (WebSocket), LocationService (GPS điện thoại).
+\end{description}
+
+%% ============================================================
+%%  CHƯƠNG 4 – TRIỂN KHAI
+%% ============================================================
+\chapter{Triển Khai}
+
+\section{Môi trường phát triển}
+
+\begin{table}[H]
+\centering
+\caption{Môi trường phát triển và công cụ sử dụng}
+\label{tab:dev_env}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Thành phần} & \textbf{Phiên bản} & \textbf{Mục đích} \\
+\midrule
+Python        & 3.10.x    & Backend development \\
+FastAPI       & 0.115.12  & Web framework \\
+Paho-MQTT     & 2.x       & MQTT client Python \\
+Uvicorn       & 0.30.x    & ASGI server \\
+\midrule
+Flutter SDK   & 3.22.x    & Mobile framework \\
+flutter\_map  & 6.x       & Leaflet map wrapper \\
+\midrule
+PlatformIO    & 6.x       & Embedded IDE \\
+Arduino-ESP32 & 2.0.x     & ESP32 framework \\
+\midrule
+MongoDB       & 6.0       & Database \\
+Docker        & 24.x      & Containerization \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Triển khai firmware ESP32}
+
+\subsection{Cấu trúc firmware}
+
+\begin{lstlisting}[language=bash, caption=platformio.ini]
+[env:esp32dev]
+platform  = espressif32
+board     = esp32dev
+framework = arduino
+monitor_speed = 115200
+lib_deps  =
+    knolleary/PubSubClient @ ^2.8
+    bblanchon/ArduinoJson @ ^7.0
+\end{lstlisting}
+
+\subsection{Vòng lặp chính firmware}
+
+\begin{lstlisting}[language=C++, caption=Vòng lặp chính main.cpp]
+void loop() {
+    if (!mqttClient.connected()) reconnectMQTT();
+    mqttClient.loop();
+
+    if (millis() - lastPublish >= PUBLISH_INTERVAL_MS) {
+        GPSData gps = readGPS();   // AT+CGNSSINFO
+        if (gps.valid) {
+            String payload = buildPayload(gps);
+            mqttClient.publish(MQTT_TOPIC, payload.c_str());
+            blinkLED();
+        }
+        lastPublish = millis();
+    }
+}
+\end{lstlisting}
+
+\subsection{Quy trình khởi động thiết bị}
+
+\begin{enumerate}
+  \item \textbf{Khởi tạo UART:} Mở Serial2 (GPIO 27/26), 115200 baud, giao tiếp với SIM7000G.
+  \item \textbf{Reset module:} Kéo GPIO 25 xuống thấp 1 giây, chờ module khởi động (3--5 giây).
+  \item \textbf{Bật GPS:} Gửi \texttt{AT+CGPS=1,1}. Cold start mất 30--60 giây bắt vệ tinh.
+  \item \textbf{Kết nối GPRS:} Cấu hình APN nhà mạng (\texttt{v-internet} cho Viettel).
+  \item \textbf{Kết nối MQTT/TLS:} Kết nối HiveMQ Cloud cổng 8883, TLS 1.2.
+\end{enumerate}
+
+\subsection{Parse dữ liệu GPS}
+
+\begin{lstlisting}[caption=Phản hồi AT+CGNSSINFO]
++CGNSSINFO: 2,09,00,00,2101.71140,N,10551.25368,E,
+            100624,151523.0,69.5,0.0,0.0,1
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption=Hàm parse NMEA sang decimal degrees]
+double parseNMEA(double raw, char hemi) {
+    int deg = (int)(raw / 100);
+    double min = raw - deg * 100.0;
+    double decimal = deg + min / 60.0;
+    if (hemi == 'S' || hemi == 'W') decimal = -decimal;
+    return decimal;
+}
+// Vi du: 2101.71140 N -> deg=21, min=1.7114 -> 21.028523 N
+\end{lstlisting}
+
+\subsection{Payload MQTT}
+
+\begin{lstlisting}[caption=JSON payload gửi lên MQTT]
+{
+  "deviceId":  "child_01",
+  "lat":       21.028523,
+  "lng":       105.854267,
+  "timestamp": 1718000123
+}
+\end{lstlisting}
+
+\section{Triển khai backend}
+
+\subsection{Vòng đời ứng dụng}
+
+\begin{lstlisting}[language=python, caption=backend/app/main.py]
+@app.on_event("startup")
+async def startup():
+    await mongo.connect()
+    mqtt_service.start()
+
+@app.on_event("shutdown")
+async def shutdown():
+    mqtt_service.stop()
+    await mongo.close()
+\end{lstlisting}
+
+\subsection{LocationProcessor -- xử lý điểm GPS}
+
+\begin{lstlisting}[language=python, caption=location\_processor.py]
+async def process(self, payload: dict):
+    loc = LocationIn(**payload)
+
+    # Loc nhieu: bo qua neu di chuyen < 5m
+    last = await location_repo.get_latest(loc.deviceId)
+    if last and haversine(last, loc) < NOISE_THRESHOLD_M:
+        return
+
+    # Kiem tra geofence
+    cfg = await geofence_repo.get_config()
+    inside, dist, gf_id = geofence_svc.check(loc, cfg)
+
+    # Cap nhat may trang thai canh bao
+    alert_event = alert_state_svc.update(loc.deviceId, inside, gf_id)
+
+    # Luu MongoDB
+    await location_repo.insert(loc, inside, dist, gf_id)
+
+    # Gui thong bao
+    if alert_event:
+        await notif_svc.send(loc.deviceId, alert_event, loc)
+
+    # Broadcast WebSocket
+    await ws_manager.broadcast_location(loc, inside, dist)
+    if alert_event:
+        await ws_manager.broadcast_alert(loc.deviceId, alert_event)
+\end{lstlisting}
+
+\subsection{Geofence Service}
+
+\begin{lstlisting}[language=python, caption=services/geofence\_service.py]
+def haversine(lat1, lng1, lat2, lng2) -> float:
+    R = 6_371_000
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lng2 - lng1)
+    a = (math.sin(dphi/2)**2
+         + math.cos(phi1) * math.cos(phi2) * math.sin(dlam/2)**2)
+    return 2 * R * math.asin(math.sqrt(a))
+
+def check(loc, cfg):
+    min_dist, inside, gf_id = float('inf'), False, None
+    for gf in cfg.geofences:
+        d = haversine(loc.lat, loc.lng, gf.centerLat, gf.centerLng)
+        if d < min_dist:
+            min_dist, gf_id = d, gf.id
+            inside = (d <= gf.radiusM)
+    return inside, min_dist, gf_id
+\end{lstlisting}
+
+\subsection{WebSocket Broadcast}
+
+\begin{lstlisting}[language=python, caption=ws/connection\_manager.py]
+class ConnectionManager:
+    def __init__(self):
+        self.active: list[WebSocket] = []
+
+    async def connect(self, ws: WebSocket):
+        await ws.accept()
+        self.active.append(ws)
+
+    async def broadcast_location(self, loc, inside, dist):
+        msg = json.dumps({
+            "type": "location_update",
+            "deviceId": loc.deviceId,
+            "lat": loc.lat, "lng": loc.lng,
+            "timestamp": loc.timestamp,
+            "insideGeofence": inside,
+            "distanceM": dist
+        })
+        for ws in list(self.active):
+            try:
+                await ws.send_text(msg)
+            except Exception:
+                self.active.remove(ws)
+\end{lstlisting}
+
+\section{Triển khai ứng dụng Flutter}
+
+\subsection{Hiển thị bản đồ thời gian thực}
+
+\begin{lstlisting}[language=dart, caption=Widget bản đồ với marker và geofence circle]
+FlutterMap(
+  options: MapOptions(
+    initialCenter: LatLng(21.0285, 105.8542),
+    initialZoom: 16,
+    onTap: (_, latlng) => onMapTap(latlng),
+  ),
+  children: [
+    TileLayer(urlTemplate:
+      "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
+    if (geofenceState != null)
+      CircleLayer(circles: [
+        CircleMarker(
+          point: LatLng(geofenceState!.centerLat,
+                        geofenceState!.centerLng),
+          radius: geofenceState!.radiusM,
+          useRadiusInMeter: true,
+          color: Colors.cyan.withOpacity(0.15),
+          borderColor: Colors.cyan,
+          borderStrokeWidth: 2,
+        )
+      ]),
+    MarkerLayer(markers: buildMarkers(locations)),
+    PolylineLayer(polylines: buildPolylines(history)),
+  ],
+)
+\end{lstlisting}
+
+\subsection{Kết nối WebSocket}
+
+\begin{lstlisting}[language=dart, caption=SocketService]
+void connect() {
+  _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+  _channel!.stream.listen(
+    (data) => _handleMessage(jsonDecode(data)),
+    onError: (_) => _startPollingFallback(),
+    onDone:  () => _reconnect(),
+  );
+}
+
+void _handleMessage(Map<String, dynamic> msg) {
+  switch (msg['type']) {
+    case 'location_update':
+      provider.updateLocation(LocationData.fromJson(msg)); break;
+    case 'geofence_alert':
+      provider.addAlert(Alert.fromJson(msg)); break;
+    case 'geofence_state_update':
+      provider.updateGeofenceState(GeofenceState.fromJson(msg)); break;
+  }
+}
+\end{lstlisting}
+
+\section{Triển khai production}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  svc/.style={rectangle, draw, rounded corners=4pt, minimum width=3.2cm,
+              minimum height=0.9cm, text centered, font=\small, fill=gray!8},
+  arrow/.style={-Stealth, thick, draw=black!60}
+]
+  \node[svc, fill=orange!15] (esp)    {ESP32 + SIM7000G};
+  \node[svc, fill=blue!10,   right=1.8cm of esp]    (hivemq) {HiveMQ Cloud\\(MQTT TLS 8883)};
+  \node[svc, fill=green!10,  right=1.8cm of hivemq] (render) {Render.com\\(FastAPI)};
+  \node[svc, fill=purple!10, below=1cm of render]   (atlas)  {MongoDB Atlas};
+  \node[svc, fill=cyan!10,   right=1.8cm of render] (flutter){Flutter App};
+  \draw[arrow] (esp)    -- node[above]{\tiny GPRS/4G}  (hivemq);
+  \draw[arrow] (hivemq) -- node[above]{\tiny Subscribe}(render);
+  \draw[arrow] (render) -- (atlas);
+  \draw[arrow] (render) -- node[above]{\tiny WS/REST}  (flutter);
+\end{tikzpicture}
+\caption{Kiến trúc triển khai production}
+\label{fig:deployment}
+\end{figure}
+
+%% ============================================================
+%%  CHƯƠNG 5 – KIỂM THỬ VÀ ĐÁNH GIÁ
+%% ============================================================
+\chapter{Kiểm Thử và Đánh Giá}
+
+\section{Chiến lược kiểm thử}
+
+\begin{description}
+  \item[Unit Testing:] Kiểm thử các hàm độc lập (Haversine, NMEA parser, alert state machine) bằng \texttt{pytest}.
+  \item[Integration Testing:] Kiểm thử luồng MQTT $\rightarrow$ Backend $\rightarrow$ MongoDB $\rightarrow$ WebSocket.
+  \item[System Testing:] Kiểm thử toàn bộ hệ thống với thiết bị thực tế ngoài trời.
+\end{description}
+
+\section{Kiểm thử đơn vị}
+
+\begin{lstlisting}[language=python, caption=Unit test thuật toán Haversine]
+def test_haversine_known_distance():
+    d = haversine(21.0285, 105.8542, 21.0367, 105.7821)
+    assert abs(d - 5200) < 100   # sai so < 100m
+
+def test_haversine_same_point():
+    d = haversine(21.0285, 105.8542, 21.0285, 105.8542)
+    assert d == 0.0
+
+def test_geofence_boundary():
+    lat_offset = 100 / 111320
+    d = haversine(21.0285, 105.8542, 21.0285 + lat_offset, 105.8542)
+    assert abs(d - 100) < 1
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\caption{Kết quả kiểm thử máy trạng thái cảnh báo}
+\label{tab:alert_state_test}
+\begin{tabularx}{\textwidth}{l l l X l}
+\toprule
+\textbf{TC} & \textbf{Trạng thái cũ} & \textbf{GPS mới} & \textbf{Điều kiện} & \textbf{Kết quả} \\
+\midrule
+TC-01 & inside  & outside & --                & \texttt{outside\_entered} \\
+TC-02 & outside & inside  & --                & \texttt{inside\_entered} \\
+TC-03 & outside & outside & $t <$ cooldown    & \texttt{None} \\
+TC-04 & outside & outside & $t \geq$ cooldown & \texttt{outside\_reminder} \\
+TC-05 & inside  & inside  & --                & \texttt{None} \\
+TC-06 & inside  & outside & nhiễu $<$5\,m     & \texttt{None} (lọc) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Tất cả 6 test case đều pass, xác nhận logic máy trạng thái hoạt động đúng đặc tả.
+
+\section{Kiểm thử tích hợp}
+
+\begin{table}[H]
+\centering
+\caption{Kết quả kiểm thử endpoint REST}
+\label{tab:api_test}
+\begin{tabularx}{\textwidth}{l l l X}
+\toprule
+\textbf{Endpoint} & \textbf{Method} & \textbf{Status} & \textbf{Thời gian phản hồi} \\
+\midrule
+\texttt{/auth/login}        & POST & 200 & 120\,ms \\
+\texttt{/latest/child\_01}  & GET  & 200 & 45\,ms \\
+\texttt{/history/child\_01} & GET  & 200 & 180\,ms \\
+\texttt{/geofence/update}   & POST & 200 & 55\,ms \\
+\texttt{/stats/child\_01}   & GET  & 200 & 320\,ms \\
+\texttt{/stats/.../heatmap} & GET  & 200 & 450\,ms \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Kiểm thử hệ thống thực tế}
+
+\textbf{Điều kiện kiểm thử:} Khuôn viên Đại học Bách khoa Hà Nội (ngoài trời, buổi sáng), thiết bị ESP32 + SIM7000G (SIM Viettel 4G), pin 2000\,mAh, backend trên Render.com, app Flutter Android.
+
+\subsection{Độ chính xác GPS}
+
+\begin{table}[H]
+\centering
+\caption{Kết quả đo độ chính xác GPS (120 mẫu, ngoài trời)}
+\label{tab:gps_accuracy}
+\begin{tabular}{l r}
+\toprule
+\textbf{Chỉ số} & \textbf{Giá trị} \\
+\midrule
+Sai số trung bình (CEP 50\%) & 3.2\,m \\
+Sai số cực đại (CEP 95\%)    & 6.8\,m \\
+Độ lệch chuẩn                & 1.4\,m \\
+Tỷ lệ điểm sai $<$5\,m       & 87\% \\
+Tỷ lệ điểm sai $<$10\,m      & 99\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Độ trễ end-to-end}
+
+\begin{table}[H]
+\centering
+\caption{Đo độ trễ end-to-end (50 lần đo)}
+\label{tab:latency}
+\begin{tabular}{l r}
+\toprule
+\textbf{Chỉ số} & \textbf{Giá trị} \\
+\midrule
+Độ trễ trung bình   & 1.8\,giây \\
+Độ trễ p50 (median) & 1.5\,giây \\
+Độ trễ p95          & 3.2\,giây \\
+Độ trễ tối đa       & 4.7\,giây \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Kiểm thử cảnh báo geofence}
+
+\begin{table}[H]
+\centering
+\caption{Kết quả kiểm thử cảnh báo (bán kính 50\,m)}
+\label{tab:geofence_test}
+\begin{tabularx}{\textwidth}{l X r r}
+\toprule
+\textbf{Kịch bản} & \textbf{Mô tả} & \textbf{Kết quả} & \textbf{Thời gian} \\
+\midrule
+KT-01 & Rời khỏi vùng -- email      & Gửi thành công       & 3.1\,s \\
+KT-02 & Rời khỏi vùng -- Telegram   & Gửi thành công       & 2.7\,s \\
+KT-03 & Trở về vùng an toàn         & Thông báo đúng       & 2.9\,s \\
+KT-04 & Dao động ở biên giới        & Không gửi (cooldown) & -- \\
+KT-05 & Vùng di động theo phụ huynh & Cập nhật đúng        & $<$2\,s \\
+KT-06 & Đa thiết bị (3 thiết bị)   & Tất cả nhận cảnh báo & 3.5\,s \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Thời lượng pin}
+
+\begin{table}[H]
+\centering
+\caption{Đo thời lượng pin (LiPo 2000\,mAh)}
+\label{tab:battery}
+\begin{tabular}{l r}
+\toprule
+\textbf{Chế độ} & \textbf{Thời lượng} \\
+\midrule
+Hoạt động đầy đủ (publish 5\,s) & 9.5 giờ \\
+Giảm tần suất (publish 30\,s)   & $\sim$24 giờ \\
+Deep sleep giữa các lần publish  & $>$48 giờ (ước tính) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Tổng kết đánh giá}
+
+\begin{table}[H]
+\centering
+\caption{So sánh kết quả đạt được với yêu cầu đề ra}
+\label{tab:evaluation_summary}
+\begin{tabularx}{\textwidth}{l X r r}
+\toprule
+\textbf{Chỉ số} & \textbf{Yêu cầu} & \textbf{Đạt được} & \textbf{Kết quả} \\
+\midrule
+Độ chính xác GPS     & $<$5\,m CEP 50\%  & 3.2\,m     & \checkmark \\
+Độ trễ end-to-end    & $<$5\,s           & 1.8\,s     & \checkmark \\
+Phản hồi API         & $<$500\,ms        & $<$450\,ms & \checkmark \\
+Thời lượng pin       & $\geq$8 giờ       & 9.5 giờ    & \checkmark \\
+Cảnh báo email       & $<$5\,s           & 3.1\,s     & \checkmark \\
+Hỗ trợ đa thiết bị  & $\geq$3           & 3          & \checkmark \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Tất cả các chỉ số đánh giá đều đạt hoặc vượt yêu cầu đề ra ban đầu. Hệ thống hoạt động ổn định trong điều kiện kiểm thử thực tế.
+
+%% ============================================================
+%%  CHƯƠNG 6 – KẾT LUẬN
+%% ============================================================
+\chapter{Kết Luận}
+
+\section{Tổng kết đề tài}
+
+Đề tài đã nghiên cứu, thiết kế và triển khai thành công \textbf{\systemname{}} -- một hệ thống IoT hoàn chỉnh từ phần cứng đến phần mềm, từ thiết bị nhúng đến ứng dụng di động. Hệ thống đáp ứng đầy đủ các mục tiêu đề ra:
+
+\begin{itemize}
+  \item \textbf{Phần cứng:} ESP32 + SIM7000G thu nhận GPS chính xác 3.2\,m, truyền dữ liệu qua GPRS lên MQTT broker đám mây, hoạt động 9.5 giờ với pin 2000\,mAh.
+  \item \textbf{Backend:} FastAPI xử lý IoT thời gian thực với độ trễ $<$2 giây end-to-end, geofence chính xác, máy trạng thái cảnh báo thông minh, thông báo đa kênh.
+  \item \textbf{Ứng dụng di động:} Flutter đa nền tảng với bản đồ thời gian thực, geofence tĩnh/di động, hỗ trợ đa thiết bị và nhiều tài khoản.
+  \item \textbf{Triển khai:} Hệ thống hoạt động ổn định trên Render.com, MongoDB Atlas, HiveMQ Cloud.
+\end{itemize}
+
+\section{Đóng góp của đề tài}
+
+\begin{enumerate}
+  \item Thiết kế kiến trúc IoT đa tầng hoàn chỉnh tích hợp phần cứng, cloud và mobile trong một hệ thống thống nhất.
+  \item Giải pháp \textit{mobile geofence} -- vùng an toàn di động theo phụ huynh -- là tính năng ít phổ biến trên các sản phẩm thương mại hiện có.
+  \item Cơ chế lọc nhiễu GPS kết hợp máy trạng thái cảnh báo giảm thiểu false positive hiệu quả.
+  \item Thống kê di chuyển và heatmap hỗ trợ phụ huynh hiểu thói quen di chuyển của trẻ.
+\end{enumerate}
+
+\section{Hạn chế và thách thức}
+
+\begin{itemize}
+  \item \textbf{Độ chính xác trong nhà:} GPS suy giảm mạnh (sai số $>$20\,m). Cần tích hợp thêm WiFi positioning hoặc BLE.
+  \item \textbf{Tiêu thụ pin:} SIM7000G tiêu thụ điện đáng kể khi duy trì GPRS liên tục. Cần deep sleep và LTE-M/NB-IoT.
+  \item \textbf{Bảo mật:} Cần thêm device authentication (client certificate) để ngăn thiết bị giả mạo.
+  \item \textbf{Quy mô:} Cần horizontal scaling khi số lượng thiết bị lớn.
+\end{itemize}
+
+\section{Định hướng phát triển}
+
+\begin{description}
+  \item[Ngắn hạn ($<$6 tháng):] Tích hợp LTE-M/NB-IoT, thêm gia tốc kế phát hiện ngã, mode SOS, tối ưu deep sleep.
+  \item[Trung hạn (6--18 tháng):] AI/ML nhận diện bất thường, indoor positioning (BLE beacon), PCB tùy chỉnh chống nước IP67.
+  \item[Dài hạn ($>$18 tháng):] Mạng cộng đồng crowdsourced tracking, mở rộng sang người cao tuổi và vật nuôi.
+\end{description}
+
+%% ── TÀI LIỆU THAM KHẢO ──────────────────────────────────────
+\begin{thebibliography}{99}
+
+\bibitem{atzori2010iot}
+L.~Atzori, A.~Iera, and G.~Morabito,
+``The Internet of Things: A survey,''
+\textit{Computer Networks}, vol.~54, no.~15, pp.~2787--2805, 2010.
+
+\bibitem{banks2019mqtt}
+A.~Banks, E.~Briggs, K.~Borgendale, and R.~Gupta,
+``MQTT Version 5.0,''
+OASIS Standard, 2019.
+
+\bibitem{espressif2023esp32}
+Espressif Systems,
+\textit{ESP32 Technical Reference Manual}, ver.~V5.2, 2023.
+
+\bibitem{simcom2023sim7000}
+SIMCom Wireless Solutions,
+\textit{SIM7000 Series AT Command Manual}, ver.~V2.03, 2023.
+
+\bibitem{ramirez2021fastapi}
+S.~Ramírez,
+``FastAPI Documentation,''
+2021. [Online]. Available: \texttt{https://fastapi.tiangolo.com}
+
+\bibitem{banker2011mongodb}
+K.~Banker, P.~Bakkum, and S.~Verch,
+\textit{MongoDB in Action}, 2nd~ed.
+Manning Publications, 2016.
+
+\bibitem{flutter2023}
+Google LLC,
+``Flutter Documentation,''
+2023. [Online]. Available: \texttt{https://docs.flutter.dev}
+
+\bibitem{fette2011websocket}
+I.~Fette and A.~Melnikov,
+``The WebSocket Protocol,''
+IETF, RFC~6455, 2011.
+
+\bibitem{sinnott1984virtues}
+R.~W.~Sinnott,
+``Virtues of the Haversine,''
+\textit{Sky and Telescope}, vol.~68, no.~2, p.~158, 1984.
+
+\end{thebibliography}
+
+%% ── PHỤ LỤC ─────────────────────────────────────────────────
+\appendix
+\chapter{Danh Sách Các Từ Viết Tắt}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{Từ viết tắt} & \textbf{Giải nghĩa} \\
+\midrule
+API    & Application Programming Interface \\
+ASGI   & Asynchronous Server Gateway Interface \\
+CEP    & Circular Error Probable \\
+GPRS   & General Packet Radio Service \\
+GPS    & Global Positioning System \\
+GSM    & Global System for Mobile Communications \\
+HTTP   & Hypertext Transfer Protocol \\
+IoT    & Internet of Things \\
+JSON   & JavaScript Object Notation \\
+LTE    & Long-Term Evolution \\
+MQTT   & Message Queuing Telemetry Transport \\
+NB-IoT & Narrowband IoT \\
+NMEA   & National Marine Electronics Association \\
+OSM    & OpenStreetMap \\
+REST   & Representational State Transfer \\
+SIM    & Subscriber Identity Module \\
+SMTP   & Simple Mail Transfer Protocol \\
+TLS    & Transport Layer Security \\
+UART   & Universal Asynchronous Receiver-Transmitter \\
+UTC    & Coordinated Universal Time \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\end{document}

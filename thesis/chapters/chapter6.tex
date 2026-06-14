@@ -1,0 +1,66 @@
+\chapter{Kết Luận}
+
+\section{Tổng kết đề tài}
+
+Đề tài đã nghiên cứu, thiết kế và triển khai thành công \textbf{\systemname{}} -- một hệ thống IoT hoàn chỉnh từ phần cứng đến phần mềm, từ thiết bị nhúng đến ứng dụng di động. Hệ thống đáp ứng đầy đủ các mục tiêu đề ra:
+
+\begin{itemize}
+  \item \textbf{Phần cứng:} Thiết kế và lập trình thành công thiết bị dựa trên ESP32 + SIM7000G, có khả năng thu nhận tọa độ GPS chính xác 3.2\,m và truyền dữ liệu qua mạng di động (GPRS) lên MQTT broker đám mây, hoạt động liên tục 9.5 giờ với pin 2000\,mAh.
+
+  \item \textbf{Backend:} Xây dựng hệ thống máy chủ FastAPI xử lý luồng dữ liệu IoT theo thời gian thực với độ trễ $<$2\,giây end-to-end, tích hợp logic geofence chính xác, máy trạng thái cảnh báo thông minh và hệ thống thông báo đa kênh (email, Telegram).
+
+  \item \textbf{Ứng dụng di động:} Phát triển ứng dụng Flutter đa nền tảng với giao diện bản đồ thời gian thực, quản lý vùng an toàn linh hoạt (tĩnh/di động), hỗ trợ đa thiết bị và nhiều tài khoản theo dõi.
+
+  \item \textbf{Tích hợp và triển khai:} Hệ thống hoạt động ổn định trên hạ tầng đám mây (Render.com, MongoDB Atlas, HiveMQ Cloud), có thể triển khai và sử dụng thực tế.
+\end{itemize}
+
+\section{Đóng góp của đề tài}
+
+\begin{enumerate}
+  \item Thiết kế kiến trúc IoT đa tầng hoàn chỉnh tích hợp phần cứng, cloud và mobile trong một hệ thống thống nhất.
+
+  \item Giải pháp vùng an toàn linh hoạt với chế độ \textit{mobile geofence} -- theo dõi theo vị trí phụ huynh di chuyển -- là tính năng ít phổ biến trên các sản phẩm thương mại.
+
+  \item Cơ chế lọc nhiễu GPS kết hợp máy trạng thái cảnh báo giảm thiểu false positive hiệu quả, tránh làm phụ huynh bị "cảnh báo rác".
+
+  \item Cung cấp thống kê di chuyển và heatmap tần suất vị trí hỗ trợ phụ huynh hiểu được thói quen di chuyển của trẻ.
+\end{enumerate}
+
+\section{Hạn chế và thách thức}
+
+\begin{itemize}
+  \item \textbf{Độ chính xác trong nhà:} GPS suy giảm mạnh trong môi trường trong nhà hoặc đô thị dày đặc (sai số $>$20\,m). Cần tích hợp thêm WiFi positioning hoặc BLE để cải thiện.
+
+  \item \textbf{Tiêu thụ pin:} Module SIM7000G tiêu thụ điện đáng kể khi duy trì kết nối GPRS liên tục. Cần triển khai deep sleep mode và giao thức LTE-M/NB-IoT tiết kiệm điện hơn.
+
+  \item \textbf{Bảo mật:} Payload MQTT hiện chỉ được bảo vệ bởi TLS transport. Cần thêm device authentication (client certificate) để ngăn thiết bị giả mạo.
+
+  \item \textbf{Quy mô:} Kiến trúc hiện tại với một backend instance có thể tắc nghẽn khi số lượng thiết bị lớn. Cần thiết kế horizontal scaling cho MQTT subscriber và database sharding.
+\end{itemize}
+
+\section{Định hướng phát triển}
+
+\begin{description}
+  \item[Ngắn hạn ($<$6 tháng):]
+    \begin{itemize}[noitemsep]
+      \item Tích hợp LTE-M/NB-IoT giảm tiêu thụ điện 30--50\%.
+      \item Thêm gia tốc kế để phát hiện va chạm / ngã.
+      \item Xây dựng mode SOS -- trẻ nhấn nút gửi cảnh báo khẩn.
+      \item Tối ưu pin với deep sleep, wake on motion.
+    \end{itemize}
+
+  \item[Trung hạn (6--18 tháng):]
+    \begin{itemize}[noitemsep]
+      \item Áp dụng AI/ML nhận diện bất thường hành vi di chuyển.
+      \item Tích hợp indoor positioning (BLE beacon, WiFi triangulation).
+      \item Thiết kế PCB tùy chỉnh, vỏ chống nước IP67 phù hợp trẻ em.
+      \item Xây dựng nền tảng SaaS đa tenant cho quy mô lớn.
+    \end{itemize}
+
+  \item[Dài hạn ($>$18 tháng):]
+    \begin{itemize}[noitemsep]
+      \item Tích hợp mạng cộng đồng (crowdsourced tracking) khi mất tín hiệu.
+      \item Mở rộng sang theo dõi người cao tuổi và vật nuôi.
+      \item Nghiên cứu giải pháp năng lượng (harvesting) cho thiết bị hoạt động không cần sạc.
+    \end{itemize}
+\end{description}
