@@ -108,13 +108,14 @@ class NotificationService:
             return datetime.fromtimestamp(timestamp, tz=VN_TZ).strftime("%d/%m/%Y %H:%M:%S (GMT+7)")
         return datetime.now(tz=VN_TZ).strftime("%d/%m/%Y %H:%M:%S (GMT+7)")
 
-    def send_geofence_alert(self, device_id: str, lat: float, lng: float, timestamp: int, event: str, geofence_id: str | None = None) -> None:
+    def send_geofence_alert(self, device_id: str, lat: float, lng: float, timestamp: int, event: str, geofence_id: str | None = None, geofence_name: str | None = None) -> None:
         label = EVENT_LABELS.get(event, event)
         if not label:
             return  # sự kiện không cần thông báo (inside_still, outside_still)
 
         dt = self._format_timestamp(timestamp)
         maps_url = f"https://maps.google.com/?q={lat:.6f},{lng:.6f}"
+        zone_line = f"Vùng: {geofence_name}\n" if geofence_name else ""
 
         EVENT_ICONS = {
             "outside_entered":  "⚠️",
@@ -127,6 +128,7 @@ class NotificationService:
         telegram_message = (
             f"{icon} {label}\n"
             f"Thiết bị: {device_id}\n"
+            f"{zone_line}"
             f"Vị trí: {lat:.6f}, {lng:.6f}\n"
             f"Thời gian: {dt}\n"
             f"🗺 {maps_url}"
@@ -140,6 +142,7 @@ class NotificationService:
             email_body = (
                 f"Thiết bị: {device_id}\n"
                 f"Sự kiện: {label}\n"
+                f"{zone_line}"
                 f"Vị trí: {lat:.6f}, {lng:.6f}\n"
                 f"Thời gian: {dt}\n"
                 f"Xem bản đồ: {maps_url}\n"

@@ -43,6 +43,9 @@ class LocationProcessor:
         geofences = raw_state.get("geofences", [])
         gf = geofences[0] if geofences else {}
         inside_geofence, distance, matched_gf_id = self.geofence_service.is_inside(location.lat, location.lng)
+
+        matched_gf = next((g for g in geofences if g.get("id") == matched_gf_id), {})
+        geofence_name = matched_gf.get("name") or matched_gf_id
         received_at = int(datetime.now(tz=timezone.utc).timestamp())
 
         logger.info(
@@ -82,6 +85,7 @@ class LocationProcessor:
                 timestamp=location.timestamp,
                 event=event,
                 geofence_id=matched_gf_id,
+                geofence_name=geofence_name,
             )
 
         self.ws_manager.broadcast_from_thread(
