@@ -80,8 +80,7 @@ class NotificationService:
         return self.settings.smtp_to_email
 
     def send_sos_alert(self, device_id: str, lat: float, lng: float, timestamp: int, no_gps: bool = False) -> None:
-        from datetime import datetime, timezone
-        dt = datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%d/%m/%Y %H:%M:%S UTC")
+        dt = self._format_timestamp(timestamp)
         if no_gps:
             message = (
                 f"🆘 SOS KHẨN CẤP!\n"
@@ -101,28 +100,48 @@ class NotificationService:
         logger.warning("SOS received from %s: lat=%s lng=%s", device_id, lat, lng)
         self.send_telegram(message)
 
+    def _format_timestamp(self, timestamp: int) -> str:
+        from datetime import datetime, timezone, timedelta
+        VN_TZ = timezone(timedelta(hours=7))
+        MIN_VALID_TS = 1577836800  # 2020-01-01 UTC
+        if timestamp and timestamp >= MIN_VALID_TS:
+            return datetime.fromtimestamp(timestamp, tz=VN_TZ).strftime("%d/%m/%Y %H:%M:%S (GMT+7)")
+        return datetime.now(tz=VN_TZ).strftime("%d/%m/%Y %H:%M:%S (GMT+7)")
+
     def send_geofence_alert(self, device_id: str, lat: float, lng: float, timestamp: int, event: str, geofence_id: str | None = None) -> None:
-        parent_email = self._get_parent_email(device_id)
-        if not parent_email:
-            logger.warning(f"No email configured for device {device_id}")
-            return
-
         label = EVENT_LABELS.get(event, event)
+        if not label:
+            return  # sự kiện không cần thông báo (inside_still, outside_still)
 
-        geofence_info = f" [{geofence_id}]" if geofence_id else ""
+        dt = self._format_timestamp(timestamp)
+        maps_url = f"https://maps.google.com/?q={lat:.6f},{lng:.6f}"
+
+        EVENT_ICONS = {
+            "outside_entered":  "⚠️",
+            "outside_reminder": "🔔",
+            "inside_entered":   "✅",
+            "inside_moved":     "📍",
+        }
+        icon = EVENT_ICONS.get(event, "📌")
+
         telegram_message = (
-            f"ALERT [{event}]{geofence_info}: Device {device_id} - {label}\n"
-            f"Vi tri: {lat:.6f}, {lng:.6f} (ts={timestamp})"
+            f"{icon} {label}\n"
+            f"Thiết bị: {device_id}\n"
+            f"Vị trí: {lat:.6f}, {lng:.6f}\n"
+            f"Thời gian: {dt}\n"
+            f"🗺 {maps_url}"
         )
-
-        email_subject = f"Cảnh báo Geofence: {device_id} - {label}{geofence_info}"
-        email_body = (
-            f"Thiet bi: {device_id}\n"
-            f"Su kien: {event}{geofence_info}\n"
-            f"Mo ta: {label}\n"
-            f"Vi tri: {lat:.6f}, {lng:.6f}\n"
-            f"Thoi gian: {timestamp}\n"
-        )
-
         self.send_telegram(telegram_message)
-        self.send_email(email_subject, email_body, parent_email)
+
+        # Gửi email riêng — không ảnh hưởng đến Telegram nếu email chưa cấu hình
+        parent_email = self._get_parent_email(device_id)
+        if parent_email:
+            email_subject = f"{icon} {label} — {device_id}"
+            email_body = (
+                f"Thiết bị: {device_id}\n"
+                f"Sự kiện: {label}\n"
+                f"Vị trí: {lat:.6f}, {lng:.6f}\n"
+                f"Thời gian: {dt}\n"
+                f"Xem bản đồ: {maps_url}\n"
+            )
+            self.send_email(email_subject, email_body, parent_email)

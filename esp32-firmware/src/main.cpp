@@ -188,7 +188,7 @@ static void sendSOS(const GpsData& gps) {
   }
   lastSosTime = now;
 
-  uint32_t ts = (gps.valid && gps.ts > 0) ? gps.ts : (now / 1000);
+  uint32_t ts = (gps.valid && gps.ts > 0) ? gps.ts : 0;  // 0 = backend dùng giờ server
   char payload[300];
   if (gps.valid) {
     snprintf(payload, sizeof(payload),
