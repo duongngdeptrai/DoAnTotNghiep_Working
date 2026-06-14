@@ -339,9 +339,21 @@ class AppProvider with ChangeNotifier {
 	void _scheduleGeofenceCenterSync() {
 		_locationSyncTimer?.cancel();
 		_locationSyncTimer = Timer(const Duration(seconds: 10), () {
+			if (!_shareEnabled) return;
 			final pos = _locationService.currentPosition;
-			if (pos != null) updateGeofenceCenter(pos.latitude, pos.longitude);
+			if (pos != null) _syncMobileCenter(pos.latitude, pos.longitude);
 		});
+	}
+
+	// Fire-and-forget: chỉ đẩy vị trí lên backend, KHÔNG cập nhật _geofenceState
+	// Tránh race condition với setGeofenceMode khi timer fires gần thời điểm switch mode
+	Future<void> _syncMobileCenter(double lat, double lng) async {
+		if (_token == null || !isOwner || !_shareEnabled) return;
+		try {
+			await _apiService.updateGeofenceCenter(lat, lng);
+		} catch (e) {
+			debugPrint('Mobile center sync error: $e');
+		}
 	}
 
 	void _cancelPositionSubscription() {
@@ -352,9 +364,14 @@ class AppProvider with ChangeNotifier {
 	}
 
 	Future<void> setGeofenceMode(String mode) async {
-		if (_token == null) return;
+		debugPrint('[GeofenceMode] setGeofenceMode("$mode") called, token=${_token != null}, shareEnabled=$_shareEnabled, currentMode=${_geofenceState.mode}');
+		if (_token == null) {
+			debugPrint('[GeofenceMode] Aborted: token is null');
+			return;
+		}
 		try {
 			final state = await _apiService.postGeofenceMode(mode);
+			debugPrint('[GeofenceMode] API response: mode=${state.mode}, radiusM=${state.radiusM}');
 			_geofenceState = state;
 			if (mode == 'mobile') {
 				_shareEnabled = true;
@@ -365,9 +382,12 @@ class AppProvider with ChangeNotifier {
 				_locationService.stopSharing();
 				_cancelPositionSubscription();
 			}
+			_error = null;
 			notifyListeners();
+			debugPrint('[GeofenceMode] Done: geofenceState.mode=${_geofenceState.mode}, shareEnabled=$_shareEnabled');
 		} catch (e) {
-			_error = e.toString();
+			debugPrint('[GeofenceMode] ERROR: $e');
+			_error = 'Chuyển mode thất bại: $e';
 			notifyListeners();
 		}
 	}
@@ -659,17 +679,24 @@ class AppProvider with ChangeNotifier {
 		} else if (type == 'geofence_state_update') {
 			try {
 				final newState = GeofenceState.fromJson(message);
-				_geofenceState = newState;
+				debugPrint('[WS] geofence_state_update: mode=${newState.mode}, shareEnabled=$_shareEnabled, currentMode=${_geofenceState.mode}');
+				// Guard: nếu _shareEnabled=false (đã switch sang fixed) nhưng broadcast
+				// nói mode='mobile', đây là stale message từ center-update race condition —
+				// bỏ qua để tránh re-activate mobile mode ngoài ý muốn.
 				if (newState.mode == 'mobile' && !_shareEnabled) {
-					_shareEnabled = true;
-					_locationService.startSharing();
-					_subscribeToPosition();
-				} else if (newState.mode != 'mobile' && _shareEnabled) {
-					_shareEnabled = false;
-					_locationService.stopSharing();
-					_cancelPositionSubscription();
+					debugPrint('[WS] SKIPPED stale mobile broadcast (already in fixed mode)');
+					notifyListeners();
+				} else {
+					_geofenceState = newState;
+					if (newState.mode != 'mobile' && _shareEnabled) {
+						// Mode bị đổi sang fixed từ nguồn bên ngoài (thiết bị khác)
+						debugPrint('[WS] External fixed-mode switch detected, stopping sharing');
+						_shareEnabled = false;
+						_locationService.stopSharing();
+						_cancelPositionSubscription();
+					}
+					notifyListeners();
 				}
-				notifyListeners();
 			} catch (e) {
 				debugPrint('Error handling geofence_state_update: $e');
 			}

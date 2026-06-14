@@ -47,7 +47,9 @@ class GeofenceFullUpdate(BaseModel):
 
 def _flat_geofence_state(state: dict) -> dict:
     geofences = state.get("geofences", [])
-    g = geofences[0] if geofences else {}
+    # Luôn dùng vùng "default" cho global mode/center/radius.
+    # geofences[0] không đáng tin vì user có thể đã tạo vùng tùy chỉnh trước.
+    g = next((x for x in geofences if x.get("id") == "default"), geofences[0] if geofences else {})
     return {
         "geofences": geofences,
         "mode": g.get("mode", "fixed"),

@@ -648,6 +648,7 @@ class _ModeDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isFixed = provider.geofenceState.mode == 'fixed';
+    final hasError = provider.error != null;
     return Container(
       padding: EdgeInsets.fromLTRB(12, 6, 12, bottomPadding + 6),
       decoration: const BoxDecoration(
@@ -669,6 +670,13 @@ class _ModeDock extends StatelessWidget {
             onTap: () => provider.setGeofenceMode('mobile'),
             color: Colors.orange,
           ),
+          if (hasError) ...[
+            const SizedBox(width: 6),
+            Tooltip(
+              message: provider.error!,
+              child: const Icon(Icons.error_outline, color: Colors.redAccent, size: 14),
+            ),
+          ],
           const SizedBox(width: 10),
           const Icon(Icons.circle, size: 5, color: Colors.cyanAccent),
           const SizedBox(width: 5),
