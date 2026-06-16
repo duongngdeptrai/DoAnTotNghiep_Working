@@ -27,6 +27,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Alert? _bannerAlert;
   bool _showDeviceList = true;
   bool _showAlerts = false;
+  bool _showGeofencePanel = true;
   String? _focusedDeviceId;
   String? _focusedGeofenceId;
   int _unreadCount = 0;
@@ -166,13 +167,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     }),
                   ),
 
-                  // Status pill (top left)
+                  // Status pill + geofence toggle (top left)
                   Positioned(
                     top: 8,
                     left: 12,
-                    child: _StatusPill(
-                      status: provider.socketStatus,
-                      getColor: _getStatusColor,
+                    child: Row(
+                      children: [
+                        _StatusPill(
+                          status: provider.socketStatus,
+                          getColor: _getStatusColor,
+                        ),
+                        const SizedBox(width: 6),
+                        _IconPill(
+                          icon: Icons.shield_outlined,
+                          label: '${provider.geofenceState.geofences.length}',
+                          active: _showGeofencePanel,
+                          onTap: () => setState(() => _showGeofencePanel = !_showGeofencePanel),
+                          color: const Color(0xFF22D3EE),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -258,13 +271,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
 
-                  // Geofence editor panel (bottom left, always visible)
-                  const Positioned(
-                    left: 8,
-                    top: 44,
-                    bottom: 8,
-                    child: GeofenceEditorPanel(),
-                  ),
+                  // Geofence editor panel (bottom left, toggle)
+                  if (_showGeofencePanel)
+                    const Positioned(
+                      left: 8,
+                      top: 44,
+                      bottom: 8,
+                      child: GeofenceEditorPanel(),
+                    ),
 
                   // Toast overlay notifications (bottom right)
                   if (_toastAlerts.isNotEmpty)

@@ -88,7 +88,7 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
     if (g.mode == 'fixed' && g.centerLat != null && g.centerLng != null) {
       _flyTo(LatLng(g.centerLat!, g.centerLng!), zoom: _zoomForRadius(g.radiusM));
     } else if (g.mode == 'mobile' && g.path.isNotEmpty) {
-      _flyTo(_centroidOf(g.path), zoom: _zoomForPath(g.path));
+      _flyTo(g.path[g.path.length ~/ 2], zoom: _zoomForPath(g.path));
     }
   }
 
@@ -98,12 +98,6 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
     if (radiusM < 500) return 15;
     if (radiusM < 2000) return 14;
     return 13;
-  }
-
-  LatLng _centroidOf(List<LatLng> pts) {
-    final lat = pts.map((p) => p.latitude).reduce((a, b) => a + b) / pts.length;
-    final lng = pts.map((p) => p.longitude).reduce((a, b) => a + b) / pts.length;
-    return LatLng(lat, lng);
   }
 
   double _zoomForPath(List<LatLng> pts) {
@@ -414,7 +408,7 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
       if (g.mode == 'fixed' && g.centerLat != null && g.centerLng != null) {
         tapCenter = LatLng(g.centerLat!, g.centerLng!);
       } else if (g.mode == 'mobile' && g.path.isNotEmpty) {
-        tapCenter = _centroidOf(g.path);
+        tapCenter = g.path[g.path.length ~/ 2];
       }
       if (tapCenter == null) continue;
 

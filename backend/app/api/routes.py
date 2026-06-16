@@ -10,12 +10,20 @@ from app.core.config import get_settings
 from app.models.device_config import DeviceConfigIn
 from app.models.device_permission import DevicePermissionOut, DeviceRegisterIn, DeviceShareIn
 from app.models.user import UserLoginIn, UserOut, UserRegisterIn
+from app.repositories.device_permission_repository import DevicePermissionRepository
 from app.repositories.location_repository import LocationRepository
 from app.repositories.user_repository import UserRepository
 from app.ws.connection_manager import ws_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _get_user_id(request: Request) -> str:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    return auth.removeprefix("Bearer ").strip()
 
 
 class GeofenceModeUpdate(BaseModel):
@@ -138,10 +146,10 @@ def login(payload: UserLoginIn) -> UserOut:
 def list_devices(
     request: Request,
 ) -> list[DevicePermissionOut]:
-    return [
-        DevicePermissionOut(deviceId="child_01", role="owner"),
-        DevicePermissionOut(deviceId="child_02", role="owner"),
-    ]
+    user_id = _get_user_id(request)
+    repo = DevicePermissionRepository()
+    devices = repo.list_devices_for_user(user_id)
+    return [DevicePermissionOut(deviceId=d["deviceId"], role=d["role"]) for d in devices]
 
 
 @router.post("/devices", response_model=DevicePermissionOut)
@@ -149,6 +157,14 @@ def register_device(
     payload: DeviceRegisterIn,
     request: Request,
 ) -> DevicePermissionOut:
+    user_id = _get_user_id(request)
+    repo = DevicePermissionRepository()
+    try:
+        repo.add_owner(payload.deviceId, user_id)
+    except ValueError as e:
+        if str(e) == "device_owned":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Thiết bị đã được đăng ký bởi người dùng khác")
+        raise
     return DevicePermissionOut(deviceId=payload.deviceId, role="owner")
 
 
@@ -157,6 +173,11 @@ def unregister_device(
     device_id: str,
     request: Request,
 ) -> dict:
+    user_id = _get_user_id(request)
+    repo = DevicePermissionRepository()
+    deleted = repo.remove_device(device_id, user_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy thiết bị")
     return {"message": "Device unregistered successfully", "deviceId": device_id}
 
 
@@ -166,6 +187,19 @@ def share_device(
     payload: DeviceShareIn,
     request: Request,
 ) -> dict:
+    user_id = _get_user_id(request)
+    perm_repo = DevicePermissionRepository()
+    role = perm_repo.get_role_for_user(device_id, user_id)
+    if role != "owner":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chỉ owner mới có thể chia sẻ thiết bị")
+    user_repo = UserRepository()
+    target = user_repo.get_by_email(str(payload.email))
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy người dùng với email này")
+    target_id = str(target["_id"])
+    if target_id == user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Không thể chia sẻ với chính mình")
+    perm_repo.add_shared(device_id, target_id)
     return {"message": "Shared successfully"}
 
 
@@ -175,6 +209,18 @@ def unshare_device(
     email: EmailStr,
     request: Request,
 ) -> dict:
+    user_id = _get_user_id(request)
+    perm_repo = DevicePermissionRepository()
+    role = perm_repo.get_role_for_user(device_id, user_id)
+    if role != "owner":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chỉ owner mới có thể bỏ chia sẻ thiết bị")
+    user_repo = UserRepository()
+    target = user_repo.get_by_email(str(email))
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy người dùng với email này")
+    removed = perm_repo.remove_shared(device_id, str(target["_id"]))
+    if not removed:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thiết bị chưa được chia sẻ với người dùng này")
     return {"message": "Unshared successfully"}
 
 
