@@ -1,0 +1,104 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+Chương này mô tả chi tiết quá trình triển khai từng thành phần của hệ thống -- firmware ESP32, backend FastAPI và ứng dụng Flutter -- kèm theo kết quả kiểm thử và đánh giá hiệu năng hệ thống trong điều kiện thực tế.
+
+\section{Môi trường triển khai}
+
+\begin{longtable}{L{3.5cm}L{3cm}L{6.8cm}}
+\caption{Môi trường phát triển và công cụ sử dụng}\\
+\toprule
+\textbf{Thành phần} & \textbf{Phiên bản} & \textbf{Mục đích}\\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Thành phần} & \textbf{Phiên bản} & \textbf{Mục đích}\\
+\midrule
+\endhead
+Python & 3.10.x & Backend development\\
+FastAPI & 0.115.12 & Web framework\\
+Motor/PyMongo & 3.x & MongoDB async driver\\
+Paho-MQTT & 2.x & MQTT client Python\\
+Uvicorn & 0.30.x & ASGI server\\
+\midrule
+Dart & 3.x & Flutter language\\
+Flutter SDK & 3.22.x & Mobile framework\\
+flutter\_map & 6.x & Leaflet map wrapper\\
+\midrule
+PlatformIO & 6.x & Embedded IDE\\
+Arduino-ESP32 & 2.0.x & ESP32 framework\\
+\midrule
+MongoDB Atlas & 6.0 & Cloud database\\
+HiveMQ Cloud & -- & MQTT broker\\
+Render.com & -- & Backend hosting\\
+\bottomrule
+\end{longtable}
+
+\section{Triển khai Firmware ESP32}
+
+\subsection{Cấu trúc và quy trình khởi động}
+
+Firmware được viết bằng Arduino C++ và quản lý bằng PlatformIO. Quy trình khởi động thiết bị gồm các bước: (1) Khởi tạo UART giao tiếp với SIM7000G (GPIO 26/27, tốc độ 115200 baud); (2) Reset module bằng cách kéo chân RST thấp 1 giây; (3) Bật GPS bằng lệnh \texttt{AT+CGPS=1,1}, chờ 30--60 giây để module bắt tín hiệu vệ tinh (cold start); (4) Cấu hình APN mạng và thiết lập kết nối GPRS; (5) Kết nối MQTT/TLS đến HiveMQ Cloud (cổng 8883).
+
+\subsection{Vòng lặp chính}
+
+Vòng lặp chính \texttt{loop()} thực hiện tuần tự: kiểm tra và duy trì kết nối MQTT bằng \texttt{mqttClient.connected()}; đọc dữ liệu GPS định kỳ qua lệnh AT; khi đến chu kỳ publish (5 giây), đóng gói payload JSON và gửi lên topic \texttt{gps/<deviceId>} với QoS 1.
+
+Payload JSON có cấu trúc: \texttt{\{"deviceId": "child\_01", "lat": 21.0285, "lng": 105.8542, "timestamp": 1718000000\}}. Cơ chế reconnect tự động được triển khai: nếu mất kết nối MQTT, firmware thực hiện lại toàn bộ quy trình kết nối GPRS và MQTT mà không cần reset thiết bị.
+
+\section{Triển khai Backend FastAPI}
+
+\subsection{MQTT Subscriber và Geofence Engine}
+
+Backend khởi động background task chạy Paho-MQTT client, subscribe topic \texttt{gps/\#}. Mỗi khi nhận được message, pipeline xử lý gồm: parse JSON payload; validate dữ liệu GPS; lưu bản ghi vào MongoDB collection \texttt{gps\_logs}; cập nhật vị trí cuối cùng của thiết bị; kích hoạt Geofence Engine.
+
+Geofence Engine duyệt qua tất cả vùng an toàn đang hoạt động của thiết bị, tính khoảng cách Haversine từ vị trí GPS mới đến tâm vùng, so sánh với bán kính để xác định trạng thái inside/outside. Máy trạng thái cảnh báo kiểm tra chuyển trạng thái và cooldown trước khi gửi cảnh báo.
+
+\subsection{WebSocket và REST API}
+
+WebSocket Manager duy trì danh sách kết nối từ Flutter app, broadcast cập nhật vị trí mới đến tất cả client đang theo dõi cùng một deviceId. REST API cung cấp các endpoint xác thực (\texttt{/auth}), quản lý thiết bị (\texttt{/devices}), quản lý vùng an toàn (\texttt{/geofences}), lịch sử GPS (\texttt{/history}) và thống kê (\texttt{/stats}).
+
+\section{Triển khai Ứng dụng Flutter}
+
+Màn hình chính hiển thị bản đồ OpenStreetMap qua \texttt{flutter\_map} với marker vị trí trẻ em. Ứng dụng duy trì kết nối WebSocket đến backend, cập nhật marker ngay khi nhận được vị trí mới. Màn hình quản lý vùng an toàn cho phép người dùng nhấn-giữ trên bản đồ để đặt tâm, sau đó điều chỉnh bán kính bằng slider trước khi lưu geofence. Thông báo cảnh báo hiển thị qua Flutter local notifications khi app đang mở và qua push notification (FCM) khi app ở nền.
+
+\section{Kiểm thử và Đánh giá}
+
+\subsection{Kiểm thử đơn vị}
+
+Thuật toán Haversine được kiểm thử với các test case biên: hai điểm trùng nhau (khoảng cách = 0), điểm tại chính xác biên geofence (sai số < 1\,m) và khoảng cách đã biết giữa hai địa điểm thực tế tại Hà Nội. Tất cả test case pass với pytest. Máy trạng thái cảnh báo được kiểm thử đủ 6 tình huống chuyển trạng thái, bao gồm cả trường hợp nhiễu GPS tại biên vùng an toàn.
+
+\subsection{Kiểm thử tích hợp}
+
+Script Python giả lập 100 bản tin GPS gửi qua MQTT broker. Kết quả: 100/100 bản tin được lưu vào MongoDB, WebSocket broadcast thành công đến 3 Flutter client kết nối đồng thời, không có bản tin bị mất (QoS 1 đảm bảo).
+
+\subsection{Kiểm thử hệ thống thực tế}
+
+Kiểm thử thực hiện tại khuôn viên Đại học Bách khoa Hà Nội, thiết bị ESP32 + SIM7000G (SIM Viettel 4G), backend chạy trên Render.com, MongoDB Atlas, Flutter Android trên Samsung Galaxy S23.
+
+\begin{longtable}{L{4cm}L{9.3cm}}
+\caption{Kết quả kiểm thử hệ thống thực tế}\\
+\toprule
+\textbf{Chỉ số} & \textbf{Kết quả}\\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Chỉ số} & \textbf{Kết quả}\\
+\midrule
+\endhead
+Độ chính xác GPS (CEP 50\%) & 3.2\,m (120 mẫu ngoài trời) -- đạt yêu cầu $<$5\,m\\
+Độ trễ end-to-end (trung bình) & 1.8 giây (p95: 3.2\,s) -- đạt yêu cầu $<$5\,s\\
+Thời gian phản hồi API (p95) & $<$450\,ms -- đạt yêu cầu $<$500\,ms\\
+Thời lượng pin & 9.5 giờ (chu kỳ 5 giây) -- đạt yêu cầu $\geq$8 giờ\\
+Cảnh báo email & 3.1 giây trung bình -- đạt yêu cầu $<$5\,s\\
+Cảnh báo Telegram & 2.7 giây trung bình -- đạt yêu cầu $<$5\,s\\
+Kiểm thử đa thiết bị & 3 thiết bị đồng thời -- tất cả nhận cảnh báo đúng\\
+\bottomrule
+\end{longtable}
+
+Tất cả các chỉ số hiệu năng đều đạt hoặc vượt yêu cầu đề ra. Hệ thống hoạt động ổn định trong suốt thời gian kiểm thử thực tế.
+
+\section{Kết luận chương}
+
+Chương này đã trình bày chi tiết quá trình triển khai toàn bộ ba thành phần của hệ thống -- firmware ESP32, backend FastAPI và ứng dụng Flutter -- kèm theo kết quả kiểm thử đơn vị, tích hợp và hệ thống thực tế. Kết quả cho thấy hệ thống đáp ứng đầy đủ các yêu cầu kỹ thuật đề ra, với độ chính xác GPS 3.2\,m, độ trễ end-to-end 1.8 giây và thời lượng pin 9.5 giờ.
+
+\end{document}

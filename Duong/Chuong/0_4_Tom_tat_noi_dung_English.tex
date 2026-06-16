@@ -1,0 +1,15 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+\begin{center}
+    \Large{\textbf{ABSTRACT}}\\
+\end{center}
+\vspace{1cm}
+In the context of modern society, ensuring child safety has become one of the primary concerns for parents, especially given the increasingly busy pace of daily life. The rapid development of Internet of Things (IoT) technology and next-generation cellular networks has opened up new opportunities to build effective, affordable, and practically deployable child location monitoring solutions.
+
+This graduation project presents the research, design, and implementation of a \textbf{Real-time Child Location Tracking System} -- a comprehensive IoT solution enabling parents to monitor their children's location and safety via cellular networks and a dedicated mobile application.
+
+The system consists of three main components: (1)~An embedded hardware device based on the \textbf{ESP32} microcontroller integrating a GPS receiver and \textbf{SIM7000G} cellular modem (GPRS/4G), continuously collecting and transmitting location coordinates in real time; (2)~A backend server built on \textbf{FastAPI} (Python) with \textbf{MongoDB}, receiving GPS data via the \textbf{MQTT} protocol, implementing geofence logic, and dispatching multi-channel alert notifications via email and Telegram; (3)~A cross-platform mobile application written in \textbf{Flutter} for real-time map visualization, flexible geofence management (static and mobile zones), and instant alert notifications.
+
+Experimental results demonstrate stable system operation with GPS accuracy of 3.2\,m (CEP 50\%) outdoors, average end-to-end latency of 1.8 seconds, battery life of 9.5 hours in full-operation mode, and stable concurrent multi-device support. The system has been fully implemented and validated, demonstrating readiness for practical deployment with significant potential for future expansion.
+
+\end{document}

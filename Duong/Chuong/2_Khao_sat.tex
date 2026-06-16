@@ -1,0 +1,122 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+Chương này trình bày quá trình phân tích yêu cầu và thiết kế tổng thể cho hệ thống theo dõi vị trí trẻ em theo thời gian thực. Nội dung bao gồm xác định yêu cầu chức năng và phi chức năng, thiết kế kiến trúc hệ thống, thiết kế cơ sở dữ liệu và thiết kế giao tiếp giữa các thành phần.
+
+\section{Phân tích yêu cầu}
+
+\subsection{Yêu cầu chức năng}
+
+\textbf{Đối với phụ huynh (người dùng cuối):}
+
+\begin{enumerate}
+  \item \textbf{Đăng ký / Đăng nhập:} Tạo tài khoản bằng email, đăng nhập bảo mật bằng JWT.
+  \item \textbf{Quản lý thiết bị:} Thêm, xóa thiết bị theo dõi; chia sẻ quyền truy cập với tài khoản khác (ông bà, người thân).
+  \item \textbf{Theo dõi thời gian thực:} Xem vị trí hiện tại của thiết bị trên bản đồ với độ trễ dưới 5 giây.
+  \item \textbf{Lịch sử di chuyển:} Xem đường di chuyển trong khoảng thời gian tùy chọn và heatmap tần suất vị trí.
+  \item \textbf{Quản lý vùng an toàn:} Tạo vùng an toàn hình tròn (tĩnh) với bán kính tùy chỉnh; tạo vùng an toàn di động theo vị trí phụ huynh; xóa vùng an toàn.
+  \item \textbf{Cảnh báo:} Nhận thông báo tức thời qua in-app, email và Telegram khi trẻ rời khỏi hoặc trở về vùng an toàn.
+  \item \textbf{Thống kê:} Xem thống kê di chuyển gồm tổng quãng đường, thời gian và heatmap vị trí.
+\end{enumerate}
+
+\textbf{Đối với thiết bị GPS (ESP32 + SIM7000G):}
+
+\begin{enumerate}
+  \item Thu thập tọa độ GPS định kỳ theo chu kỳ 5 giây.
+  \item Kết nối mạng di động qua SIM và gửi dữ liệu lên MQTT broker.
+  \item Tự động kết nối lại khi mất mạng hoặc mất tín hiệu GPS.
+  \item Hoạt động liên tục ít nhất 8 giờ với pin dung lượng phù hợp.
+\end{enumerate}
+
+\subsection{Yêu cầu phi chức năng}
+
+\begin{longtable}{L{3cm}L{4cm}L{6.3cm}}
+\caption{Yêu cầu phi chức năng của hệ thống}\\
+\toprule
+\textbf{Nhóm} & \textbf{Chỉ số} & \textbf{Yêu cầu}\\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Nhóm} & \textbf{Chỉ số} & \textbf{Yêu cầu}\\
+\midrule
+\endhead
+Hiệu năng & Độ trễ end-to-end & Dưới 5 giây từ GPS đến màn hình\\
+& Thời gian phản hồi API & Dưới 500\,ms (p95)\\
+& Tải đồng thời & Tối thiểu 50 thiết bị/tài khoản\\
+\midrule
+Độ chính xác & GPS ngoài trời & 3--5\,m CEP 50\%\\
+& Geofence & Bán kính tối thiểu 20\,m\\
+\midrule
+Độ tin cậy & Uptime backend & Tối thiểu 99\%\\
+& Tự phục hồi kết nối & Dưới 30 giây\\
+\midrule
+Bảo mật & Xác thực & Token-based (JWT)\\
+& Truyền dữ liệu & HTTPS/TLS cho REST; TLS cho MQTT\\
+\midrule
+Khả dụng & Nền tảng app & Android 7.0+, iOS 12+\\
+& Offline & Cache dữ liệu vị trí gần nhất\\
+\bottomrule
+\end{longtable}
+
+\section{Kiến trúc tổng thể hệ thống}
+
+Hệ thống áp dụng kiến trúc ba lớp phân tán kết hợp mô hình IoT pipeline:
+
+\begin{itemize}
+  \item \textbf{Lớp thiết bị (Device Layer):} ESP32 + GPS Module + SIM7000G thu thập tọa độ GPS và truyền qua GPRS/4G lên MQTT broker theo chu kỳ cố định.
+  \item \textbf{Lớp backend (Processing Layer):} FastAPI server đăng ký subscribe trên MQTT broker, nhận dữ liệu GPS, lưu vào MongoDB, tính toán geofence, gửi cảnh báo và cung cấp REST API cùng WebSocket cho ứng dụng di động.
+  \item \textbf{Lớp ứng dụng (Application Layer):} Ứng dụng Flutter hiển thị bản đồ thời gian thực, nhận cập nhật vị trí qua WebSocket, quản lý vùng an toàn và hiển thị thông báo cảnh báo.
+\end{itemize}
+
+Luồng dữ liệu chính: ESP32 $\xrightarrow{\text{MQTT/TLS}}$ HiveMQ Cloud Broker $\xrightarrow{\text{Subscribe}}$ Backend FastAPI $\xrightarrow{\text{WebSocket}}$ Flutter App. Song song đó, backend xử lý geofence và gửi cảnh báo qua email (SMTP) hoặc Telegram Bot API khi phát hiện vi phạm vùng an toàn.
+
+\section{Thiết kế chi tiết các thành phần}
+
+\subsection{Thiết kế phần cứng}
+
+Thiết bị theo dõi sử dụng ba module chính kết nối với nhau:
+
+\begin{itemize}
+  \item \textbf{ESP32 DevKit v1:} Vi điều khiển trung tâm, xử lý logic firmware, giao tiếp với SIM7000G qua UART (Serial2, GPIO 26/27).
+  \item \textbf{SIM7000G:} Module đa năng tích hợp GPS và modem cellular (GPRS/4G), giao tiếp qua tập lệnh AT. Cung cấp cả dữ liệu vị trí GPS và kết nối mạng GPRS để gửi MQTT.
+  \item \textbf{Pin LiPo 3.7V/2000\,mAh:} Nguồn điện dự phòng, kết nối qua mạch quản lý sạc TP4056.
+\end{itemize}
+
+\subsection{Thiết kế firmware}
+
+Firmware được tổ chức theo mô hình vòng lặp chính (\texttt{loop()}), thực hiện tuần tự: (1) Kiểm tra và duy trì kết nối MQTT; (2) Đọc dữ liệu GPS từ SIM7000G qua lệnh AT; (3) Kiểm tra thời gian publish; (4) Nếu GPS hợp lệ và đến chu kỳ, đóng gói JSON và publish lên MQTT topic.
+
+Payload MQTT có định dạng JSON: \texttt{\{deviceId, lat, lng, timestamp\}}, được publish lên topic \texttt{gps/<deviceId>} với QoS 1 để đảm bảo giao tin.
+
+\subsection{Thiết kế backend}
+
+Backend FastAPI được tổ chức theo module domain:
+
+\begin{itemize}
+  \item \textbf{MQTT Subscriber:} Chạy trong background task, subscribe topic \texttt{gps/\#}, parse JSON và lưu vào MongoDB collection \texttt{gps\_logs}.
+  \item \textbf{Geofence Engine:} Sau mỗi bản ghi GPS mới, kiểm tra tất cả vùng an toàn của thiết bị. Sử dụng thuật toán Haversine để tính khoảng cách, kết hợp máy trạng thái (inside/outside) với cơ chế cooldown để tránh cảnh báo trùng lặp.
+  \item \textbf{Alert Service:} Gửi cảnh báo qua email (SMTP) và Telegram Bot API khi phát hiện vi phạm. Sử dụng task queue bất đồng bộ để không làm chậm pipeline xử lý GPS.
+  \item \textbf{WebSocket Manager:} Quản lý kết nối WebSocket từ Flutter app, broadcast cập nhật vị trí mới nhất cho các client đang theo dõi cùng một thiết bị.
+  \item \textbf{REST API:} Cung cấp endpoint xác thực, quản lý thiết bị, quản lý vùng an toàn, lịch sử GPS và thống kê di chuyển.
+\end{itemize}
+
+\subsection{Thiết kế cơ sở dữ liệu}
+
+MongoDB được chọn nhờ khả năng lưu trữ dữ liệu chuỗi thời gian GPS hiệu quả và schema linh hoạt. Các collection chính:
+
+\begin{itemize}
+  \item \textbf{users:} Thông tin tài khoản, danh sách deviceId được quản lý.
+  \item \textbf{devices:} Thông tin thiết bị, trạng thái kết nối, vị trí cuối cùng.
+  \item \textbf{gps\_logs:} Chuỗi dữ liệu GPS theo thời gian (deviceId, lat, lng, timestamp), có chỉ mục compound \texttt{\{deviceId, timestamp\}} để truy vấn lịch sử nhanh.
+  \item \textbf{geofences:} Vùng an toàn (deviceId, type, center, radius, isActive).
+  \item \textbf{alerts:} Lịch sử cảnh báo (deviceId, type, timestamp, sent).
+\end{itemize}
+
+\subsection{Thiết kế ứng dụng di động}
+
+Ứng dụng Flutter được tổ chức theo kiến trúc phân lớp: lớp UI (screens, widgets), lớp business logic (providers/blocs), lớp service (API client, WebSocket client). Màn hình chính hiển thị bản đồ OpenStreetMap qua thư viện \texttt{flutter\_map} với marker vị trí trẻ em cập nhật theo thời gian thực qua WebSocket. Màn hình quản lý vùng an toàn cho phép vẽ hình tròn trên bản đồ để tạo geofence.
+
+\section{Kết luận chương}
+
+Chương này đã phân tích đầy đủ yêu cầu chức năng và phi chức năng của hệ thống, từ đó xác định kiến trúc ba lớp phân tán phù hợp, thiết kế chi tiết từng thành phần và định nghĩa giao tiếp giữa các thành phần qua các giao thức MQTT, REST và WebSocket. Đây là nền tảng để thực hiện triển khai hệ thống ở chương tiếp theo.
+
+\end{document}

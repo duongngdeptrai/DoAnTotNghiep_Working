@@ -1,0 +1,23 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+\begin{center}
+    \Large{\textbf{TÓM TẮT NỘI DUNG ĐỒ ÁN}}\\
+\end{center}
+\vspace{1cm}
+Trong bối cảnh xã hội hiện đại, nhu cầu giám sát an toàn cho trẻ em ngày càng trở nên cấp thiết, đặc biệt khi các bậc phụ huynh không thể thường xuyên có mặt bên cạnh con em. Sự phát triển của Internet of Things (IoT) và mạng di động thế hệ mới đã mở ra cơ hội xây dựng các giải pháp theo dõi vị trí hiệu quả, chi phí hợp lý và khả năng ứng dụng thực tế cao.
+
+Từ thực tế đó, đồ án nghiên cứu, thiết kế và triển khai \textbf{Hệ thống theo dõi vị trí trẻ em theo thời gian thực} -- một giải pháp IoT hoàn chỉnh từ phần cứng nhúng đến ứng dụng di động, nhằm hỗ trợ phụ huynh giám sát vị trí và đảm bảo an toàn cho trẻ em thông qua mạng di động.
+
+Hệ thống bao gồm ba thành phần chính: (1)~Thiết bị phần cứng nhúng dựa trên vi điều khiển \textbf{ESP32} tích hợp module GPS và modem \textbf{SIM7000G} kết nối mạng di động (GPRS/4G), thu thập và truyền dữ liệu tọa độ định vị theo thời gian thực; (2)~Máy chủ backend xây dựng trên nền tảng \textbf{FastAPI} (Python) kết hợp cơ sở dữ liệu \textbf{MongoDB}, nhận dữ liệu qua giao thức \textbf{MQTT}, xử lý logic vùng an toàn (geofence) và gửi cảnh báo đa kênh; (3)~Ứng dụng di động đa nền tảng viết bằng \textbf{Flutter}, hiển thị bản đồ thời gian thực, quản lý vùng an toàn và nhận thông báo cảnh báo tức thời.
+
+Kết quả thực nghiệm cho thấy hệ thống hoạt động ổn định với độ chính xác GPS đạt 3.2\,m ngoài trời, độ trễ end-to-end trung bình 1.8 giây, thời lượng pin đạt 9.5 giờ ở chế độ hoạt động đầy đủ và khả năng phục vụ đồng thời nhiều thiết bị theo dõi. Hệ thống đã sẵn sàng triển khai thực tế và có tiềm năng mở rộng theo nhiều hướng trong tương lai.
+
+\begin{flushright}
+Sinh viên thực hiện\\
+\begin{tabular}{@{}c@{}}
+\textit{(Ký và ghi rõ họ tên)}
+\end{tabular}
+\end{flushright}
+
+\end{document}

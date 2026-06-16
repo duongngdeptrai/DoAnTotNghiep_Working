@@ -11,8 +11,8 @@
 #define SOS_BUTTON_PIN  0   // GPIO0 = nút BOOT trên board, active-LOW
 
 // ============ WIFI ============
-const char* WIFI_SSID     = "Viettel_Minh Dong";
-const char* WIFI_PASSWORD = "29122004";
+const char* WIFI_SSID     = "Hust_B1";
+const char* WIFI_PASSWORD = "";
 
 // ============ MQTT (HiveMQ Cloud — TLS 8883) ============
 const char* MQTT_HOST     = "45a8c40927a646de8c48e6d9c2d1aed7.s1.eu.hivemq.cloud";
@@ -152,7 +152,10 @@ static void connectWiFi() {
   if (WiFi.status()==WL_CONNECTED) return;
   Serial.printf("[WiFi] Connecting to %s", WIFI_SSID);
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  if (strlen(WIFI_PASSWORD) > 0)
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  else
+    WiFi.begin(WIFI_SSID);
   while (WiFi.status()!=WL_CONNECTED) { delay(500); Serial.print("."); }
   Serial.printf("\n[WiFi] IP: %s\n", WiFi.localIP().toString().c_str());
 }

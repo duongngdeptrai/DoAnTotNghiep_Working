@@ -1,0 +1,79 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+Chương này giới thiệu các công nghệ, giao thức và nền tảng được sử dụng trong quá trình xây dựng hệ thống theo dõi vị trí trẻ em, bao gồm nền tảng IoT và GPS, giao thức MQTT, vi điều khiển ESP32, module SIM7000G, framework FastAPI, cơ sở dữ liệu MongoDB, framework Flutter và thuật toán geofence.
+
+\section{Internet of Things và Định vị GPS}
+
+\subsection{Tổng quan IoT}
+
+Internet of Things (IoT) là mạng lưới các thiết bị vật lý được nhúng cảm biến, phần mềm và kết nối mạng, cho phép thu thập và trao đổi dữ liệu. Kiến trúc IoT điển hình gồm bốn lớp: lớp thiết bị (cảm biến, vi điều khiển), lớp kết nối (WiFi, 4G/LTE, LoRa), lớp xử lý (edge/cloud server) và lớp ứng dụng (giao diện người dùng, phân tích).
+
+Hệ thống theo dõi trẻ em thuộc nhóm ứng dụng IoT di động, trong đó thiết bị ESP32 đóng vai trò thiết bị đầu cuối (end node), thu thập dữ liệu GPS và truyền lên cloud qua mạng di động.
+
+\subsection{Hệ thống định vị GPS}
+
+Global Positioning System (GPS) là hệ thống định vị vệ tinh toàn cầu, xác định tọa độ ba chiều dựa trên phép đo thời gian truyền tín hiệu từ ít nhất bốn vệ tinh. Dữ liệu GPS được biểu diễn theo chuẩn NMEA với các câu dữ liệu như \texttt{GPRMC}, \texttt{GPGGA}. Định dạng tọa độ NMEA sử dụng ký hiệu DDmm.mmmm (độ-phút thập phân), cần chuyển đổi sang độ thập phân theo công thức:
+
+\begin{equation}
+  \text{Độ thập phân} = \left\lfloor \frac{\text{NMEA}}{100} \right\rfloor + \frac{\text{NMEA} \bmod 100}{60}
+\end{equation}
+
+Độ chính xác GPS dân dụng đạt 3--5\,m trong điều kiện bầu trời thoáng, và có thể giảm xuống 10--30\,m trong môi trường đô thị do hiệu ứng đa đường (multipath).
+
+\section{Giao thức MQTT}
+
+MQTT (Message Queuing Telemetry Transport) là giao thức nhắn tin nhẹ theo mô hình publish/subscribe, được thiết kế cho môi trường băng thông thấp và độ tin cậy cao. Giao thức sử dụng header tối thiểu 2 byte, hỗ trợ ba mức QoS (at most once, at least once, exactly once) và cơ chế Keep Alive để giám sát kết nối.
+
+So với HTTP REST polling, MQTT phù hợp hơn cho IoT GPS vì overhead header nhỏ hơn, mô hình push event-driven (thiết bị không cần polling liên tục), băng thông tiêu thụ thấp -- yếu tố quan trọng khi truyền qua GPRS/4G trả phí theo dung lượng.
+
+Trong hệ thống, thiết bị ESP32 publish dữ liệu GPS lên topic \texttt{gps/<deviceId>} với QoS 1, backend FastAPI subscribe topic \texttt{gps/\#} để nhận dữ liệu từ tất cả thiết bị. HiveMQ Cloud được chọn làm MQTT broker đám mây nhờ hỗ trợ TLS 1.2, không giới hạn kết nối trong gói miễn phí và có uptime SLA cao.
+
+\section{Vi điều khiển ESP32 và Module SIM7000G}
+
+\subsection{Vi điều khiển ESP32}
+
+ESP32 là vi điều khiển 32-bit dual-core Xtensa LX6, tích hợp WiFi 802.11 b/g/n và Bluetooth 4.2. Trong đề tài, ESP32 đóng vai trò bộ xử lý trung tâm của thiết bị theo dõi, thực thi firmware Arduino C++ và giao tiếp với SIM7000G qua UART (Serial2, GPIO 26/27). ESP32 được lựa chọn nhờ chi phí thấp, cộng đồng hỗ trợ lớn và khả năng lập trình hiệu quả trên PlatformIO.
+
+\subsection{Module SIM7000G}
+
+SIM7000G là module đa năng của SIMCom, tích hợp GPS và modem cellular hỗ trợ LTE Cat-M1, NB-IoT và GPRS. Module giao tiếp với ESP32 qua tập lệnh AT và cung cấp hai chức năng chính: thu nhận tín hiệu GPS và trả về tọa độ qua lệnh \texttt{AT+CGNSSINFO}; thiết lập kết nối dữ liệu GPRS cho phép truyền dữ liệu lên MQTT broker qua mạng di động.
+
+\section{Backend FastAPI và MongoDB}
+
+\subsection{Framework FastAPI}
+
+FastAPI là web framework Python hiện đại, xây dựng trên ASGI (Uvicorn) với hỗ trợ async/await native. FastAPI được chọn cho backend nhờ hiệu năng cao, tự động sinh tài liệu API (Swagger UI), kiểu dữ liệu mạnh qua Pydantic và hỗ trợ tốt cho các tác vụ bất đồng bộ -- quan trọng khi xử lý stream dữ liệu MQTT liên tục và nhiều kết nối WebSocket đồng thời.
+
+Backend sử dụng Motor (async MongoDB driver) để không blocking event loop khi truy vấn database, và Paho-MQTT client trong background task để subscribe MQTT broker.
+
+\subsection{Cơ sở dữ liệu MongoDB}
+
+MongoDB là cơ sở dữ liệu NoSQL document-oriented, lưu trữ dữ liệu dạng BSON. MongoDB được chọn cho hệ thống theo dõi GPS vì: schema linh hoạt phù hợp với dữ liệu GPS có cấu trúc đơn giản; hỗ trợ time-series collection tối ưu cho dữ liệu chuỗi thời gian; truy vấn geospatial tích hợp sẵn (GeoJSON); và MongoDB Atlas cung cấp hosting đám mây miễn phí trong gói free tier phù hợp cho giai đoạn phát triển và thử nghiệm.
+
+\section{Framework Flutter}
+
+Flutter là framework phát triển ứng dụng đa nền tảng của Google, sử dụng ngôn ngữ Dart. Flutter biên dịch native ARM code cho Android và iOS từ cùng một codebase, đảm bảo hiệu năng cao và giao diện nhất quán trên cả hai nền tảng. Flutter được lựa chọn vì hỗ trợ đa nền tảng từ một codebase duy nhất, cộng đồng package phong phú đặc biệt cho bản đồ (\texttt{flutter\_map}), WebSocket và quản lý state.
+
+Ứng dụng sử dụng thư viện \texttt{flutter\_map} để hiển thị bản đồ OpenStreetMap, kết nối WebSocket đến backend để nhận cập nhật vị trí theo thời gian thực và quản lý state bằng Provider pattern.
+
+\section{Thuật toán Haversine cho Geofence}
+
+Thuật toán Haversine tính khoảng cách chính xác giữa hai điểm trên mặt cầu Trái Đất dựa trên tọa độ kinh độ/vĩ độ:
+
+\begin{equation}
+  a = \sin^2\!\left(\frac{\Delta\phi}{2}\right) + \cos\phi_1 \cdot \cos\phi_2 \cdot \sin^2\!\left(\frac{\Delta\lambda}{2}\right)
+\end{equation}
+
+\begin{equation}
+  d = 2R \cdot \arcsin\!\left(\sqrt{a}\right)
+\end{equation}
+
+trong đó $\phi$ là vĩ độ (radian), $\lambda$ là kinh độ (radian), $R = 6371$\,km là bán kính Trái Đất và $d$ là khoảng cách giữa hai điểm.
+
+Kết quả tính khoảng cách được so sánh với bán kính vùng an toàn để xác định trẻ em đang ở trong hay ngoài vùng. Máy trạng thái cảnh báo kết hợp ngưỡng nhiễu 5\,m và thời gian cooldown 60 giây giúp tránh gửi cảnh báo sai do dao động GPS tự nhiên.
+
+\section{Kết luận chương}
+
+Chương này đã giới thiệu toàn bộ ngăn xếp công nghệ được lựa chọn cho hệ thống, từ phần cứng nhúng (ESP32, SIM7000G), giao thức truyền dữ liệu (MQTT), backend (FastAPI, MongoDB), ứng dụng di động (Flutter) đến thuật toán xử lý không gian (Haversine). Mỗi công nghệ được lựa chọn dựa trên sự phù hợp với yêu cầu kỹ thuật, chi phí triển khai và hệ sinh thái hỗ trợ trong bối cảnh IoT theo dõi thời gian thực.
+
+\end{document}

@@ -1,0 +1,49 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+\section{Đặt vấn đề}
+
+Trong bối cảnh xã hội hiện đại, sự an toàn của trẻ em trở thành một trong những mối quan tâm hàng đầu của các bậc phụ huynh. Theo thống kê của Cục Trẻ em Việt Nam, số vụ trẻ em bị lạc, mất tích hoặc gặp tai nạn ngoài đường vẫn ở mức đáng lo ngại, đặc biệt tại các đô thị lớn. Cùng với đó, nhịp sống bận rộn khiến phụ huynh không thể thường xuyên có mặt bên cạnh con em trong mọi hoàn cảnh.
+
+Sự bùng nổ của Internet of Things (IoT) và mạng di động thế hệ mới đã mở ra cơ hội ứng dụng công nghệ vào giải quyết vấn đề này. Các thiết bị theo dõi GPS giá thành ngày càng thấp, cùng với hạ tầng điện toán đám mây và ứng dụng di động mạnh mẽ, tạo điều kiện xây dựng hệ thống giám sát vị trí trẻ em hoàn chỉnh và khả thi về mặt kinh tế lẫn kỹ thuật.
+
+Tuy nhiên, các giải pháp thương mại hiện có tại Việt Nam còn tồn tại nhiều hạn chế: chi phí đăng ký dịch vụ cao, phụ thuộc vào nền tảng của nhà cung cấp, thiếu tính linh hoạt trong cấu hình vùng an toàn và khó tích hợp thêm tính năng mới. Điều này tạo ra nhu cầu thực tế đối với một hệ thống tự xây dựng, có thể kiểm soát toàn bộ từ phần cứng đến phần mềm.
+
+\section{Mục tiêu và phạm vi đề tài}
+
+Đề tài đặt ra các mục tiêu cụ thể sau:
+
+\begin{enumerate}
+  \item \textbf{Thiết bị phần cứng:} Thiết kế và lập trình thiết bị nhúng dựa trên vi điều khiển ESP32 tích hợp module GPS và kết nối mạng di động (SIM7000G), có khả năng hoạt động độc lập và gửi dữ liệu vị trí liên tục theo chu kỳ 5 giây.
+
+  \item \textbf{Hạ tầng backend:} Xây dựng hệ thống máy chủ nhận, lưu trữ và xử lý dữ liệu GPS thời gian thực, thực hiện kiểm tra vùng an toàn (geofence) và gửi cảnh báo qua email và Telegram.
+
+  \item \textbf{Ứng dụng di động:} Phát triển ứng dụng Flutter đa nền tảng cho phép phụ huynh theo dõi vị trí trẻ em trực tuyến, định cấu hình vùng an toàn tĩnh/di động và nhận thông báo tức thời.
+
+  \item \textbf{Tích hợp hệ thống:} Đảm bảo sự kết hợp liên thông và ổn định giữa ba thành phần trên qua các giao thức chuẩn (MQTT, REST, WebSocket).
+\end{enumerate}
+
+Phạm vi thực hiện bao gồm thiết kế phần cứng và lập trình firmware cho thiết bị ESP32 + GPS + SIM7000G; xây dựng backend API (FastAPI) và cơ sở dữ liệu (MongoDB); triển khai dịch vụ MQTT broker và xử lý luồng dữ liệu IoT; phát triển ứng dụng di động Flutter (Android/iOS); tích hợp thông báo qua email và Telegram; kiểm thử và đánh giá hệ thống trong điều kiện thực tế.
+
+Đề tài không bao gồm thiết kế PCB chuyên dụng (sử dụng module phát triển sẵn có), không triển khai hệ thống trên quy mô thương mại lớn và không tích hợp AI/ML cho nhận diện bất thường hành vi.
+
+\section{Định hướng giải pháp}
+
+Hệ thống được thiết kế theo kiến trúc ba lớp phân tán kết hợp mô hình IoT pipeline: lớp thiết bị (ESP32 + GPS + SIM7000G) thu thập và truyền dữ liệu; lớp backend (FastAPI + MongoDB + MQTT broker) xử lý và lưu trữ; lớp ứng dụng (Flutter) hiển thị và tương tác người dùng.
+
+Giao thức MQTT được lựa chọn cho việc truyền dữ liệu từ thiết bị lên server nhờ đặc tính nhẹ, tiết kiệm băng thông và phù hợp với môi trường mạng di động GPRS/4G. Backend sử dụng FastAPI với async I/O để xử lý nhiều luồng dữ liệu đồng thời, MongoDB cho lưu trữ dữ liệu chuỗi thời gian (time-series) GPS và WebSocket để đẩy cập nhật thời gian thực xuống ứng dụng di động.
+
+Tính năng geofence sử dụng thuật toán Haversine để tính khoảng cách vòng cầu chính xác, kết hợp máy trạng thái cảnh báo để lọc nhiễu GPS và tránh gửi cảnh báo trùng lặp. Hệ thống hỗ trợ cả vùng an toàn tĩnh (hình tròn cố định) và vùng an toàn di động (bán kính xung quanh vị trí phụ huynh đang di chuyển).
+
+\section{Bố cục đồ án}
+
+Chương 2, ``Phân tích và thiết kế hệ thống'' trình bày phân tích yêu cầu chức năng và phi chức năng của hệ thống, kiến trúc tổng thể, thiết kế chi tiết từng thành phần bao gồm phần cứng, firmware, backend API, cơ sở dữ liệu và ứng dụng di động.
+
+Chương 3, ``Công nghệ sử dụng'' giới thiệu các công nghệ, giao thức và nền tảng được sử dụng trong quá trình phát triển hệ thống, bao gồm IoT và GPS, giao thức MQTT, vi điều khiển ESP32, module SIM7000G, framework FastAPI, MongoDB, Flutter và thuật toán geofence Haversine.
+
+Chương 4, ``Triển khai và đánh giá hệ thống'' mô tả chi tiết quá trình triển khai từng thành phần -- firmware ESP32, backend FastAPI, ứng dụng Flutter -- kèm theo kết quả kiểm thử đơn vị, kiểm thử tích hợp và kiểm thử hệ thống thực tế với đo lường các chỉ số hiệu năng.
+
+Chương 5, ``Kết luận và hướng phát triển'' tổng kết các kết quả đạt được, nêu những hạn chế còn tồn tại và đề xuất các hướng cải tiến, mở rộng trong tương lai theo lộ trình ngắn hạn, trung hạn và dài hạn.
+
+Tài liệu tham khảo tổng hợp các nguồn học thuật, kỹ thuật và tài nguyên trực tuyến được sử dụng trong quá trình nghiên cứu và phát triển đề tài.
+
+\end{document}
