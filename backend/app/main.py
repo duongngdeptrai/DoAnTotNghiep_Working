@@ -10,10 +10,8 @@ from app.core.config import get_settings
 from app.db.mongo import mongo_manager
 from app.repositories.device_config_repository import DeviceConfigRepository
 from app.repositories.device_permission_repository import DevicePermissionRepository
-from app.repositories.geofence_config_repository import GeofenceConfigRepository
 from app.repositories.location_repository import LocationRepository
 from app.services.alert_state_service import AlertStateService
-from app.services.geofence_service import GeofenceService
 from app.services.location_processor import LocationProcessor
 from app.services.mqtt_service import MQTTService
 from app.services.notification_service import NotificationService
@@ -59,13 +57,10 @@ async def on_startup() -> None:
     ws_manager.attach_loop(asyncio.get_running_loop())
 
     logger.info("Initializing services...")
-    geofence_service = GeofenceService(
-        config_repo=GeofenceConfigRepository(mongo_manager.db),
-        center_lat=settings.geofence_center_lat,
-        center_lng=settings.geofence_center_lng,
-        radius_m=settings.geofence_radius_m,
-        mode=settings.geofence_mode,
-    )
+    geofence_services: dict = {}
+    app.state.geofence_services = geofence_services
+    app.state.db = mongo_manager.db
+
     alert_state_service = AlertStateService(
         cooldown_sec=settings.alert_cooldown_sec,
         noise_threshold_m=settings.noise_threshold_m,
@@ -93,13 +88,13 @@ async def on_startup() -> None:
     location_processor = LocationProcessor(
         repository=repository,
         device_permission_repository=device_permission_repository,
-        geofence_service=geofence_service,
+        geofence_services=geofence_services,
+        db=mongo_manager.db,
         alert_state_service=alert_state_service,
         notification_service=notification_service,
         ws_manager=ws_manager,
     )
 
-    app.state.geofence_service = geofence_service
     app.state.location_processor = location_processor
     app.state.device_config_repository = device_config_repository
     app.state.device_permission_repository = device_permission_repository
@@ -128,10 +123,12 @@ def on_shutdown() -> None:
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
+    user_id = websocket.query_params.get("token") or None
     await ws_manager.connect(
         websocket,
-        allowed_device_ids=None,  # allow all — auth not enforced
+        allowed_device_ids=None,
         owner_device_ids=None,
+        user_id=user_id,
     )
     try:
         while True:

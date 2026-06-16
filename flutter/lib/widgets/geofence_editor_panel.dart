@@ -4,7 +4,9 @@ import '../models/models.dart';
 import '../providers/app_provider.dart';
 
 class GeofenceEditorPanel extends StatefulWidget {
-  const GeofenceEditorPanel({super.key});
+  final void Function(Geofence)? onFocusGeofence;
+
+  const GeofenceEditorPanel({super.key, this.onFocusGeofence});
 
   @override
   State<GeofenceEditorPanel> createState() => _GeofenceEditorPanelState();
@@ -111,6 +113,7 @@ class _GeofenceEditorPanelState extends State<GeofenceEditorPanel> {
   }
 
   Widget _buildListView(BuildContext context, AppProvider provider) {
+    final onFocus = widget.onFocusGeofence;
     final geofences = provider.geofenceState.geofences;
     final isOwner = provider.isOwner;
 
@@ -185,6 +188,7 @@ class _GeofenceEditorPanelState extends State<GeofenceEditorPanel> {
                   return _GeofenceListItem(
                     geofence: g,
                     isOwner: isOwner,
+                    onFocus: onFocus != null ? () => onFocus(g) : null,
                     onEdit: () => provider.startPlanMode(editTarget: g),
                     onDelete: () => provider.removeGeofence(g.id),
                   );
@@ -447,12 +451,14 @@ class _GeofenceEditorPanelState extends State<GeofenceEditorPanel> {
 class _GeofenceListItem extends StatelessWidget {
   final Geofence geofence;
   final bool isOwner;
+  final VoidCallback? onFocus;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _GeofenceListItem({
     required this.geofence,
     required this.isOwner,
+    this.onFocus,
     required this.onEdit,
     required this.onDelete,
   });
@@ -460,7 +466,9 @@ class _GeofenceListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPath = geofence.mode == 'mobile';
-    return Padding(
+    return GestureDetector(
+      onTap: onFocus,
+      child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Row(
         children: [
@@ -504,7 +512,7 @@ class _GeofenceListItem extends StatelessWidget {
           ],
         ],
       ),
-    );
+    ));
   }
 }
 

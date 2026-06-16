@@ -94,7 +94,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   Navigator.of(context).pushReplacementNamed('/auth');
                 },
                 onNavigateHome: () => Navigator.of(context).pop(),
-                onNavigateProfile: () => Navigator.of(context).pushNamed('/profile'),
+                onNavigateProfile: () => Navigator.of(context).pushReplacementNamed('/profile'),
               ),
               Expanded(
                 child: SingleChildScrollView(

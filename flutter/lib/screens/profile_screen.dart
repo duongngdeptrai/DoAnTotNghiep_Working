@@ -308,7 +308,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
                 onNavigateHome: () => Navigator.of(context).pop(),
                 onNavigateStats: provider.devices.isNotEmpty
-                    ? () => Navigator.of(context).pushNamed('/statistics', arguments: provider.selectedDeviceId)
+                    ? () => Navigator.of(context).pushReplacementNamed('/statistics', arguments: provider.selectedDeviceId)
                     : null,
               ),
               Expanded(

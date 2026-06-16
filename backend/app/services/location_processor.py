@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 import logging
 
 from app.models.location import LocationDB, LocationIn
+from app.repositories.geofence_config_repository import GeofenceConfigRepository
 from app.repositories.location_repository import LocationRepository
 from app.repositories.device_permission_repository import DevicePermissionRepository
 from app.services.alert_state_service import AlertStateService
@@ -17,17 +18,29 @@ class LocationProcessor:
         self,
         repository: LocationRepository,
         device_permission_repository: DevicePermissionRepository,
-        geofence_service: GeofenceService,
+        geofence_services: dict,
+        db,
         alert_state_service: AlertStateService,
         notification_service: NotificationService,
         ws_manager: ConnectionManager,
     ) -> None:
         self.repository = repository
         self.device_permission_repository = device_permission_repository
-        self.geofence_service = geofence_service
+        self.geofence_services = geofence_services
+        self.db = db
         self.alert_state_service = alert_state_service
         self.notification_service = notification_service
         self.ws_manager = ws_manager
+
+    def _get_geofence_service_for_device(self, device_id: str) -> GeofenceService | None:
+        owner = self.device_permission_repository.get_owner(device_id)
+        if not owner:
+            return None
+        owner_user_id = str(owner["userId"])
+        if owner_user_id not in self.geofence_services:
+            repo = GeofenceConfigRepository(self.db, user_id=owner_user_id)
+            self.geofence_services[owner_user_id] = GeofenceService(config_repo=repo)
+        return self.geofence_services[owner_user_id]
 
     def process(self, raw_payload: dict) -> None:
         location = LocationIn.model_validate(raw_payload)
@@ -39,10 +52,19 @@ class LocationProcessor:
 
         self.alert_state_service.update_last_location(location.deviceId, location.lat, location.lng)
 
-        raw_state = self.geofence_service.get_state()
-        geofences = raw_state.get("geofences", [])
-        gf = geofences[0] if geofences else {}
-        inside_geofence, distance, matched_gf_id = self.geofence_service.is_inside(location.lat, location.lng)
+        geofence_service = self._get_geofence_service_for_device(location.deviceId)
+
+        if geofence_service is None:
+            inside_geofence = False
+            distance = float("inf")
+            matched_gf_id = None
+            geofences = []
+            gf = {}
+        else:
+            raw_state = geofence_service.get_state()
+            geofences = raw_state.get("geofences", [])
+            gf = geofences[0] if geofences else {}
+            inside_geofence, distance, matched_gf_id = geofence_service.is_inside(location.lat, location.lng)
 
         matched_gf = next((g for g in geofences if g.get("id") == matched_gf_id), {})
         geofence_name = matched_gf.get("name") or matched_gf_id
@@ -97,7 +119,7 @@ class LocationProcessor:
                 "timestamp": location.timestamp,
                 "insideGeofence": inside_geofence,
                 "geofenceId": matched_gf_id,
-                "distanceFromCenterM": round(distance, 2),
+                "distanceFromCenterM": round(distance, 2) if distance != float("inf") else None,
                 "geofenceMode": gf.get("mode", "fixed"),
                 "geofenceCenterLat": gf.get("centerLat", 21.0285),
                 "geofenceCenterLng": gf.get("centerLng", 105.8542),

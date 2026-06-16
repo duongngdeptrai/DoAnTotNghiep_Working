@@ -273,11 +273,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   // Geofence editor panel (bottom left, toggle)
                   if (_showGeofencePanel)
-                    const Positioned(
+                    Positioned(
                       left: 8,
                       top: 44,
                       bottom: 8,
-                      child: GeofenceEditorPanel(),
+                      child: GeofenceEditorPanel(
+                        onFocusGeofence: (g) => setState(() {
+                          _focusedGeofenceId = g.id;
+                          _focusedDeviceId = null;
+                        }),
+                      ),
                     ),
 
                   // Toast overlay notifications (bottom right)

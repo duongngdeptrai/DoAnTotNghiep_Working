@@ -113,16 +113,24 @@ class NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isActive = onTap == null;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: isActive
+            ? BoxDecoration(
+                color: const Color(0xFF22D3EE).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(50),
+                border: Border.all(color: const Color(0xFF22D3EE).withValues(alpha: 0.4)),
+              )
+            : null,
         child: Text(
           label,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: onTap != null ? Colors.white : Colors.white38,
+            color: isActive ? const Color(0xFF22D3EE) : Colors.white70,
           ),
         ),
       ),

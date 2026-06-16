@@ -19,12 +19,14 @@ class ConnectionManager:
         *,
         allowed_device_ids: set[str] | None = None,
         owner_device_ids: set[str] | None = None,
+        user_id: str | None = None,
     ) -> None:
         await websocket.accept()
         self.active_connections.add(websocket)
         self.connection_context[websocket] = {
             "allowed_device_ids": allowed_device_ids,
             "owner_device_ids": owner_device_ids,
+            "user_id": user_id,
         }
 
     def disconnect(self, websocket: WebSocket) -> None:
@@ -36,11 +38,15 @@ class ConnectionManager:
         allowed = context.get("allowed_device_ids")
         if message_type in {"location_update", "geofence_alert"}:
             if allowed is None:
-                return True  # None = allow all devices
+                return True
             device_id = message.get("deviceId")
             return device_id in allowed
         if message_type == "geofence_state_update":
-            return allowed is None or bool(allowed)
+            msg_user_id = message.get("user_id")
+            ctx_user_id = context.get("user_id")
+            if msg_user_id is None:
+                return True
+            return ctx_user_id == msg_user_id
         return True
 
     async def broadcast(self, message: dict[str, Any]) -> None:
@@ -60,6 +66,10 @@ class ConnectionManager:
         if self.loop is None:
             return
         asyncio.run_coroutine_threadsafe(self.broadcast(message), self.loop)
+
+    def broadcast_to_user_from_thread(self, user_id: str, message: dict[str, Any]) -> None:
+        msg_with_user = {**message, "user_id": user_id}
+        self.broadcast_from_thread(msg_with_user)
 
 
 ws_manager = ConnectionManager()

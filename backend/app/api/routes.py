@@ -11,8 +11,10 @@ from app.models.device_config import DeviceConfigIn
 from app.models.device_permission import DevicePermissionOut, DeviceRegisterIn, DeviceShareIn
 from app.models.user import UserLoginIn, UserOut, UserRegisterIn
 from app.repositories.device_permission_repository import DevicePermissionRepository
+from app.repositories.geofence_config_repository import GeofenceConfigRepository
 from app.repositories.location_repository import LocationRepository
 from app.repositories.user_repository import UserRepository
+from app.services.geofence_service import GeofenceService
 from app.ws.connection_manager import ws_manager
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,14 @@ def _get_user_id(request: Request) -> str:
     if not auth.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     return auth.removeprefix("Bearer ").strip()
+
+
+def _get_user_geofence_service(request: Request, user_id: str) -> GeofenceService:
+    services = request.app.state.geofence_services
+    if user_id not in services:
+        repo = GeofenceConfigRepository(request.app.state.db, user_id=user_id)
+        services[user_id] = GeofenceService(config_repo=repo)
+    return services[user_id]
 
 
 class GeofenceModeUpdate(BaseModel):
@@ -75,7 +85,8 @@ def update_full_geofence(
     payload: GeofenceFullUpdate,
     request: Request,
 ) -> dict:
-    geofence_service = request.app.state.geofence_service
+    user_id = _get_user_id(request)
+    geofence_service = _get_user_geofence_service(request, user_id)
     # Normalize path to [[lat, lng], ...] for internal storage
     normalized_path = None
     if payload.path is not None:
@@ -99,7 +110,7 @@ def update_full_geofence(
         state = geofence_service.get_state()
 
     flat = _flat_geofence_state(state)
-    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
+    ws_manager.broadcast_to_user_from_thread(user_id, {"type": "geofence_state_update", **flat})
     return flat
 
 
@@ -108,10 +119,11 @@ def delete_geofence(
     geofence_id: str,
     request: Request,
 ) -> dict:
-    geofence_service = request.app.state.geofence_service
+    user_id = _get_user_id(request)
+    geofence_service = _get_user_geofence_service(request, user_id)
     state = geofence_service.delete_geofence(geofence_id)
     flat = _flat_geofence_state(state)
-    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
+    ws_manager.broadcast_to_user_from_thread(user_id, {"type": "geofence_state_update", **flat})
     return flat
 
 
@@ -228,7 +240,8 @@ def unshare_device(
 def get_geofence_state(
     request: Request,
 ) -> dict:
-    geofence_service = request.app.state.geofence_service
+    user_id = _get_user_id(request)
+    geofence_service = _get_user_geofence_service(request, user_id)
     return _flat_geofence_state(geofence_service.get_state())
 
 
@@ -237,12 +250,13 @@ def update_geofence_center(
     payload: GeofenceCenterUpdate,
     request: Request,
 ) -> dict:
-    geofence_service = request.app.state.geofence_service
+    user_id = _get_user_id(request)
+    geofence_service = _get_user_geofence_service(request, user_id)
     state = geofence_service.upsert_geofence(
         "default", centerLat=payload.lat, centerLng=payload.lng
     )
     flat = _flat_geofence_state(state)
-    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
+    ws_manager.broadcast_to_user_from_thread(user_id, {"type": "geofence_state_update", **flat})
     return flat
 
 
@@ -251,14 +265,15 @@ def set_geofence_mode(
     payload: GeofenceModeUpdate,
     request: Request,
 ) -> dict:
-    geofence_service = request.app.state.geofence_service
+    user_id = _get_user_id(request)
+    geofence_service = _get_user_geofence_service(request, user_id)
     if payload.mode == "fixed":
         state = geofence_service.set_fixed_mode()
     else:
         state = geofence_service.set_mobile_mode()
 
     flat = _flat_geofence_state(state)
-    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
+    ws_manager.broadcast_to_user_from_thread(user_id, {"type": "geofence_state_update", **flat})
     return flat
 
 
@@ -267,10 +282,11 @@ def update_geofence_path(
     payload: GeofencePathUpdate,
     request: Request,
 ) -> dict:
-    geofence_service = request.app.state.geofence_service
+    user_id = _get_user_id(request)
+    geofence_service = _get_user_geofence_service(request, user_id)
     state = geofence_service.update_path(payload.path)
     flat = _flat_geofence_state(state)
-    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
+    ws_manager.broadcast_to_user_from_thread(user_id, {"type": "geofence_state_update", **flat})
     return flat
 
 
@@ -279,10 +295,11 @@ def update_geofence_radius(
     payload: GeofenceRadiusUpdate,
     request: Request,
 ) -> dict:
-    geofence_service = request.app.state.geofence_service
+    user_id = _get_user_id(request)
+    geofence_service = _get_user_geofence_service(request, user_id)
     state = geofence_service.upsert_geofence("default", radiusM=payload.radius_m)
     flat = _flat_geofence_state(state)
-    ws_manager.broadcast_from_thread({"type": "geofence_state_update", **flat})
+    ws_manager.broadcast_to_user_from_thread(user_id, {"type": "geofence_state_update", **flat})
     return flat
 
 
