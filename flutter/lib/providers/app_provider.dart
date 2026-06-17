@@ -231,6 +231,7 @@ class AppProvider with ChangeNotifier {
 		} catch (e) {
 			_error = e.toString();
 			notifyListeners();
+			rethrow;
 		}
 	}
 
