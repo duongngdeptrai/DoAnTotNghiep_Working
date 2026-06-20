@@ -87,7 +87,8 @@ class MQTTService:
             payload = json.loads(msg.payload.decode("utf-8"))
             logger.debug("[MQTT:MSG] %s: %s", msg.topic, payload)
 
-            if msg.topic.startswith("sos/"):
+            sos_prefix = self.settings.mqtt_sos_topic.replace("/#", "").replace("#", "")
+            if msg.topic.startswith(sos_prefix):
                 self.notification_service.send_sos_alert(
                     device_id=payload.get("deviceId", msg.topic.split("/")[-1]),
                     lat=float(payload.get("lat", 0)),
