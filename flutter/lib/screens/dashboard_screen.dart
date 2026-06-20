@@ -248,7 +248,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: _AlertsPanel(
                         alerts: provider.alerts,
                         onClose: _toggleAlerts,
-                        onClear: provider.clearAlerts,
+                        onClear: () { provider.clearAlerts(); },
                       ),
                     ),
 

@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 import logging
 
 from app.models.location import LocationDB, LocationIn
+from app.repositories.alert_repository import AlertRepository
 from app.repositories.geofence_config_repository import GeofenceConfigRepository
 from app.repositories.location_repository import LocationRepository
 from app.repositories.device_permission_repository import DevicePermissionRepository
@@ -23,6 +24,7 @@ class LocationProcessor:
         alert_state_service: AlertStateService,
         notification_service: NotificationService,
         ws_manager: ConnectionManager,
+        alert_repository: AlertRepository | None = None,
     ) -> None:
         self.repository = repository
         self.device_permission_repository = device_permission_repository
@@ -31,6 +33,7 @@ class LocationProcessor:
         self.alert_state_service = alert_state_service
         self.notification_service = notification_service
         self.ws_manager = ws_manager
+        self.alert_repository = alert_repository
 
     def _get_geofence_service_for_device(self, device_id: str) -> GeofenceService | None:
         owner = self.device_permission_repository.get_owner(device_id)
@@ -100,6 +103,16 @@ class LocationProcessor:
 
         if should_alert:
             logger.warning(f"ALERT TRIGGERED: {location.deviceId} event={event} gf={matched_gf_id}")
+            if self.alert_repository:
+                self.alert_repository.insert_alert(
+                    device_id=location.deviceId,
+                    event=event,
+                    lat=location.lat,
+                    lng=location.lng,
+                    timestamp=location.timestamp,
+                    geofence_id=matched_gf_id,
+                    geofence_name=geofence_name,
+                )
             self.notification_service.send_geofence_alert(
                 device_id=location.deviceId,
                 lat=location.lat,

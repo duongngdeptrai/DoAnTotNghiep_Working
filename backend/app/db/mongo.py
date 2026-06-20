@@ -50,5 +50,9 @@ class MongoManager:
         permissions.create_index([("deviceId", 1), ("userId", 1)], unique=True)
         permissions.create_index([("userId", 1), ("role", 1)])
 
+        alerts = self.get_collection("alerts")
+        alerts.create_index([("deviceId", 1), ("receivedAt", -1)])
+        alerts.create_index("receivedAt", expireAfterSeconds=30 * 24 * 3600)
+
 
 mongo_manager = MongoManager()

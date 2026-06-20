@@ -211,6 +211,35 @@ class ApiService {
 
 	// --- Statistics ---
 
+	Future<List<Alert>> fetchAlerts(String deviceId, {int limit = 50}) async {
+		final uri = Uri.parse('$baseUrl/alerts/$deviceId').replace(
+			queryParameters: {'limit': limit.toString()},
+		);
+		final response = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 15));
+		if (response.statusCode == 200) {
+			final decoded = jsonDecode(response.body);
+			if (decoded == null || decoded is! List) return [];
+			return decoded
+					.whereType<Map<String, dynamic>>()
+					.map((j) => Alert.fromJson(j))
+					.toList();
+		} else if (response.statusCode == 404) {
+			return [];
+		} else {
+			throw Exception('Không thể lấy lịch sử cảnh báo: ${_parseError(response)}');
+		}
+	}
+
+	Future<void> clearAlerts(String deviceId) async {
+		final response = await http.delete(
+			Uri.parse('$baseUrl/alerts/$deviceId'),
+			headers: _headers,
+		).timeout(const Duration(seconds: 15));
+		if (response.statusCode != 200 && response.statusCode != 204) {
+			throw Exception('Không thể xóa cảnh báo: ${_parseError(response)}');
+		}
+	}
+
 	Future<DeviceStats> fetchDeviceStats(String deviceId, {int? start, int? end}) async {
 		final params = <String, String>{};
 		if (start != null) params['start'] = start.toString();

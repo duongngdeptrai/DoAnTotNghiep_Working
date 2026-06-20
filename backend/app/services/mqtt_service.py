@@ -74,8 +74,8 @@ class MQTTService:
     def _on_connect(self, client: mqtt.Client, userdata, flags, reason_code, properties) -> None:
         if reason_code == 0:
             client.subscribe(self.settings.mqtt_topic)
-            client.subscribe("sos/#")
-            logger.info("[MQTT:CONNECT] Connected and subscribed to: %s + sos/#", self.settings.mqtt_topic)
+            client.subscribe(self.settings.mqtt_sos_topic)
+            logger.info("[MQTT:CONNECT] Connected and subscribed to: %s + %s", self.settings.mqtt_topic, self.settings.mqtt_sos_topic)
         else:
             logger.error("[MQTT:CONNECT] Connection failed with code: %s", reason_code)
 

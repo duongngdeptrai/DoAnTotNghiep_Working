@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router as api_router
 from app.core.config import get_settings
 from app.db.mongo import mongo_manager
+from app.repositories.alert_repository import AlertRepository
 from app.repositories.device_config_repository import DeviceConfigRepository
 from app.repositories.device_permission_repository import DevicePermissionRepository
 from app.repositories.location_repository import LocationRepository
@@ -66,9 +67,10 @@ async def on_startup() -> None:
         noise_threshold_m=settings.noise_threshold_m,
         repeat_outside=settings.alert_repeat_outside,
     )
+    alert_repository = AlertRepository()
     device_config_repository = DeviceConfigRepository(mongo_manager.db)
     device_permission_repository = DevicePermissionRepository()
-    notification_service = NotificationService(settings, device_config_repository)
+    notification_service = NotificationService(settings, device_config_repository, alert_repository)
     repository = LocationRepository()
 
     # If default device email is provided via settings/.env, ensure config exists
@@ -93,6 +95,7 @@ async def on_startup() -> None:
         alert_state_service=alert_state_service,
         notification_service=notification_service,
         ws_manager=ws_manager,
+        alert_repository=alert_repository,
     )
 
     app.state.location_processor = location_processor

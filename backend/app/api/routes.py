@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.models.device_config import DeviceConfigIn
 from app.models.device_permission import DevicePermissionOut, DeviceRegisterIn, DeviceShareIn
 from app.models.user import UserLoginIn, UserOut, UserRegisterIn
+from app.repositories.alert_repository import AlertRepository
 from app.repositories.device_permission_repository import DevicePermissionRepository
 from app.repositories.geofence_config_repository import GeofenceConfigRepository
 from app.repositories.location_repository import LocationRepository
@@ -419,6 +420,30 @@ def get_aggregated_statistics(
         start = now - 7 * 24 * 3600
 
     return repo.get_aggregated_stats(device_id, start, end, interval)
+
+
+@router.get("/alerts/{device_id}")
+def get_alerts(
+    device_id: str,
+    limit: int = 50,
+) -> list[dict]:
+    repo = AlertRepository()
+    return repo.get_alerts_by_device(device_id, max(1, min(limit, 200)))
+
+
+@router.delete("/alerts/{device_id}")
+def clear_alerts(
+    device_id: str,
+    request: Request,
+) -> dict:
+    user_id = _get_user_id(request)
+    perm_repo = DevicePermissionRepository()
+    role = perm_repo.get_role_for_user(device_id, user_id)
+    if role is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Không có quyền truy cập thiết bị này")
+    repo = AlertRepository()
+    deleted = repo.delete_alerts_by_device(device_id)
+    return {"deleted": deleted}
 
 
 @router.get("/stats/{device_id}/heatmap")

@@ -19,9 +19,10 @@ EVENT_LABELS = {
 
 
 class NotificationService:
-    def __init__(self, settings: Settings, device_config_repo=None) -> None:
+    def __init__(self, settings: Settings, device_config_repo=None, alert_repo=None) -> None:
         self.settings = settings
         self.device_config_repo = device_config_repo
+        self.alert_repo = alert_repo
 
     def send_telegram(self, message: str) -> None:
         if not self.settings.telegram_bot_token or not self.settings.telegram_chat_id:
@@ -98,6 +99,15 @@ class NotificationService:
                 f"🗺 {maps_url}"
             )
         logger.warning("SOS received from %s: lat=%s lng=%s", device_id, lat, lng)
+        if self.alert_repo:
+            self.alert_repo.insert_alert(
+                device_id=device_id,
+                event="sos",
+                lat=lat,
+                lng=lng,
+                timestamp=timestamp,
+                alert_type="sos_alert",
+            )
         self.send_telegram(message)
 
     def _format_timestamp(self, timestamp: int) -> str:

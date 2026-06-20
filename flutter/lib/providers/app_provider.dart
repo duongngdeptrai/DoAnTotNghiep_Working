@@ -101,8 +101,8 @@ class AppProvider with ChangeNotifier {
 
 		if (_token != null) {
 			connectSocket();
-			// Fetch vị trí ngay sau khi khôi phục tracking set
 			fetchInitialLocations();
+			fetchPersistedAlerts();
 		}
 
 		_isLoading = false;
@@ -137,6 +137,22 @@ class AppProvider with ChangeNotifier {
 		}
 	}
 
+	Future<void> fetchPersistedAlerts() async {
+		if (_token == null || _devices.isEmpty) return;
+		final allAlerts = <Alert>[];
+		await Future.wait(_devices.map((d) async {
+			try {
+				final alerts = await _apiService.fetchAlerts(d.deviceId);
+				allAlerts.addAll(alerts);
+			} catch (e) {
+				debugPrint('fetchPersistedAlerts error (${d.deviceId}): $e');
+			}
+		}));
+		allAlerts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+		_alerts = allAlerts.take(50).toList();
+		notifyListeners();
+	}
+
 	Future<void> login(String email, String password) async {
 		_isLoading = true;
 		_error = null;
@@ -156,6 +172,7 @@ class AppProvider with ChangeNotifier {
 			await _loadDevices();
 			connectSocket();
 			fetchInitialLocations();
+			fetchPersistedAlerts();
 
 			_isLoading = false;
 			notifyListeners();
@@ -186,6 +203,7 @@ class AppProvider with ChangeNotifier {
 			await _loadDevices();
 			connectSocket();
 			fetchInitialLocations();
+			fetchPersistedAlerts();
 
 			_isLoading = false;
 			notifyListeners();
@@ -317,10 +335,17 @@ class AppProvider with ChangeNotifier {
 		notifyListeners();
 	}
 
-	void clearAlerts() {
+	Future<void> clearAlerts() async {
 		_alerts = [];
 		_lastNewAlert = null;
 		notifyListeners();
+		for (final d in _devices) {
+			try {
+				await _apiService.clearAlerts(d.deviceId);
+			} catch (e) {
+				debugPrint('clearAlerts error (${d.deviceId}): $e');
+			}
+		}
 	}
 
 	void clearLastNewAlert() {

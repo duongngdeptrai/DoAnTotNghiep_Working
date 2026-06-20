@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 
 // ============ PIN CONFIG ============
@@ -14,13 +13,13 @@
 const char* WIFI_SSID     = "Hust_B1";
 const char* WIFI_PASSWORD = "";
 
-// ============ MQTT (HiveMQ Cloud — TLS 8883) ============
-const char* MQTT_HOST     = "45a8c40927a646de8c48e6d9c2d1aed7.s1.eu.hivemq.cloud";
-const int   MQTT_PORT     = 8883;
-const char* MQTT_USER     = "duong29";
-const char* MQTT_PASS     = "Duongthcsvt2912";
-const char* MQTT_TOPIC    = "gps/child_01";
-const char* MQTT_SOS_TOPIC = "sos/child_01";
+// ============ MQTT (EMQX Public Broker — no TLS) ============
+const char* MQTT_HOST     = "broker.emqx.io";
+const int   MQTT_PORT     = 1883;
+const char* MQTT_USER     = "";
+const char* MQTT_PASS     = "";
+const char* MQTT_TOPIC     = "dotn/duong29/gps/child_01";
+const char* MQTT_SOS_TOPIC = "dotn/duong29/sos/child_01";
 const char* DEVICE_ID     = "child_01";
 
 // ============ SOS ============
@@ -36,8 +35,8 @@ void IRAM_ATTR sosBtnISR() {
 
 const unsigned long PUBLISH_INTERVAL_MS = 5000;
 
-WiFiClientSecure secureClient;
-PubSubClient     mqttClient(secureClient);
+WiFiClient   wifiClient;
+PubSubClient mqttClient(wifiClient);
 
 // ============ AT HELPERS ============
 
@@ -164,7 +163,7 @@ static void connectMQTT() {
   while (!mqttClient.connected()) {
     Serial.println("[MQTT] Connecting...");
     if (mqttClient.connect(DEVICE_ID, MQTT_USER, MQTT_PASS)) {
-      Serial.println("[MQTT] Connected to HiveMQ Cloud");
+      Serial.println("[MQTT] Connected to broker.emqx.io");
     } else {
       Serial.printf("[MQTT] Failed rc=%d, retry 3s\n", mqttClient.state());
       delay(3000);
@@ -228,7 +227,6 @@ void setup() {
   modemInit();
 
   connectWiFi();
-  secureClient.setInsecure();
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setBufferSize(512);
   connectMQTT();

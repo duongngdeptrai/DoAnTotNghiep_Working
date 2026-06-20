@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     mqtt_username: str | None = None
     mqtt_password: str | None = None
     mqtt_topic: str = "gps/#"
+    mqtt_sos_topic: str = "sos/#"
     mqtt_keepalive: int = 60
     mqtt_tls: bool = False
 
