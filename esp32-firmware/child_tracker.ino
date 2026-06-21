@@ -1,5 +1,5 @@
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
+#include <WiFiClient.h>
 #include <PubSubClient.h>
 
 // ============ PIN CONFIG ============
@@ -13,18 +13,17 @@
 const char* WIFI_SSID     = "Viettel_Minh Dong";
 const char* WIFI_PASSWORD = "29122004";
 
-// ============ MQTT (HiveMQ Cloud — TLS 8883) ============
-const char* MQTT_HOST     = "45a8c40927a646de8c48e6d9c2d1aed7.s1.eu.hivemq.cloud";
-const int   MQTT_PORT     = 8883;
-const char* MQTT_USERNAME = "duong29";
-const char* MQTT_PASSWORD = "Duongthcsvt2912";
-const char* MQTT_TOPIC    = "gps/child_01";
-const char* DEVICE_ID     = "child_01";
+// ============ MQTT (EMQX public broker — 1883) ============
+const char* MQTT_HOST      = "broker.emqx.io";
+const int   MQTT_PORT      = 1883;
+const char* MQTT_TOPIC     = "dotn/duong29/gps/child_01";
+const char* MQTT_SOS_TOPIC = "dotn/duong29/sos/child_01";
+const char* DEVICE_ID      = "child_01";
 
 const unsigned long PUBLISH_INTERVAL_MS = 5000;
 
-WiFiClientSecure secureClient;
-PubSubClient     mqttClient(secureClient);
+WiFiClient   wifiClient;
+PubSubClient mqttClient(wifiClient);
 
 // ============ GPS DATA ============
 struct GpsData {
@@ -212,8 +211,8 @@ static void connectWiFi() {
 
 static void connectMQTT() {
   while (!mqttClient.connected()) {
-    Serial.println("[MQTT] Connecting to HiveMQ Cloud...");
-    if (mqttClient.connect(DEVICE_ID, MQTT_USERNAME, MQTT_PASSWORD)) {
+    Serial.println("[MQTT] Connecting to broker.emqx.io...");
+    if (mqttClient.connect(DEVICE_ID)) {
       Serial.println("[MQTT] Connected");
     } else {
       Serial.printf("[MQTT] Failed (rc=%d), retry in 3s\n", mqttClient.state());
@@ -243,8 +242,6 @@ void setup() {
 
   connectWiFi();
 
-  // setInsecure() bỏ qua xác thực cert TLS — đủ dùng cho prototype
-  secureClient.setInsecure();
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setBufferSize(512);  // tăng buffer tránh bị cắt payload
   connectMQTT();
