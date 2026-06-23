@@ -49,7 +49,7 @@ Từ phân tích trên, hệ thống cần xây dựng phải giải quyết đ�
 
 Hệ thống có bốn tác nhân chính. \textbf{Phụ huynh} là người dùng chính của ứng dụng di động, thực hiện các thao tác quản lý và theo dõi. \textbf{Trẻ em} là người đeo thiết bị IoT và có thể tương tác trực tiếp với thiết bị trong một số tình huống nhất định. \textbf{Thiết bị IoT} (thiết bị GPS đeo trên trẻ) là tác nhân tự động, định kỳ đọc tọa độ GPS và gửi lên server mà không cần tương tác người dùng. \textbf{Dịch vụ thông báo} (Telegram Bot, Email) là tác nhân bên ngoài nhận lệnh gửi cảnh báo từ backend khi phát hiện vi phạm geofence hoặc tín hiệu SOS.
 
-Các use case chính của hệ thống gồm: (1) Đăng ký và đăng nhập tài khoản; (2) Thêm và quản lý thiết bị GPS; (3) Xem vị trí trẻ theo thời gian thực trên bản đồ; (4) Xem lịch sử hành trình theo ngày; (5) Tạo, chỉnh sửa và xóa vùng an toàn địa lý (geofence); (6) Nhận cảnh báo tự động khi trẻ vi phạm geofence; và (7) Gửi tín hiệu SOS khẩn cấp.
+Các use case chính của hệ thống gồm: (1) Đăng ký thiết bị GPS và liên kết với tài khoản; (2) Đăng nhập hệ thống; (3) Xem vị trí trẻ theo thời gian thực trên bản đồ; (4) Tạo, chỉnh sửa và xóa vùng an toàn địa lý (geofence); (5) Nhận cảnh báo tự động khi trẻ vi phạm geofence; (6) Gửi tín hiệu SOS khẩn cấp; và (7) Xem thống kê hành trình (quãng đường, số lần vi phạm, lịch sử trên bản đồ).
 
 % TODO: Chèn biểu đồ use case tổng quát
 % \begin{figure}[H]
@@ -74,6 +74,34 @@ Quy trình nghiệp vụ cốt lõi của hệ thống là quy trình \textbf{gi
 \section{Đặc tả chức năng}
 \label{section:2.3}
 
+\subsection{Đặc tả use case: Đăng ký thiết bị GPS}
+
+\begin{table}[H]
+\centering
+\caption{Đặc tả use case Đăng ký thiết bị GPS}
+\label{table:uc_device}
+\begin{tabular}{|l|p{9.5cm}|}
+\hline
+\textbf{Tên use case}       & Đăng ký thiết bị GPS \\
+\hline
+\textbf{Tác nhân}           & Phụ huynh \\
+\hline
+\textbf{Tiền điều kiện}     & Phụ huynh đã đăng nhập; thiết bị IoT đã được lắp đặt và có mã thiết bị (device ID). \\
+\hline
+\textbf{Luồng sự kiện chính} &
+1. Phụ huynh chọn chức năng ``Thêm thiết bị'' trong ứng dụng. \newline
+2. Phụ huynh nhập mã thiết bị (device ID) được ghi trên thiết bị IoT. \newline
+3. Hệ thống kiểm tra mã thiết bị chưa được đăng ký bởi tài khoản khác. \newline
+4. Hệ thống liên kết thiết bị với tài khoản phụ huynh với quyền sở hữu đầy đủ. \newline
+5. Ứng dụng hiển thị thiết bị mới trong danh sách và bắt đầu nhận dữ liệu vị trí từ thiết bị đó. \\
+\hline
+\textbf{Luồng phát sinh}    & Nếu mã thiết bị đã được đăng ký bởi tài khoản khác, hệ thống thông báo ``Thiết bị đã thuộc về tài khoản khác''. Phụ huynh có thể chia sẻ quyền theo dõi với thành viên khác trong gia đình bằng cách nhập email của họ; người được chia sẻ có thể xem vị trí nhưng không thể xóa hay chia sẻ tiếp. \\
+\hline
+\textbf{Hậu điều kiện}      & Thiết bị được liên kết với tài khoản phụ huynh; dữ liệu vị trí từ thiết bị bắt đầu được lưu và hiển thị trên bản đồ. \\
+\hline
+\end{tabular}
+\end{table}
+
 \subsection{Đặc tả use case: Đăng nhập hệ thống}
 
 \begin{table}[H]
@@ -90,11 +118,10 @@ Quy trình nghiệp vụ cốt lõi của hệ thống là quy trình \textbf{gi
 \hline
 \textbf{Luồng sự kiện chính} &
 1. Phụ huynh nhập địa chỉ email và mật khẩu vào ứng dụng. \newline
-2. Ứng dụng gửi yêu cầu \texttt{POST /auth/login} đến backend. \newline
-3. Backend xác thực thông tin đăng nhập bằng bcrypt, nếu hợp lệ trả về user\_id dưới dạng Bearer token. \newline
-4. Ứng dụng lưu token vào bộ nhớ an toàn và chuyển đến màn hình chính. \\
+2. Hệ thống xác thực thông tin đăng nhập; nếu hợp lệ trả về token phiên làm việc. \newline
+3. Ứng dụng lưu token và chuyển đến màn hình chính. \\
 \hline
-\textbf{Luồng phát sinh}    & Nếu thông tin không hợp lệ, backend trả về mã lỗi 401 và ứng dụng hiển thị thông báo lỗi. Nếu token hết hạn trong phiên làm việc, ứng dụng tự động chuyển về màn hình đăng nhập. \\
+\textbf{Luồng phát sinh}    & Nếu thông tin không hợp lệ, hệ thống hiển thị thông báo lỗi. Nếu phiên làm việc hết hạn, ứng dụng tự động chuyển về màn hình đăng nhập. \\
 \hline
 \textbf{Hậu điều kiện}      & Phụ huynh đã đăng nhập thành công và có thể truy cập toàn bộ chức năng của hệ thống. \\
 \hline
@@ -173,11 +200,11 @@ Quy trình nghiệp vụ cốt lõi của hệ thống là quy trình \textbf{gi
 \textbf{Tiền điều kiện}     & Có ít nhất một geofence đang hoạt động; thiết bị IoT đang gửi dữ liệu định kỳ. \\
 \hline
 \textbf{Luồng sự kiện chính} &
-1. Backend nhận tọa độ mới từ thiết bị qua MQTT. \newline
-2. Backend tính khoảng cách từ tọa độ đến tâm của từng geofence đang hoạt động bằng công thức Haversine. \newline
-3. Nếu khoảng cách vượt bán kính, backend tạo bản ghi cảnh báo trong cơ sở dữ liệu và gửi thông báo qua Telegram Bot đến phụ huynh. \newline
-4. Backend đẩy thông báo cảnh báo đến ứng dụng Flutter qua WebSocket. \newline
-5. Ứng dụng hiển thị popup cảnh báo với thông tin vị trí hiện tại và tên vùng an toàn bị vi phạm. \\
+1. Hệ thống nhận vị trí mới từ thiết bị. \newline
+2. Hệ thống kiểm tra vị trí có nằm trong vùng an toàn đang hoạt động không. \newline
+3. Nếu trẻ đã ra ngoài vùng an toàn, hệ thống tạo bản ghi cảnh báo và gửi thông báo qua Telegram đến phụ huynh. \newline
+4. Hệ thống đẩy thông báo cảnh báo đến ứng dụng của phụ huynh. \newline
+5. Ứng dụng hiển thị cảnh báo với thông tin vị trí hiện tại và tên vùng an toàn bị vi phạm. \\
 \hline
 \textbf{Luồng phát sinh}    & Nếu trẻ nhanh chóng quay lại vùng an toàn, hệ thống gửi thêm thông báo ``Đã trở về vùng an toàn''. Để tránh spam, hệ thống áp dụng thời gian chờ tối thiểu 60 giây giữa hai cảnh báo liên tiếp cho cùng một geofence. \\
 \hline
@@ -202,10 +229,10 @@ Quy trình nghiệp vụ cốt lõi của hệ thống là quy trình \textbf{gi
 \hline
 \textbf{Luồng sự kiện chính} &
 1. Trẻ em nhấn nút SOS trên thiết bị. \newline
-2. Thiết bị IoT đọc tọa độ GPS hiện tại và publish bản tin MQTT kèm tọa độ lên topic \texttt{dotn/duong29/sos/\{device\_id\}}. \newline
-3. Backend nhận bản tin SOS, tạo bản ghi cảnh báo khẩn trong cơ sở dữ liệu. \newline
-4. Backend gửi ngay thông báo SOS qua Telegram Bot đến phụ huynh, kèm tọa độ và đường link Google Maps. \newline
-5. Backend đẩy thông báo SOS đến ứng dụng Flutter qua WebSocket. \newline
+2. Thiết bị đọc tọa độ GPS hiện tại và gửi tín hiệu SOS kèm vị trí lên hệ thống. \newline
+3. Hệ thống nhận tín hiệu SOS và tạo bản ghi cảnh báo khẩn. \newline
+4. Hệ thống gửi ngay thông báo SOS qua Telegram đến phụ huynh kèm vị trí và đường link bản đồ. \newline
+5. Hệ thống đẩy cảnh báo đến ứng dụng của phụ huynh. \newline
 6. Ứng dụng hiển thị popup cảnh báo khẩn và vị trí hiện tại trên bản đồ. \\
 \hline
 \textbf{Luồng phát sinh}    & Nếu thiết bị chưa có tín hiệu GPS tại thời điểm nhấn nút, bản tin SOS vẫn được gửi lên kèm tọa độ cuối cùng đã biết và ghi chú ``Vị trí có thể không chính xác''. Nếu kết nối MQTT bị mất, thiết bị lưu sự kiện SOS vào bộ nhớ và gửi lại ngay khi kết nối được khôi phục. \\
@@ -215,29 +242,29 @@ Quy trình nghiệp vụ cốt lõi của hệ thống là quy trình \textbf{gi
 \end{tabular}
 \end{table}
 
-\subsection{Đặc tả use case: Xem lịch sử hành trình}
+\subsection{Đặc tả use case: Xem thống kê hành trình}
 
 \begin{table}[H]
 \centering
-\caption{Đặc tả use case Xem lịch sử hành trình}
-\label{table:uc_history}
+\caption{Đặc tả use case Xem thống kê hành trình}
+\label{table:uc_stats}
 \begin{tabular}{|l|p{9.5cm}|}
 \hline
-\textbf{Tên use case}       & Xem lịch sử hành trình \\
+\textbf{Tên use case}       & Xem thống kê hành trình \\
 \hline
 \textbf{Tác nhân}           & Phụ huynh \\
 \hline
-\textbf{Tiền điều kiện}     & Phụ huynh đã đăng nhập; hệ thống đã có dữ liệu vị trí được lưu trữ. \\
+\textbf{Tiền điều kiện}     & Phụ huynh đã đăng nhập; hệ thống đã có dữ liệu vị trí và cảnh báo được lưu trữ. \\
 \hline
 \textbf{Luồng sự kiện chính} &
-1. Phụ huynh chọn chức năng ``Lịch sử'' và chọn ngày cần xem qua bộ chọn ngày (date picker). \newline
-2. Ứng dụng gửi yêu cầu \texttt{GET /locations} kèm tham số ngày và mã thiết bị đến backend. \newline
-3. Backend truy vấn MongoDB và trả về danh sách tọa độ được sắp xếp theo thứ tự thời gian. \newline
-4. Ứng dụng vẽ đường đi (polyline) trên bản đồ thể hiện toàn bộ hành trình trong ngày đã chọn. \\
+1. Phụ huynh chọn chức năng thống kê và chọn khoảng thời gian cần xem. \newline
+2. Hệ thống truy vấn dữ liệu vị trí và cảnh báo trong khoảng thời gian đã chọn. \newline
+3. Ứng dụng hiển thị các chỉ số tổng hợp: tổng quãng đường di chuyển và số lần ra khỏi vùng an toàn. \newline
+4. Ứng dụng vẽ hành trình trên bản đồ thể hiện toàn bộ đường đi của trẻ trong khoảng thời gian đó. \\
 \hline
-\textbf{Luồng phát sinh}    & Nếu không có dữ liệu cho ngày đã chọn, ứng dụng hiển thị thông báo ``Không có dữ liệu cho ngày này''. \\
+\textbf{Luồng phát sinh}    & Nếu không có dữ liệu cho khoảng thời gian đã chọn, ứng dụng hiển thị các chỉ số bằng 0 và bản đồ trống. \\
 \hline
-\textbf{Hậu điều kiện}      & Bản đồ hiển thị toàn bộ hành trình của trẻ trong ngày được chọn dưới dạng đường đi liên tục. \\
+\textbf{Hậu điều kiện}      & Phụ huynh nắm được tổng quãng đường trẻ đã di chuyển, số lần vi phạm vùng an toàn, và hành trình cụ thể trên bản đồ. \\
 \hline
 \end{tabular}
 \end{table}

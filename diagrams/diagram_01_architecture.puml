@@ -1,0 +1,35 @@
+@startuml
+left to right direction
+skinparam defaultTextAlignment center
+skinparam maxMessageSize 150
+skinparam roundCorner 8
+skinparam backgroundColor white
+
+node "Perception Layer" {
+  component "ESP32\n+ SIM7000G" as device
+}
+
+node "Transport Layer" {
+  component "MQTT Broker\n(EMQX Public)" as broker
+}
+
+node "Processing Layer" {
+  component "FastAPI\nBackend" as api
+  database "MongoDB" as db
+}
+
+node "Application Layer" {
+  component "Flutter App\n(Android / iOS)" as app
+}
+
+node "Notification Layer" {
+  component "Telegram Bot" as telegram
+}
+
+device --> broker : MQTT Publish
+broker --> api : MQTT Subscribe
+api <--> app : REST API / WebSocket
+api --> db : Read / Write
+api --> telegram : Alert Notification
+
+@enduml

@@ -1,0 +1,32 @@
+@startuml
+skinparam defaultTextAlignment center
+skinparam maxMessageSize 150
+skinparam roundCorner 8
+skinparam backgroundColor white
+
+node "Power Supply\n(Li-ion Battery)" as battery
+
+node "ESP32" {
+  component "Main Processor" as mcu
+}
+
+node "SIM7000G Module" {
+  component "Modem\nGPRS / NB-IoT" as modem
+  component "GPS Receiver\n(GNSS)" as gnss
+}
+
+component "BOOT Button\n(GPIO0 - SOS)" as gpio_sos
+component "GPS Antenna" as ant_gps
+component "GSM Antenna" as ant_gsm
+
+battery --> mcu : Power
+battery --> modem : Power
+
+mcu <--> modem : UART2
+
+gpio_sos --> mcu : FALLING interrupt\n(active LOW)
+
+ant_gps --> gnss
+ant_gsm --> modem
+
+@enduml
