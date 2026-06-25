@@ -1,7 +1,19 @@
 import { env } from "../config/env";
 
+export function getToken() { return localStorage.getItem("auth_token"); }
+export function setToken(t) { localStorage.setItem("auth_token", t); }
+export function clearToken() { localStorage.removeItem("auth_token"); }
+
+function authHeaders() {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export async function apiFetch(url, options = {}) {
-  const response = await fetch(url, options);
+  const response = await fetch(url, {
+    ...options,
+    headers: { ...authHeaders(), ...options.headers },
+  });
 
   if (!response.ok) {
     if (response.status === 404 && options.allow404) {

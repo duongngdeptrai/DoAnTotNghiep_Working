@@ -1,0 +1,45 @@
+@startuml
+skinparam defaultTextAlignment center
+skinparam backgroundColor white
+
+title Firmware — Overview
+
+start
+
+:Setup Phase;
+note right
+  Sub-diagram 3a:
+  Init modem, GPRS,
+  MQTT, Interrupt
+end note
+
+repeat
+
+  if (MQTT connected?) then (no)
+    :Reconnect MQTT;
+  endif
+
+  :mqttClient.loop();
+
+  if (sosPending?) then (yes)
+    :SOS Handling;
+    note right
+      Sub-diagram 3b:
+      Debounce, cooldown,
+      publish SOS
+    end note
+  endif
+
+  if (Timer >= 5s?) then (yes)
+    :GPS Publish;
+    note right
+      Sub-diagram 3c:
+      Read GPS,
+      publish coordinates
+    end note
+  endif
+
+repeat while (forever)
+
+stop
+@enduml

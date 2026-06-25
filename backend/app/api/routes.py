@@ -5,11 +5,11 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
 
-from app.core.auth import hash_password, verify_password
+from app.core.auth import create_access_token, decode_access_token, hash_password, verify_password
 from app.core.config import get_settings
 from app.models.device_config import DeviceConfigIn
 from app.models.device_permission import DevicePermissionOut, DeviceRegisterIn, DeviceShareIn
-from app.models.user import UserLoginIn, UserOut, UserRegisterIn
+from app.models.user import TokenResponse, UserLoginIn, UserOut, UserRegisterIn
 from app.repositories.alert_repository import AlertRepository
 from app.repositories.device_permission_repository import DevicePermissionRepository
 from app.repositories.geofence_config_repository import GeofenceConfigRepository
@@ -26,7 +26,11 @@ def _get_user_id(request: Request) -> str:
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    return auth.removeprefix("Bearer ").strip()
+    token = auth.removeprefix("Bearer ").strip()
+    try:
+        return decode_access_token(token)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
 
 def _get_user_geofence_service(request: Request, user_id: str) -> GeofenceService:
@@ -133,25 +137,41 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-@router.post("/auth/register", response_model=UserOut)
-def register(payload: UserRegisterIn) -> UserOut:
+@router.post("/auth/register", response_model=TokenResponse, status_code=201)
+def register(payload: UserRegisterIn) -> TokenResponse:
     repo = UserRepository()
     password_hash = hash_password(payload.password)
     try:
         user = repo.create_user(payload.email, password_hash)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
-    logger.info(f"User registered: {user['email']} (id: {str(user['_id'])})")
-    return UserOut(id=str(user["_id"]), email=user["email"], createdAt=user["createdAt"])
+    user_id = str(user["_id"])
+    logger.info(f"User registered: {user['email']} (id: {user_id})")
+    token = create_access_token(user_id)
+    user_out = UserOut(id=user_id, email=user["email"], createdAt=user["createdAt"])
+    return TokenResponse(access_token=token, user=user_out)
 
 
-@router.post("/auth/login", response_model=UserOut)
-def login(payload: UserLoginIn) -> UserOut:
+@router.post("/auth/login", response_model=TokenResponse)
+def login(payload: UserLoginIn) -> TokenResponse:
     repo = UserRepository()
     user = repo.get_by_email(payload.email)
     if not user or not verify_password(payload.password, user.get("passwordHash", "")):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    logger.info(f"Login successful for user: {user['email']} (id: {str(user['_id'])})")
+    user_id = str(user["_id"])
+    logger.info(f"Login successful for user: {user['email']} (id: {user_id})")
+    token = create_access_token(user_id)
+    user_out = UserOut(id=user_id, email=user["email"], createdAt=user["createdAt"])
+    return TokenResponse(access_token=token, user=user_out)
+
+
+@router.get("/auth/me", response_model=UserOut)
+def get_me(request: Request) -> UserOut:
+    user_id = _get_user_id(request)
+    repo = UserRepository()
+    user = repo.get_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return UserOut(id=str(user["_id"]), email=user["email"], createdAt=user["createdAt"])
 
 

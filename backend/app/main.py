@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router as api_router
+from app.core.auth import decode_access_token
 from app.core.config import get_settings
 from app.db.mongo import mongo_manager
 from app.repositories.alert_repository import AlertRepository
@@ -126,7 +127,13 @@ def on_shutdown() -> None:
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
-    user_id = websocket.query_params.get("token") or None
+    raw_token = websocket.query_params.get("token")
+    user_id: str | None = None
+    if raw_token:
+        try:
+            user_id = decode_access_token(raw_token)
+        except ValueError:
+            pass
     await ws_manager.connect(
         websocket,
         allowed_device_ids=None,

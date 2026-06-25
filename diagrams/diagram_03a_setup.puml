@@ -1,0 +1,37 @@
+@startuml
+skinparam defaultTextAlignment center
+skinparam backgroundColor white
+skinparam ActivityBackgroundColor #F0F4F8
+skinparam ActivityBorderColor #4A5568
+skinparam ActivityBorderThickness 1.5
+skinparam ActivityFontSize 11
+skinparam ArrowColor #2D3748
+skinparam ConditionStyle diamond
+skinparam ConditionBackgroundColor #FEF3C7
+skinparam ConditionBorderColor #D97706
+
+title Firmware — Setup
+
+start
+
+:Initialize Serial Interfaces\n(Serial + Serial2 / UART2);
+:Reset Modem via GPIO25;
+:Restart Modem;
+:Enable GPS Module;
+
+repeat
+  :Connect to GPRS Network\n(APN "v-internet");
+repeat while (GPRS Connected?) is ([No])
+-> [Yes];
+
+:Configure MQTT Client\n(setServer + setBufferSize 512);
+
+repeat
+  :Connect to MQTT Broker\n(broker.emqx.io : 1883);
+repeat while (MQTT Connected?) is ([No])
+-> [Yes];
+
+:Configure GPIO0 as INPUT_PULLUP\nand Attach SOS Interrupt\n(FALLING edge);
+
+stop
+@enduml
