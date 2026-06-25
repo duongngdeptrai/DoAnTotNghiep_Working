@@ -1,27 +1,101 @@
-@startuml
-skinparam defaultTextAlignment center
-skinparam backgroundColor white
+<mxfile host="app.diagrams.net">
+  <diagram name="SOS Alert Handling" id="sos-handler">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="950" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
 
-title Firmware — SOS Handling
+        <mxCell id="start" value="Start" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="290" y="20" width="120" height="50" as="geometry" />
+        </mxCell>
 
-start
-:sosPending = false;
-:delay 50ms (debounce);
+        <mxCell id="n2" value="Clear SOS Flag" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="110" width="260" height="50" as="geometry" />
+        </mxCell>
 
-if (GPIO0 still LOW?) then (no)
-  :Ignore (false trigger);
-  stop
-endif
+        <mxCell id="n3" value="Wait 50ms for Debounce" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="200" width="260" height="50" as="geometry" />
+        </mxCell>
 
-:Read fresh GPS\n(fallback to cachedGps if fail);
+        <mxCell id="d3" value="GPIO0 Still LOW?" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="290" width="240" height="80" as="geometry" />
+        </mxCell>
 
-if (cooldown < 10s?) then (yes)
-  :Skip — cooldown active;
-  stop
-endif
+        <mxCell id="n4" value="Read Fresh GPS Data&#10;(fallback to Cached GPS if fail)" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="420" width="260" height="60" as="geometry" />
+        </mxCell>
 
-:lastSosTime = now;
-:Publish SOS to MQTT;
-:Blink LED x3;
-stop
-@enduml
+        <mxCell id="d4" value="Cooldown &lt; 10s?" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="530" width="240" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n6" value="Update SOS Timestamp" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="660" width="260" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="n7" value="Publish SOS Payload to MQTT" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="750" width="260" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="end" value="End" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="290" y="840" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- start → n2 → n3 → d3 -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="start" target="n2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n2" target="n3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n3" target="d3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- d3 [Yes] → n4 -->
+        <mxCell id="e4" value="[Yes]" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="d3" target="n4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- d3 [No] → end (left bypass) -->
+        <mxCell id="e5" value="[No]" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="d3" target="end">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="110" y="330" />
+              <mxPoint x="110" y="865" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- n4 → d4 -->
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n4" target="d4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- d4 [Yes] → end (right bypass, cooldown active → skip) -->
+        <mxCell id="e7" value="[Yes]" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="d4" target="end">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="570" />
+              <mxPoint x="560" y="865" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- d4 [No] → n6 (cooldown expired → proceed) -->
+        <mxCell id="e8" value="[No]" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="d4" target="n6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- n6 → n7 → end -->
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n6" target="n7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="n7" target="end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
