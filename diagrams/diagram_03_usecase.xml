@@ -1,0 +1,103 @@
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- ══ System Boundary ══ -->
+    <mxCell id="2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#333333;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="200" y="70" width="700" height="720" as="geometry" />
+    </mxCell>
+    <mxCell id="3" value="&lt;b&gt;Hệ thống theo dõi vị trí trẻ em&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;fontSize=14;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+      <mxGeometry x="300" y="44" width="500" height="32" as="geometry" />
+    </mxCell>
+
+    <!-- ══ Use Cases ══ -->
+    <mxCell id="4" value="Đăng nhập hệ thống" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="455" y="100" width="190" height="50" as="geometry" />
+    </mxCell>
+
+    <mxCell id="5" value="Đăng ký thiết bị GPS" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="440" y="195" width="220" height="50" as="geometry" />
+    </mxCell>
+
+    <mxCell id="6" value="Xem vị trí thời gian thực" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="420" y="290" width="260" height="50" as="geometry" />
+    </mxCell>
+
+    <mxCell id="7" value="Quản lý vùng an toàn địa lý" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="405" y="385" width="290" height="50" as="geometry" />
+    </mxCell>
+
+    <mxCell id="8" value="Nhận cảnh báo tự động" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="425" y="480" width="250" height="50" as="geometry" />
+    </mxCell>
+
+    <mxCell id="9" value="Gửi tín hiệu SOS" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="455" y="570" width="190" height="50" as="geometry" />
+    </mxCell>
+
+    <mxCell id="10" value="Xem thống kê hành trình" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="420" y="660" width="260" height="50" as="geometry" />
+    </mxCell>
+
+    <!-- ══ Actors ══ -->
+    <!-- Phụ huynh -->
+    <mxCell id="11" value="Phụ huynh" style="shape=mxgraph.uml.actor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="65" y="340" width="60" height="80" as="geometry" />
+    </mxCell>
+
+    <!-- Thiết bị IoT -->
+    <mxCell id="12" value="Thiết bị IoT" style="shape=mxgraph.uml.actor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="65" y="490" width="60" height="80" as="geometry" />
+    </mxCell>
+
+    <!-- Trẻ em -->
+    <mxCell id="13" value="Trẻ em" style="shape=mxgraph.uml.actor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="65" y="600" width="60" height="80" as="geometry" />
+    </mxCell>
+
+    <!-- Dịch vụ thông báo -->
+    <mxCell id="14" value="Dịch vụ thông báo" style="shape=mxgraph.uml.actor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="965" y="480" width="60" height="80" as="geometry" />
+    </mxCell>
+
+    <!-- ══ Associations: Phụ huynh ══ -->
+    <mxCell id="20" style="edgeStyle=none;html=1;endArrow=none;" edge="1" source="11" target="4" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="21" style="edgeStyle=none;html=1;endArrow=none;" edge="1" source="11" target="5" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="22" style="edgeStyle=none;html=1;endArrow=none;" edge="1" source="11" target="6" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="23" style="edgeStyle=none;html=1;endArrow=none;" edge="1" source="11" target="7" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="24" style="edgeStyle=none;html=1;endArrow=none;" edge="1" source="11" target="8" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="25" style="edgeStyle=none;html=1;endArrow=none;" edge="1" source="11" target="10" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ══ Associations: Thiết bị IoT ══ -->
+    <mxCell id="26" style="edgeStyle=none;html=1;endArrow=none;" edge="1" source="12" target="6" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="27" style="edgeStyle=none;html=1;endArrow=none;" edge="1" source="12" target="9" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ══ Associations: Trẻ em ══ -->
+    <mxCell id="28" style="edgeStyle=none;html=1;endArrow=none;" edge="1" source="13" target="9" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ══ Associations: Dịch vụ thông báo ══ -->
+    <mxCell id="29" style="edgeStyle=none;html=1;endArrow=none;" edge="1" source="14" target="8" parent="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>
