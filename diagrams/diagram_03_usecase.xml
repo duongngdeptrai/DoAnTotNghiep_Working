@@ -51,11 +51,6 @@
       <mxGeometry x="65" y="490" width="60" height="80" as="geometry" />
     </mxCell>
 
-    <!-- Trẻ em -->
-    <mxCell id="13" value="Trẻ em" style="shape=mxgraph.uml.actor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
-      <mxGeometry x="65" y="600" width="60" height="80" as="geometry" />
-    </mxCell>
-
     <!-- Dịch vụ thông báo -->
     <mxCell id="14" value="Dịch vụ thông báo" style="shape=mxgraph.uml.actor;whiteSpace=wrap;html=1;verticalLabelPosition=bottom;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
       <mxGeometry x="965" y="480" width="60" height="80" as="geometry" />
@@ -86,11 +81,6 @@
       <mxGeometry relative="1" as="geometry" />
     </mxCell>
     <mxCell id="27" style="edgeStyle=none;html=1;endArrow=none;" edge="1" source="12" target="9" parent="1">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-
-    <!-- ══ Associations: Trẻ em ══ -->
-    <mxCell id="28" style="edgeStyle=none;html=1;endArrow=none;" edge="1" source="13" target="9" parent="1">
       <mxGeometry relative="1" as="geometry" />
     </mxCell>
 
