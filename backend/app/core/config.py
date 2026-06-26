@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     mqtt_sos_topic: str = "sos/#"
     mqtt_keepalive: int = 60
     mqtt_tls: bool = False
+    mqtt_encryption_key: str | None = None  # hex string 32 ký tự = AES-128 key 16 bytes
 
     geofence_mode: str = "fixed"
     geofence_center_lat: float = 21.0285

@@ -5,6 +5,7 @@ import time
 import paho.mqtt.client as mqtt
 
 from app.core.config import Settings
+from app.core.crypto import decrypt_mqtt_payload
 from app.services.location_processor import LocationProcessor
 from app.services.notification_service import NotificationService
 
@@ -82,9 +83,17 @@ class MQTTService:
     def _on_disconnect(self, client: mqtt.Client, userdata, flags, reason_code, properties) -> None:
         logger.warning("[MQTT:DISCONNECT] Code: %s", reason_code)
 
+    def _decode_payload(self, raw: bytes) -> dict:
+        if self.settings.mqtt_encryption_key:
+            try:
+                return decrypt_mqtt_payload(raw, self.settings.mqtt_encryption_key)
+            except Exception as exc:
+                logger.warning("[MQTT:CRYPTO] Decrypt failed, trying plain JSON: %s", exc)
+        return json.loads(raw.decode("utf-8"))
+
     def _on_message(self, client: mqtt.Client, userdata, msg: mqtt.MQTTMessage) -> None:
         try:
-            payload = json.loads(msg.payload.decode("utf-8"))
+            payload = self._decode_payload(msg.payload)
             logger.debug("[MQTT:MSG] %s: %s", msg.topic, payload)
 
             sos_prefix = self.settings.mqtt_sos_topic.replace("/#", "").replace("#", "")

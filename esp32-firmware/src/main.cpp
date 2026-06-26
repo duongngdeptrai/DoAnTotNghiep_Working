@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <TinyGsmClient.h>
 #include <PubSubClient.h>
+#include "crypto.h"
 
 // ============ PIN CONFIG ============
 #define MODEM_RX        27
@@ -151,9 +152,10 @@ void sendSOS(const GpsData& gps) {
       DEVICE_ID);
   }
 
-  Serial.printf("[SOS] %s\n", payload);
-  bool ok = mqttClient.publish(MQTT_SOS_TOPIC, payload, false);
-  Serial.printf("[SOS] %s\n", ok ? "SENT" : "FAILED");
+  Serial.printf("[SOS] plain: %s\n", payload);
+  String encrypted = encryptPayload(String(payload));
+  bool ok = mqttClient.publish(MQTT_SOS_TOPIC, encrypted.c_str(), false);
+  Serial.printf("[SOS] %s\n", ok ? "SENT (encrypted)" : "FAILED");
   blinkSOS();
 }
 
@@ -176,7 +178,7 @@ void setup() {
   connectGPRS();
 
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-  mqttClient.setBufferSize(512);
+  mqttClient.setBufferSize(600);
   connectMQTT();
 
   pinMode(SOS_BUTTON_PIN, INPUT_PULLUP);
@@ -218,7 +220,8 @@ void loop() {
     "{\"deviceId\":\"%s\",\"lat\":%.6f,\"lng\":%.6f,\"timestamp\":%lu}",
     DEVICE_ID, cachedGps.lat, cachedGps.lon, (unsigned long)cachedGps.ts);
 
-  Serial.printf("[PUB] %s\n", payload);
-  mqttClient.publish(MQTT_TOPIC, payload);
+  Serial.printf("[PUB] plain: %s\n", payload);
+  String encrypted = encryptPayload(String(payload));
+  mqttClient.publish(MQTT_TOPIC, encrypted.c_str());
   digitalWrite(LED_PIN, HIGH); delay(50); digitalWrite(LED_PIN, LOW);
 }
