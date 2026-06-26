@@ -1,0 +1,20 @@
+@startuml
+skinparam defaultTextAlignment center
+skinparam backgroundColor white
+
+title Firmware — GPS Publish
+
+start
+:lastPublish = millis();
+:modem.getGPS() → cachedGps;
+
+if (GPS fix?) then (no)
+  :No publish — wait next cycle;
+  stop
+endif
+
+:Build JSON payload\n{deviceId, lat, lng, timestamp};
+:mqttClient.publish(GPS topic);
+:Blink LED x1;
+stop
+@enduml

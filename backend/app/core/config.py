@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     default_device_id: str = "child_01"
     default_device_email: str | None = None
 
+    jwt_secret_key: str = "changeme"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_exp_minutes: int = 60
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

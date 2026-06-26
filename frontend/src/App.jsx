@@ -9,8 +9,10 @@ import StatisticsPage from "./pages/StatisticsPage";
 import {
   authLogin,
   authRegister,
+  clearToken,
   fetchDevices,
   registerDevice,
+  setToken,
 } from "./lib/api";
 
 const DEFAULT_DEVICE_ID = env.deviceId;
@@ -35,9 +37,10 @@ function AppShell() {
     try {
       const data =
         mode === "login" ? await authLogin(payload) : await authRegister(payload);
+      if (data.access_token) setToken(data.access_token);
       localStorage.setItem("is_logged_in", "true");
       setIsLoggedIn(true);
-      setCurrentUser(data);
+      setCurrentUser(data.user ?? data);
     } catch (error) {
       setAuthError(
         error instanceof Error ? error.message : "Không thể đăng nhập.",
@@ -48,6 +51,7 @@ function AppShell() {
   };
 
   const handleLogout = () => {
+    clearToken();
     localStorage.removeItem("is_logged_in");
     setIsLoggedIn(false);
     setCurrentUser(null);

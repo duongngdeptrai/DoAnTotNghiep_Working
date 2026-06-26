@@ -1,0 +1,27 @@
+@startuml
+skinparam defaultTextAlignment center
+skinparam backgroundColor white
+
+title Sub-diagram: SOS Handling
+
+start
+:sosPending = false;
+:delay 50ms (debounce);
+
+if (GPIO0 still LOW?) then (no)
+  :Ignore (false trigger);
+  stop
+endif
+
+:Read fresh GPS\n(fallback to cachedGps if fail);
+
+if (cooldown < 10s?) then (yes)
+  :Skip — cooldown active;
+  stop
+endif
+
+:lastSosTime = now;
+:Publish SOS to MQTT;
+:Blink LED x3;
+stop
+@enduml

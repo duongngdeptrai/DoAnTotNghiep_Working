@@ -4,29 +4,19 @@ skinparam maxMessageSize 150
 skinparam roundCorner 8
 skinparam backgroundColor white
 
-node "Power Supply\n(Li-ion Battery)" as battery
+node "Power Supply" as battery
+node "ESP32" as esp32
+node "SIM7000G Module\n(GPS + GPRS)" as sim7000g
 
-node "ESP32" {
-  component "Main Processor" as mcu
-}
-
-node "SIM7000G Module" {
-  component "Modem\nGPRS / NB-IoT" as modem
-  component "GPS Receiver\n(GNSS)" as gnss
-}
-
-component "BOOT Button\n(GPIO0 - SOS)" as gpio_sos
+component "BOOT Button\n(GPIO0 - SOS)" as sos
 component "GPS Antenna" as ant_gps
 component "GSM Antenna" as ant_gsm
 
-battery --> mcu : Power
-battery --> modem : Power
-
-mcu <--> modem : UART2
-
-gpio_sos --> mcu : FALLING interrupt\n(active LOW)
-
-ant_gps --> gnss
-ant_gsm --> modem
+battery --> esp32 : Power
+battery --> sim7000g : Power
+esp32 <--> sim7000g : UART2
+sos --> esp32 : FALLING interrupt\n(active LOW)
+ant_gps --> sim7000g : GPS signal
+ant_gsm --> sim7000g : GSM signal
 
 @enduml

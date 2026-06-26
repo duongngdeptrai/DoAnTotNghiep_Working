@@ -1,0 +1,77 @@
+@startuml
+skinparam defaultTextAlignment center
+skinparam backgroundColor white
+skinparam ActivityBackgroundColor #F0F4F8
+skinparam ActivityBorderColor #4A5568
+skinparam ActivityBorderThickness 1.5
+skinparam ActivityFontSize 11
+skinparam ArrowColor #2D3748
+skinparam ConditionStyle diamond
+skinparam ConditionBackgroundColor #FEF3C7
+skinparam ConditionBorderColor #D97706
+skinparam PartitionBackgroundColor #EFF6FF
+skinparam PartitionBorderColor #3B82F6
+skinparam PartitionFontStyle bold
+
+title Firmware Flowchart — ESP32 GPS Tracker
+
+start
+
+partition "Setup" {
+  :Initialize Serial + Serial2 (UART2);
+  :Reset modem via GPIO25;
+  :modem.restart() + enableGPS();
+
+  repeat
+    :gprsConnect(APN "v-internet");
+  repeat while (GPRS connected?) is (no)
+  -> yes;
+
+  repeat
+    :mqttClient.connect(broker.emqx.io);
+  repeat while (MQTT connected?) is (no)
+  -> yes;
+
+  :attachInterrupt(GPIO0, FALLING);
+}
+
+partition "Main Loop" {
+  repeat
+
+    if (MQTT connected?) then (no)
+      :connectMQTT();
+    endif
+
+    :mqttClient.loop();
+
+    if (sosPending?) then (yes)
+      :sosPending = false;
+      :delay 50ms (debounce);
+      if (GPIO0 still LOW?) then (yes)
+        :Read fresh GPS\n(fallback to cachedGps if fail);
+        if (cooldown < 10s?) then (yes)
+          :Skip SOS;
+        else (no)
+          :lastSosTime = now;
+          :Publish SOS payload to MQTT;
+          :Blink LED x3;
+        endif
+      endif
+    endif
+
+    if (millis() - lastPublish\n>= 5000ms?) then (yes)
+      :lastPublish = millis();
+      :modem.getGPS() -> cachedGps;
+      if (GPS fix?) then (no)
+        :Skip — no publish;
+      else (yes)
+        :Publish GPS coordinates to MQTT;
+        :Blink LED x1;
+      endif
+    endif
+
+  repeat while (forever)
+}
+
+stop
+@enduml
