@@ -74,17 +74,16 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-
-@field_validator("cors_origins", mode="before")
-@classmethod
-def parse_origins(cls, value: str | list[str]) -> list[str]:
-    if isinstance(value, list):
-        return value
-    text = value.strip()
-    if text.startswith("[") and text.endswith("]"):
-        text = text[1:-1]
-    parts = re.split(r'[,\s]+', text.strip('"').strip("'"))
-    return [p.strip().strip('"').strip("'") for p in parts if p.strip()]
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_origins(cls, value: str | list[str]) -> list[str]:
+        if isinstance(value, list):
+            return value
+        text = value.strip()
+        if text.startswith("[") and text.endswith("]"):
+            text = text[1:-1]
+        parts = re.split(r'[,\s]+', text.strip('"').strip("'"))
+        return [p.strip().strip('"').strip("'") for p in parts if p.strip()]
 
 
 @lru_cache(maxsize=1)
