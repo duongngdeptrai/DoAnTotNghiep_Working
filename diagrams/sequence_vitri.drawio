@@ -1,0 +1,136 @@
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1050" pageHeight="600" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+
+    <!-- Title -->
+    <mxCell id="TIT" parent="1" vertex="1" style="text;html=1;align=center;fontSize=13;fontStyle=1;fillColor=none;strokeColor=none;" value="SD01 – Luồng cập nhật vị trí GPS thời gian thực">
+      <mxGeometry x="150" y="5" width="700" height="25" as="geometry"/>
+    </mxCell>
+
+    <!-- Participant boxes (y=35, h=40) -->
+    <!-- ESP32: x=30 w=100 → center_x=80 -->
+    <mxCell id="P1" parent="1" vertex="1" style="rounded=0;html=1;fillColor=none;strokeColor=#000000;fontSize=11;fontStyle=1;align=center;" value="ESP32">
+      <mxGeometry x="30" y="35" width="100" height="40" as="geometry"/>
+    </mxCell>
+    <!-- MQTT: x=195 w=120 → center_x=255 -->
+    <mxCell id="P2" parent="1" vertex="1" style="rounded=0;html=1;fillColor=none;strokeColor=#000000;fontSize=11;fontStyle=1;align=center;" value="MQTT Broker">
+      <mxGeometry x="195" y="35" width="120" height="40" as="geometry"/>
+    </mxCell>
+    <!-- Backend: x=415 w=120 → center_x=475 -->
+    <mxCell id="P3" parent="1" vertex="1" style="rounded=0;html=1;fillColor=none;strokeColor=#000000;fontSize=11;fontStyle=1;align=center;" value="Backend">
+      <mxGeometry x="415" y="35" width="120" height="40" as="geometry"/>
+    </mxCell>
+    <!-- MongoDB: x=635 w=100 → center_x=685 -->
+    <mxCell id="P4" parent="1" vertex="1" style="rounded=0;html=1;fillColor=none;strokeColor=#000000;fontSize=11;fontStyle=1;align=center;" value="MongoDB">
+      <mxGeometry x="635" y="35" width="100" height="40" as="geometry"/>
+    </mxCell>
+    <!-- Flutter: x=845 w=120 → center_x=905 -->
+    <mxCell id="P5" parent="1" vertex="1" style="rounded=0;html=1;fillColor=none;strokeColor=#000000;fontSize=11;fontStyle=1;align=center;" value="Flutter App">
+      <mxGeometry x="845" y="35" width="120" height="40" as="geometry"/>
+    </mxCell>
+
+    <!-- Lifelines (y=75 → y=575) -->
+    <mxCell id="L1" parent="1" edge="1" style="endArrow=none;dashed=1;strokeColor=#000000;" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="80" y="75" as="sourcePoint"/>
+        <mxPoint x="80" y="575" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="L2" parent="1" edge="1" style="endArrow=none;dashed=1;strokeColor=#000000;" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="255" y="75" as="sourcePoint"/>
+        <mxPoint x="255" y="575" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="L3" parent="1" edge="1" style="endArrow=none;dashed=1;strokeColor=#000000;" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="475" y="75" as="sourcePoint"/>
+        <mxPoint x="475" y="575" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="L4" parent="1" edge="1" style="endArrow=none;dashed=1;strokeColor=#000000;" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="685" y="75" as="sourcePoint"/>
+        <mxPoint x="685" y="575" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="L5" parent="1" edge="1" style="endArrow=none;dashed=1;strokeColor=#000000;" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="905" y="75" as="sourcePoint"/>
+        <mxPoint x="905" y="575" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- Messages -->
+    <!-- 1: ESP32 → MQTT -->
+    <mxCell id="M1" parent="1" edge="1" style="endArrow=block;endFill=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" value="1: Gửi dữ liệu GPS">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="80" y="130" as="sourcePoint"/>
+        <mxPoint x="255" y="130" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- 2: MQTT → Backend -->
+    <mxCell id="M2" parent="1" edge="1" style="endArrow=block;endFill=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" value="2: Chuyển tiếp dữ liệu">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="255" y="195" as="sourcePoint"/>
+        <mxPoint x="475" y="195" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- 3: Backend self-loop -->
+    <mxCell id="M3" parent="1" edge="1" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;html=1;fontSize=10;align=left;" value="3: Xử lý dữ liệu vị trí">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="475" y="248" as="sourcePoint"/>
+        <mxPoint x="475" y="278" as="targetPoint"/>
+        <Array as="points">
+          <mxPoint x="525" y="248"/>
+          <mxPoint x="525" y="278"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- 4: Backend → MongoDB -->
+    <mxCell id="M4" parent="1" edge="1" style="endArrow=block;endFill=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" value="4: Lưu vị trí">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="475" y="335" as="sourcePoint"/>
+        <mxPoint x="685" y="335" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- Return: MongoDB → Backend -->
+    <mxCell id="M4r" parent="1" edge="1" style="endArrow=open;endFill=0;dashed=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" value="OK">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="685" y="375" as="sourcePoint"/>
+        <mxPoint x="475" y="375" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- 5: Backend → Flutter -->
+    <mxCell id="M5" parent="1" edge="1" style="endArrow=block;endFill=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" value="5: Phát vị trí qua WebSocket">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="475" y="440" as="sourcePoint"/>
+        <mxPoint x="905" y="440" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- 6: Flutter self-loop -->
+    <mxCell id="M6" parent="1" edge="1" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;html=1;fontSize=10;align=left;" value="6: Cập nhật giao diện bản đồ">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="905" y="490" as="sourcePoint"/>
+        <mxPoint x="905" y="520" as="targetPoint"/>
+        <Array as="points">
+          <mxPoint x="955" y="490"/>
+          <mxPoint x="955" y="520"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- Note -->
+    <mxCell id="NOTE" parent="1" vertex="1" style="text;html=1;align=center;fontSize=10;fontStyle=2;fillColor=none;strokeColor=none;" value="[Bản đồ hiển thị vị trí mới nhất của trẻ em]">
+      <mxGeometry x="680" y="537" width="300" height="20" as="geometry"/>
+    </mxCell>
+
+  </root>
+</mxGraphModel>

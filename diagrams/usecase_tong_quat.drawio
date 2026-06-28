@@ -1,0 +1,102 @@
+<mxGraphModel dx="1288" dy="821" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="950" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+    <mxCell id="2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+      <mxGeometry height="740" width="700" x="200" y="60" as="geometry" />
+    </mxCell>
+    <mxCell id="3" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=14;fillColor=none;strokeColor=none;" value="&lt;b&gt;Hệ thống theo dõi vị trí trẻ em&lt;/b&gt;" vertex="1">
+      <mxGeometry height="36" width="540" x="280" y="28" as="geometry" />
+    </mxCell>
+    <mxCell id="10" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Đăng nhập hệ thống" vertex="1">
+      <mxGeometry height="55" width="240" x="380" y="90" as="geometry" />
+    </mxCell>
+    <mxCell id="11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Quản lý thiết bị GPS" vertex="1">
+      <mxGeometry height="55" width="280" x="360" y="195" as="geometry" />
+    </mxCell>
+    <mxCell id="12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xem vị trí thời gian thực" vertex="1">
+      <mxGeometry height="55" width="320" x="340" y="300" as="geometry" />
+    </mxCell>
+    <mxCell id="13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Quản lý vùng an toàn (Geofence)" vertex="1">
+      <mxGeometry height="55" width="380" x="310" y="405" as="geometry" />
+    </mxCell>
+    <mxCell id="14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Nhận cảnh báo tự động" vertex="1">
+      <mxGeometry height="55" width="320" x="340" y="510" as="geometry" />
+    </mxCell>
+    <mxCell id="15" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Gửi tín hiệu SOS khẩn cấp" vertex="1">
+      <mxGeometry height="55" width="320" x="340" y="615" as="geometry" />
+    </mxCell>
+    <mxCell id="16" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xem thống kê hành trình" vertex="1">
+      <mxGeometry height="55" width="320" x="340" y="720" as="geometry" />
+    </mxCell>
+    <mxCell id="30" edge="1" parent="1" style="edgeStyle=none;" target="10">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="120" y="407.1341463414635" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="31" edge="1" parent="1" style="edgeStyle=none;" target="11">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="120" y="414.81707317073165" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="32" edge="1" parent="1" style="edgeStyle=none;" target="12">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="120" y="422.5" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="33" edge="1" parent="1" style="edgeStyle=none;" target="13">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="120" y="430.18292682926835" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="34" edge="1" parent="1" style="edgeStyle=none;" target="14">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="120" y="437.89100742212963" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="35" edge="1" parent="1" style="edgeStyle=none;" target="16">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="120" y="453.2317073170732" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="40" edge="1" parent="1" style="edgeStyle=none;" target="12" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="979.9999999999998" y="376.90930860437516" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="41" edge="1" parent="1" style="edgeStyle=none;" target="14" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="979.9999999999998" y="389.2683122798777" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="42" edge="1" parent="1" style="edgeStyle=none;" target="15" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="979.9999999999998" y="395.4398539889337" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="43" edge="1" parent="1" style="edgeStyle=none;" target="14" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="979.9999999999998" y="539.8478661867448" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="50" edge="1" parent="1" style="edgeStyle=none;" target="15" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="120" y="445" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="51" edge="1" parent="1" style="edgeStyle=none;" target="15" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="979.9999999999998" y="555" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="3MMy72o8qJlYlcM_PG7V-46" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Phụ huynh&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+      <mxGeometry height="60" width="30" x="75" y="400" as="geometry" />
+    </mxCell>
+    <mxCell id="3MMy72o8qJlYlcM_PG7V-47" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Thiết bị phần cứng" vertex="1">
+      <mxGeometry height="60" width="30" x="995" y="350" as="geometry" />
+    </mxCell>
+    <mxCell id="3MMy72o8qJlYlcM_PG7V-51" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Dịch vụ thông báo" vertex="1">
+      <mxGeometry height="60" width="30" x="995" y="510" as="geometry" />
+    </mxCell>
+  </root>
+</mxGraphModel>

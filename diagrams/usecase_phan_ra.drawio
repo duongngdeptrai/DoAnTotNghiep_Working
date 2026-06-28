@@ -1,0 +1,110 @@
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="750" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- System boundary -->
+    <mxCell id="2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+      <mxGeometry height="640" width="1060" x="180" y="55" as="geometry" />
+    </mxCell>
+
+    <!-- Title -->
+    <mxCell id="3" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=14;fillColor=none;strokeColor=none;" value="&lt;b&gt;Hệ thống theo dõi vị trí trẻ em&lt;/b&gt;" vertex="1">
+      <mxGeometry height="36" width="540" x="440" y="20" as="geometry" />
+    </mxCell>
+
+    <!-- Vertical divider -->
+    <mxCell id="4" parent="1" style="endArrow=none;dashed=1;strokeColor=#999999;" edge="1" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="710" y="75" as="sourcePoint" />
+        <mxPoint x="710" y="675" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+
+    <!-- ===== LEFT: Xem vị trí thời gian thực ===== -->
+
+    <!-- Parent UC -->
+    <mxCell id="10" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xem vị trí thời gian thực" vertex="1">
+      <mxGeometry height="55" width="260" x="275" y="110" as="geometry" />
+    </mxCell>
+
+    <!-- Sub UC 1.1 -->
+    <mxCell id="11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xem vị trí hiện tại trên bản đồ" vertex="1">
+      <mxGeometry height="55" width="250" x="280" y="270" as="geometry" />
+    </mxCell>
+
+    <!-- Sub UC 1.2 -->
+    <mxCell id="12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xem trạng thái kết nối thiết bị" vertex="1">
+      <mxGeometry height="55" width="250" x="280" y="390" as="geometry" />
+    </mxCell>
+
+    <!-- Sub UC 1.3 -->
+    <mxCell id="13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xem thông tin bổ sung" vertex="1">
+      <mxGeometry height="55" width="220" x="295" y="510" as="geometry" />
+    </mxCell>
+
+    <!-- Include arrows: UC1 -> sub-UCs -->
+    <mxCell id="30" edge="1" parent="1" source="10" target="11" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="«include»">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="31" edge="1" parent="1" source="10" target="12" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="«include»">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="32" edge="1" parent="1" source="10" target="13" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="«include»">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- ===== RIGHT: Quản lý vùng an toàn ===== -->
+
+    <!-- Parent UC -->
+    <mxCell id="20" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Quản lý vùng an toàn (Geofence)" vertex="1">
+      <mxGeometry height="55" width="300" x="790" y="110" as="geometry" />
+    </mxCell>
+
+    <!-- Sub UC 2.1 -->
+    <mxCell id="21" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Thêm vùng an toàn" vertex="1">
+      <mxGeometry height="55" width="210" x="835" y="270" as="geometry" />
+    </mxCell>
+
+    <!-- Sub UC 2.2 -->
+    <mxCell id="22" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Sửa vùng an toàn" vertex="1">
+      <mxGeometry height="55" width="210" x="835" y="390" as="geometry" />
+    </mxCell>
+
+    <!-- Sub UC 2.3 -->
+    <mxCell id="23" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xóa vùng an toàn" vertex="1">
+      <mxGeometry height="55" width="210" x="835" y="510" as="geometry" />
+    </mxCell>
+
+    <!-- Include arrows: UC2 -> sub-UCs -->
+    <mxCell id="33" edge="1" parent="1" source="20" target="21" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="«include»">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="34" edge="1" parent="1" source="20" target="22" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="«include»">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="35" edge="1" parent="1" source="20" target="23" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="«include»">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Phụ huynh actor -->
+    <mxCell id="40" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Phụ huynh" vertex="1">
+      <mxGeometry height="60" width="30" x="55" y="340" as="geometry" />
+    </mxCell>
+
+    <!-- Arrow: Phụ huynh -> UC1 -->
+    <mxCell id="41" edge="1" parent="1" style="edgeStyle=none;" target="10" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="100" y="355" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+
+    <!-- Arrow: Phụ huynh -> UC2 -->
+    <mxCell id="42" edge="1" parent="1" style="edgeStyle=none;" target="20" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="100" y="370" as="sourcePoint" />
+      </mxGeometry>
+    </mxCell>
+
+  </root>
+</mxGraphModel>

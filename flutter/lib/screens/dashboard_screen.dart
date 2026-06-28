@@ -8,8 +8,6 @@ import '../widgets/top_nav.dart';
 import '../widgets/tracking_map.dart';
 import '../widgets/geofence_editor_panel.dart';
 import '../widgets/notification_toast.dart';
-import '../services/location_service.dart';
-import '../services/socket_service.dart';
 import '../utils/device_color.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -21,7 +19,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   late final AppProvider _provider;
-  late final LocationService _locationService;
   Timer? _syncTimer;
   Timer? _bannerTimer;
   Alert? _bannerAlert;
@@ -37,7 +34,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _provider = context.read<AppProvider>();
-    _locationService = _provider.locationService;
     _provider.addListener(_onProviderChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _provider.fetchGeofenceState();
@@ -99,21 +95,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   LatLng _getMapCenter() {
-    if (_provider.geofenceState.mode == 'mobile' && _locationService.currentPosition != null) {
-      final pos = _locationService.currentPosition!;
+    if (_provider.geofenceState.mode == 'mobile' && _provider.locationService.currentPosition != null) {
+      final pos = _provider.locationService.currentPosition!;
       return LatLng(pos.latitude, pos.longitude);
     }
     return LatLng(_provider.geofenceState.centerLat, _provider.geofenceState.centerLng);
   }
 
-  Color _getStatusColor(SocketStatus status) {
-    switch (status) {
-      case SocketStatus.connected:
+  Color _getStatusColor(String statusName) {
+    switch (statusName) {
+      case 'connected':
         return Colors.green;
-      case SocketStatus.connecting:
+      case 'connecting':
         return Colors.orange;
-      case SocketStatus.disconnected:
-      case SocketStatus.error:
+      default:
         return Colors.red;
     }
   }
@@ -174,8 +169,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Row(
                       children: [
                         _StatusPill(
-                          status: provider.socketStatus,
-                          getColor: _getStatusColor,
+                          statusName: provider.socketStatus.name,
+                          color: _getStatusColor(provider.socketStatus.name),
                         ),
                         const SizedBox(width: 6),
                         _IconPill(
@@ -320,14 +315,13 @@ const _bgDecoration = BoxDecoration(
 // ─── Status Pill ──────────────────────────────────────────────────────────────
 
 class _StatusPill extends StatelessWidget {
-  final SocketStatus status;
-  final Color Function(SocketStatus) getColor;
+  final String statusName;
+  final Color color;
 
-  const _StatusPill({required this.status, required this.getColor});
+  const _StatusPill({required this.statusName, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    final color = getColor(status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -340,7 +334,7 @@ class _StatusPill extends StatelessWidget {
         children: [
           Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           const SizedBox(width: 6),
-          Text('WS: ${status.name}',
+          Text('WS: $statusName',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
         ],
       ),

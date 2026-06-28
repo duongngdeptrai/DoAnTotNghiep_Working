@@ -1,0 +1,136 @@
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1250" pageHeight="620" math="0" shadow="0">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+
+    <!-- Title -->
+    <mxCell id="TIT" parent="1" vertex="1" style="text;html=1;align=center;fontSize=13;fontStyle=1;fillColor=none;strokeColor=none;" value="SD02 – Nhận cảnh báo tự động (Geofence)">
+      <mxGeometry x="200" y="5" width="800" height="25" as="geometry"/>
+    </mxCell>
+
+    <!-- Participant boxes (y=35, h=40) -->
+    <mxCell id="P1" parent="1" vertex="1" style="rounded=0;html=1;fillColor=none;strokeColor=#000000;fontSize=11;fontStyle=1;align=center;" value="ESP32">
+      <mxGeometry x="20" y="35" width="80" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="P2" parent="1" vertex="1" style="rounded=0;html=1;fillColor=none;strokeColor=#000000;fontSize=11;fontStyle=1;align=center;" value="MQTT Broker">
+      <mxGeometry x="155" y="35" width="110" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="P3" parent="1" vertex="1" style="rounded=0;html=1;fillColor=none;strokeColor=#000000;fontSize=11;fontStyle=1;align=center;" value="Backend">
+      <mxGeometry x="360" y="35" width="120" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="P4" parent="1" vertex="1" style="rounded=0;html=1;fillColor=none;strokeColor=#000000;fontSize=11;fontStyle=1;align=center;" value="MongoDB">
+      <mxGeometry x="580" y="35" width="100" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="P5" parent="1" vertex="1" style="rounded=0;html=1;fillColor=none;strokeColor=#000000;fontSize=11;fontStyle=1;align=center;" value="Telegram / Email">
+      <mxGeometry x="775" y="35" width="140" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="P6" parent="1" vertex="1" style="rounded=0;html=1;fillColor=none;strokeColor=#000000;fontSize=11;fontStyle=1;align=center;" value="Flutter App">
+      <mxGeometry x="1010" y="35" width="120" height="40" as="geometry"/>
+    </mxCell>
+
+    <!-- Lifelines (y=75 → y=595) -->
+    <mxCell id="L1" parent="1" edge="1" style="endArrow=none;dashed=1;strokeColor=#000000;" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="60" y="75" as="sourcePoint"/>
+        <mxPoint x="60" y="595" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="L2" parent="1" edge="1" style="endArrow=none;dashed=1;strokeColor=#000000;" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="210" y="75" as="sourcePoint"/>
+        <mxPoint x="210" y="595" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="L3" parent="1" edge="1" style="endArrow=none;dashed=1;strokeColor=#000000;" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="420" y="75" as="sourcePoint"/>
+        <mxPoint x="420" y="595" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="L4" parent="1" edge="1" style="endArrow=none;dashed=1;strokeColor=#000000;" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="630" y="75" as="sourcePoint"/>
+        <mxPoint x="630" y="595" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="L5" parent="1" edge="1" style="endArrow=none;dashed=1;strokeColor=#000000;" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="845" y="75" as="sourcePoint"/>
+        <mxPoint x="845" y="595" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="L6" parent="1" edge="1" style="endArrow=none;dashed=1;strokeColor=#000000;" value="">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="1070" y="75" as="sourcePoint"/>
+        <mxPoint x="1070" y="595" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- ref frame: tham chiếu SD01 -->
+    <mxCell id="REF" parent="1" vertex="1" style="rounded=0;html=1;fillColor=none;strokeColor=#000000;strokeWidth=1;verticalAlign=top;align=left;spacingLeft=5;fontSize=10;fontStyle=1;" value="ref">
+      <mxGeometry x="30" y="100" width="1195" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="REF_TXT" parent="1" vertex="1" style="text;html=1;align=center;fontSize=10;fontStyle=2;fillColor=none;strokeColor=none;" value="SD01 – Luồng cập nhật vị trí GPS thời gian thực">
+      <mxGeometry x="200" y="115" width="800" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- 1: Backend self → Phát hiện vi phạm -->
+    <mxCell id="M1" parent="1" edge="1" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;html=1;fontSize=10;align=left;" value="1: Phát hiện vi phạm vùng an toàn">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="420" y="200" as="sourcePoint"/>
+        <mxPoint x="420" y="230" as="targetPoint"/>
+        <Array as="points">
+          <mxPoint x="470" y="200"/>
+          <mxPoint x="470" y="230"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- alt frame: y=250 h=255 -->
+    <mxCell id="ALT" parent="1" vertex="1" style="rounded=0;html=1;fillColor=none;strokeColor=#000000;strokeWidth=1;verticalAlign=top;align=left;spacingLeft=6;fontSize=10;fontStyle=3;" value="alt [vi phạm vùng an toàn]">
+      <mxGeometry x="30" y="250" width="1195" height="255" as="geometry"/>
+    </mxCell>
+
+    <!-- 2: Backend → MongoDB: Lưu cảnh báo -->
+    <mxCell id="M2" parent="1" edge="1" style="endArrow=block;endFill=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" value="2: Lưu cảnh báo">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="420" y="290" as="sourcePoint"/>
+        <mxPoint x="630" y="290" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- 3: Backend → Telegram/Email -->
+    <mxCell id="M3" parent="1" edge="1" style="endArrow=block;endFill=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" value="3: Gửi thông báo cảnh báo">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="420" y="340" as="sourcePoint"/>
+        <mxPoint x="845" y="340" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- 4: Backend → Flutter: geofence_alert -->
+    <mxCell id="M4" parent="1" edge="1" style="endArrow=block;endFill=1;html=1;fontSize=10;align=center;verticalAlign=bottom;" value="4: Gửi cảnh báo geofence qua WebSocket">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="420" y="390" as="sourcePoint"/>
+        <mxPoint x="1070" y="390" as="targetPoint"/>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- 5: Flutter self -->
+    <mxCell id="M5" parent="1" edge="1" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;html=1;fontSize=10;align=left;" value="5: Hiển thị thông báo cảnh báo">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="1070" y="430" as="sourcePoint"/>
+        <mxPoint x="1070" y="460" as="targetPoint"/>
+        <Array as="points">
+          <mxPoint x="1120" y="430"/>
+          <mxPoint x="1120" y="460"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- Note -->
+    <mxCell id="NOTE" parent="1" vertex="1" style="text;html=1;align=center;fontSize=10;fontStyle=2;fillColor=none;strokeColor=none;" value="[Phụ huynh nhận thông báo trên Telegram, Email và ứng dụng Flutter]">
+      <mxGeometry x="300" y="520" width="620" height="20" as="geometry"/>
+    </mxCell>
+
+  </root>
+</mxGraphModel>
