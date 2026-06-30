@@ -49,7 +49,7 @@ Từ phân tích trên, hệ thống cần xây dựng phải giải quyết đ�
 
 Hệ thống có ba tác nhân chính. \textbf{Phụ huynh} là người dùng chính của ứng dụng di động, thực hiện các thao tác quản lý và theo dõi. \textbf{Thiết bị IoT} (thiết bị GPS đeo trên trẻ) là tác nhân tự động, định kỳ đọc tọa độ GPS và gửi lên server mà không cần tương tác người dùng. \textbf{Dịch vụ thông báo} (Telegram Bot, Email) là tác nhân bên ngoài nhận lệnh gửi cảnh báo từ backend khi phát hiện vi phạm geofence hoặc tín hiệu SOS.
 
-Các use case chính của hệ thống gồm: (1) Đăng ký tài khoản; (2) Đăng nhập hệ thống; (3) Quản lý thiết bị GPS; (4) Xem vị trí trẻ theo thời gian thực trên bản đồ; (5) Quản lý vùng an toàn địa lý (geofence); (6) Cảnh báo vi phạm vùng an toàn; (7) Gửi tín hiệu SOS khẩn cấp; và (8) Xem thống kê hành trình (quãng đường, số lần vi phạm, lịch sử trên bản đồ).
+Các use case chính của hệ thống gồm: (1) Đăng ký thiết bị GPS và liên kết với tài khoản; (2) Đăng nhập hệ thống; (3) Xem vị trí trẻ theo thời gian thực trên bản đồ; (4) Tạo, chỉnh sửa và xóa vùng an toàn địa lý (geofence); (5) Nhận cảnh báo tự động khi trẻ vi phạm geofence; (6) Gửi tín hiệu SOS khẩn cấp; và (7) Xem thống kê hành trình (quãng đường, số lần vi phạm, lịch sử trên bản đồ).
 
 \begin{figure}[H]
     \centering
@@ -58,80 +58,25 @@ Các use case chính của hệ thống gồm: (1) Đăng ký tài khoản; (2) 
     \label{fig:usecase_total}
 \end{figure}
 
-\subsection{Biểu đồ use case phân rã – Quản lý thiết bị GPS}
+\subsection{Biểu đồ use case phân rã – Theo dõi và cảnh báo}
 \label{subsection:2.2.2}
 
-Use case \textit{Quản lý thiết bị GPS} được phân rã thành bốn use case con tương ứng với bốn thao tác cơ bản: đăng ký thiết bị mới bằng cách nhập mã thiết bị để liên kết với tài khoản, xem danh sách các thiết bị đã đăng ký cùng trạng thái kết nối, đổi tên thiết bị để dễ nhận biết, và xóa thiết bị khỏi tài khoản khi không còn sử dụng.
+Use case \textit{Xem vị trí theo thời gian thực} được phân rã thành ba use case con: xem vị trí hiện tại của trẻ trên bản đồ, xem trạng thái kết nối của thiết bị (online/offline), và xem thông tin bổ sung như hướng di chuyển và tốc độ ước tính. Use case \textit{Quản lý geofence} phân rã thành: tạo vùng an toàn hình tròn bằng cách chọn tâm và bán kính trên bản đồ, đặt tên và kích hoạt hoặc vô hiệu hóa geofence, và xóa geofence không còn cần thiết.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{Hinhve/usecase_phan_ra.png}
-    \caption{Biểu đồ use case phân rã – Quản lý thiết bị GPS}
+    \caption{Biểu đồ use case phân rã – Theo dõi và cảnh báo}
     \label{fig:usecase_phanra}
 \end{figure}
 
 \subsection{Quy trình nghiệp vụ}
 \label{subsection:2.2.3}
 
-Hệ thống có ba quy trình nghiệp vụ cốt lõi được mô tả qua các biểu đồ hoạt động dưới đây.
-
-Quy trình cập nhật vị trí theo thời gian thực (Hình \ref{fig:ad01}) thể hiện luồng dữ liệu định kỳ từ thiết bị IoT đến ứng dụng di động: thiết bị đọc tọa độ GPS mỗi 5 giây và gửi lên MQTT Broker, backend nhận bản tin, lưu vào cơ sở dữ liệu và đẩy vị trí mới đến ứng dụng qua WebSocket, ứng dụng cập nhật marker trên bản đồ.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{Hinhve/activity_vitri.png}
-    \caption{AD01 – Biểu đồ hoạt động: Cập nhật vị trí GPS thời gian thực}
-    \label{fig:ad01}
-\end{figure}
-
-Quy trình cảnh báo vi phạm vùng an toàn (Hình \ref{fig:ad02}) mô tả luồng xử lý khi thiết bị gửi tọa độ nằm ngoài geofence: backend phát hiện vi phạm, tạo bản ghi cảnh báo, gửi thông báo qua Telegram và đẩy cảnh báo đến ứng dụng di động.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{Hinhve/activity_geofence.png}
-    \caption{AD02 – Biểu đồ hoạt động: Cảnh báo vi phạm vùng an toàn}
-    \label{fig:ad02}
-\end{figure}
-
-Quy trình xử lý tín hiệu SOS (Hình \ref{fig:ad03}) thể hiện luồng khẩn cấp khi trẻ nhấn nút SOS trên thiết bị: thiết bị gửi ngay tín hiệu SOS kèm tọa độ, backend tạo cảnh báo khẩn và thông báo đến phụ huynh qua tất cả các kênh đã cấu hình.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{Hinhve/activity_sos.png}
-    \caption{AD03 – Biểu đồ hoạt động: Gửi tín hiệu SOS khẩn cấp}
-    \label{fig:ad03}
-\end{figure}
+Quy trình nghiệp vụ cốt lõi của hệ thống là quy trình \textbf{giám sát và cảnh báo tự động}, hoạt động như sau. Thiết bị GPS đeo trên trẻ định kỳ đọc tọa độ từ module GPS và gửi lên server qua giao thức MQTT. Backend tiếp nhận tọa độ, lưu vào cơ sở dữ liệu, sau đó kiểm tra xem tọa độ nhận được có nằm trong các vùng geofence đang hoạt động của phụ huynh hay không. Nếu trẻ đi ra ngoài vùng an toàn, hệ thống tự động gửi thông báo đến ứng dụng di động qua WebSocket đồng thời gửi cảnh báo qua Telegram Bot và Email. Song song, vị trí mới nhất được đẩy đến ứng dụng di động để cập nhật bản đồ mà không cần phụ huynh thao tác thủ công.
 
 \section{Đặc tả chức năng}
 \label{section:2.3}
-
-\subsection{Đặc tả use case: Đăng ký tài khoản}
-
-\begin{table}[H]
-\centering
-\caption{Đặc tả use case Đăng ký tài khoản}
-\label{table:uc_register}
-\begin{tabular}{|l|p{9.5cm}|}
-\hline
-\textbf{Tên use case}       & Đăng ký tài khoản \\
-\hline
-\textbf{Tác nhân}           & Phụ huynh \\
-\hline
-\textbf{Tiền điều kiện}     & Phụ huynh chưa có tài khoản trên hệ thống. \\
-\hline
-\textbf{Luồng sự kiện chính} &
-1. Phụ huynh chọn chức năng ``Đăng ký'' trên màn hình chào. \newline
-2. Phụ huynh nhập địa chỉ email, mật khẩu và xác nhận mật khẩu. \newline
-3. Hệ thống kiểm tra email chưa được đăng ký và mật khẩu đủ độ phức tạp. \newline
-4. Hệ thống lưu tài khoản với mật khẩu được băm bằng bcrypt. \newline
-5. Ứng dụng chuyển tự động sang màn hình đăng nhập. \\
-\hline
-\textbf{Luồng phát sinh}    & Nếu địa chỉ email đã tồn tại trong hệ thống, hệ thống thông báo lỗi và yêu cầu nhập địa chỉ khác. Nếu hai trường mật khẩu không khớp nhau, ứng dụng hiển thị thông báo ngay trên giao diện mà không gửi yêu cầu lên server. \\
-\hline
-\textbf{Hậu điều kiện}      & Tài khoản mới được tạo thành công; phụ huynh có thể đăng nhập và bắt đầu sử dụng hệ thống. \\
-\hline
-\end{tabular}
-\end{table}
 
 \subsection{Đặc tả use case: Đăng ký thiết bị GPS}
 
@@ -244,15 +189,15 @@ Quy trình xử lý tín hiệu SOS (Hình \ref{fig:ad03}) thể hiện luồng 
 \end{tabular}
 \end{table}
 
-\subsection{Đặc tả use case: Cảnh báo vi phạm vùng an toàn}
+\subsection{Đặc tả use case: Nhận cảnh báo vi phạm geofence}
 
 \begin{table}[H]
 \centering
-\caption{Đặc tả use case Cảnh báo vi phạm vùng an toàn}
+\caption{Đặc tả use case Nhận cảnh báo vi phạm geofence}
 \label{table:uc_alert}
 \begin{tabular}{|l|p{9.5cm}|}
 \hline
-\textbf{Tên use case}       & Cảnh báo vi phạm vùng an toàn \\
+\textbf{Tên use case}       & Nhận cảnh báo vi phạm geofence \\
 \hline
 \textbf{Tác nhân}           & Thiết bị IoT, Dịch vụ thông báo, Phụ huynh \\
 \hline
@@ -331,7 +276,7 @@ Quy trình xử lý tín hiệu SOS (Hình \ref{fig:ad03}) thể hiện luồng 
 \section{Yêu cầu phi chức năng}
 \label{section:2.4}
 
-\textbf{Hiệu năng.} Độ trễ end-to-end từ khi thiết bị gửi tọa độ đến khi ứng dụng cập nhật trên bản đồ không vượt quá 3 giây trong điều kiện mạng di động thông thường (3G/4G). Backend phải có khả năng xử lý đồng thời ít nhất 100 kết nối WebSocket và xử lý tối thiểu 50 bản tin MQTT mỗi giây.
+\textbf{Hiệu năng.} Độ trễ end-to-end từ khi thiết bị gửi tọa độ đến khi ứng dụng cập nhật trên bản đồ không vượt quá 5 giây trong điều kiện mạng di động thông thường (3G/4G). Backend phải có khả năng xử lý đồng thời ít nhất 100 kết nối WebSocket và xử lý tối thiểu 50 bản tin MQTT mỗi giây.
 
 \textbf{Độ tin cậy.} Thiết bị phải tự động kết nối lại MQTT sau khi mất kết nối mà không cần can thiệp thủ công, với thời gian phục hồi không quá 30 giây. Dữ liệu vị trí được gửi định kỳ qua MQTT; khi kết nối bị gián đoạn, thiết bị tự động kết nối lại và tiếp tục gửi, nên việc thất lạc một vài bản tin lẻ trong thời gian gián đoạn không ảnh hưởng đến khả năng theo dõi liên tục.
 

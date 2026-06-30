@@ -13,64 +13,70 @@ skinparam PartitionBackgroundColor #EFF6FF
 skinparam PartitionBorderColor #3B82F6
 skinparam PartitionFontStyle bold
 
-title Firmware Flowchart — ESP32 GPS Tracker
+title Lưu đồ hoạt động Firmware — ESP32 GPS Tracker
 
 start
 
-partition "Setup" {
-  :Initialize Serial + Serial2 (UART2);
-  :Reset modem via GPIO25;
-  :modem.restart() + enableGPS();
+partition "1. Khởi tạo (Setup)" {
+  :Khởi động Serial + Serial2 (UART2);
+  :Reset modem qua GPIO25;
+  :Khởi động lại modem, bật GPS;
 
   repeat
-    :gprsConnect(APN "v-internet");
-  repeat while (GPRS connected?) is (no)
-  -> yes;
+    :Kết nối GPRS\n(APN "v-internet");
+  repeat while (Đã kết nối GPRS?) is (Chưa)
+  -> Rồi;
 
   repeat
-    :mqttClient.connect(broker.emqx.io);
-  repeat while (MQTT connected?) is (no)
-  -> yes;
+    :Kết nối MQTT Broker\n(broker.emqx.io:1883);
+  repeat while (Đã kết nối MQTT?) is (Chưa)
+  -> Rồi;
 
-  :attachInterrupt(GPIO0, FALLING);
+  :Cấu hình GPIO0 INPUT_PULLUP\nĐăng ký ngắt SOS (FALLING edge);
 }
 
-partition "Main Loop" {
+partition "2. Vòng lặp chính (Main Loop)" {
   repeat
 
-    if (MQTT connected?) then (no)
-      :connectMQTT();
+    if (MQTT còn kết nối?) then (Chưa)
+      :Kết nối lại MQTT;
     endif
 
-    :mqttClient.loop();
+    :Duy trì keep-alive MQTT;
 
-    if (sosPending?) then (yes)
-      :sosPending = false;
-      :delay 50ms (debounce);
-      if (GPIO0 still LOW?) then (yes)
-        :Read fresh GPS\n(fallback to cachedGps if fail);
-        if (cooldown < 10s?) then (yes)
-          :Skip SOS;
-        else (no)
-          :lastSosTime = now;
-          :Publish SOS payload to MQTT;
-          :Blink LED x3;
-        endif
-      endif
+    if (sosPending = true?) then (Có)
+      :Xử lý SOS\n(xem phần 3);
     endif
 
-    if (millis() - lastPublish\n>= 5000ms?) then (yes)
+    if (millis() − lastPublish ≥ 5000 ms?) then (Có)
       :lastPublish = millis();
-      :modem.getGPS() -> cachedGps;
-      if (GPS fix?) then (no)
-        :Skip — no publish;
-      else (yes)
-        :Publish GPS coordinates to MQTT;
-        :Blink LED x1;
+      :Đọc tọa độ GPS từ modem → cachedGps;
+      if (Có tín hiệu GPS?) then (Chưa)
+        :Bỏ qua, không publish;
+      else (Có)
+        :Publish tọa độ GPS lên MQTT;
+        :Nhấp nháy LED × 1;
       endif
     endif
 
-  repeat while (forever)
+  repeat while (Mãi mãi)
+}
+
+partition "3. Xử lý SOS (Interrupt Handler)" {
+  :sosPending = false;
+  :Chờ 50 ms (khử rung);
+  if (GPIO0 vẫn ở mức LOW?) then (Không)
+    :Bỏ qua (nhiễu);
+  else (Có)
+    :Đọc GPS mới\n(dùng cachedGps nếu thất bại);
+    if (Thời gian từ lần SOS cuối < 10 s?) then (Có)
+      :Bỏ qua (cooldown);
+    else (Không)
+      :lastSosTime = now;
+      :Publish SOS payload lên MQTT;
+      :Nhấp nháy LED × 3;
+    endif
+  endif
 }
 
 stop

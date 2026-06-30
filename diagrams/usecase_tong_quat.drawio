@@ -1,102 +1,126 @@
-<mxGraphModel dx="1288" dy="821" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="950" math="0" shadow="0">
+<mxGraphModel dx="1288" dy="821" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1050" math="0" shadow="0">
   <root>
     <mxCell id="0" />
     <mxCell id="1" parent="0" />
+
+    <!-- System boundary -->
     <mxCell id="2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
-      <mxGeometry height="740" width="700" x="200" y="60" as="geometry" />
+      <mxGeometry height="840" width="700" x="200" y="60" as="geometry" />
     </mxCell>
+
+    <!-- Title -->
     <mxCell id="3" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=14;fillColor=none;strokeColor=none;" value="&lt;b&gt;Hệ thống theo dõi vị trí trẻ em&lt;/b&gt;" vertex="1">
-      <mxGeometry height="36" width="540" x="280" y="28" as="geometry" />
+      <mxGeometry height="36" width="540" x="280" y="26" as="geometry" />
     </mxCell>
-    <mxCell id="10" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Đăng nhập hệ thống" vertex="1">
+
+    <!-- UC1: Đăng ký tài khoản -->
+    <mxCell id="10" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Đăng ký tài khoản" vertex="1">
       <mxGeometry height="55" width="240" x="380" y="90" as="geometry" />
     </mxCell>
-    <mxCell id="11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Quản lý thiết bị GPS" vertex="1">
-      <mxGeometry height="55" width="280" x="360" y="195" as="geometry" />
+
+    <!-- UC2: Đăng nhập hệ thống -->
+    <mxCell id="11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Đăng nhập hệ thống" vertex="1">
+      <mxGeometry height="55" width="240" x="380" y="190" as="geometry" />
     </mxCell>
-    <mxCell id="12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xem vị trí thời gian thực" vertex="1">
-      <mxGeometry height="55" width="320" x="340" y="300" as="geometry" />
+
+    <!-- UC3: Quản lý thiết bị GPS -->
+    <mxCell id="12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Quản lý thiết bị GPS" vertex="1">
+      <mxGeometry height="55" width="280" x="360" y="290" as="geometry" />
     </mxCell>
-    <mxCell id="13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Quản lý vùng an toàn (Geofence)" vertex="1">
-      <mxGeometry height="55" width="380" x="310" y="405" as="geometry" />
+
+    <!-- UC4: Xem vị trí thời gian thực -->
+    <mxCell id="13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xem vị trí thời gian thực" vertex="1">
+      <mxGeometry height="55" width="320" x="340" y="390" as="geometry" />
     </mxCell>
-    <mxCell id="14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Nhận cảnh báo tự động" vertex="1">
-      <mxGeometry height="55" width="320" x="340" y="510" as="geometry" />
+
+    <!-- UC5: Quản lý vùng an toàn -->
+    <mxCell id="14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Quản lý vùng an toàn (Geofence)" vertex="1">
+      <mxGeometry height="55" width="380" x="310" y="490" as="geometry" />
     </mxCell>
-    <mxCell id="15" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Gửi tín hiệu SOS khẩn cấp" vertex="1">
-      <mxGeometry height="55" width="320" x="340" y="615" as="geometry" />
+
+    <!-- UC6: Cảnh báo vi phạm vùng an toàn -->
+    <mxCell id="15" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Cảnh báo vi phạm vùng an toàn" vertex="1">
+      <mxGeometry height="55" width="360" x="320" y="590" as="geometry" />
     </mxCell>
-    <mxCell id="16" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xem thống kê hành trình" vertex="1">
-      <mxGeometry height="55" width="320" x="340" y="720" as="geometry" />
+
+    <!-- UC7: Gửi tín hiệu SOS khẩn cấp -->
+    <mxCell id="16" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Gửi tín hiệu SOS khẩn cấp" vertex="1">
+      <mxGeometry height="55" width="320" x="340" y="690" as="geometry" />
     </mxCell>
-    <mxCell id="30" edge="1" parent="1" style="edgeStyle=none;" target="10">
-      <mxGeometry relative="1" as="geometry">
-        <mxPoint x="120" y="407.1341463414635" as="sourcePoint" />
-      </mxGeometry>
+
+    <!-- UC8: Xem thống kê hành trình -->
+    <mxCell id="17" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xem thống kê hành trình" vertex="1">
+      <mxGeometry height="55" width="320" x="340" y="790" as="geometry" />
     </mxCell>
-    <mxCell id="31" edge="1" parent="1" style="edgeStyle=none;" target="11">
-      <mxGeometry relative="1" as="geometry">
-        <mxPoint x="120" y="414.81707317073165" as="sourcePoint" />
-      </mxGeometry>
+
+    <!-- Actor: Phụ huynh -->
+    <mxCell id="46" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Phụ huynh" vertex="1">
+      <mxGeometry height="60" width="30" x="75" y="450" as="geometry" />
     </mxCell>
-    <mxCell id="32" edge="1" parent="1" style="edgeStyle=none;" target="12">
-      <mxGeometry relative="1" as="geometry">
-        <mxPoint x="120" y="422.5" as="sourcePoint" />
-      </mxGeometry>
+
+    <!-- Actor: Thiết bị IoT -->
+    <mxCell id="47" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Thiết bị IoT" vertex="1">
+      <mxGeometry height="60" width="30" x="995" y="430" as="geometry" />
     </mxCell>
-    <mxCell id="33" edge="1" parent="1" style="edgeStyle=none;" target="13">
-      <mxGeometry relative="1" as="geometry">
-        <mxPoint x="120" y="430.18292682926835" as="sourcePoint" />
-      </mxGeometry>
+
+    <!-- Actor: Dịch vụ thông báo -->
+    <mxCell id="51" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Dịch vụ thông báo" vertex="1">
+      <mxGeometry height="60" width="30" x="995" y="620" as="geometry" />
     </mxCell>
-    <mxCell id="34" edge="1" parent="1" style="edgeStyle=none;" target="14">
-      <mxGeometry relative="1" as="geometry">
-        <mxPoint x="120" y="437.89100742212963" as="sourcePoint" />
-      </mxGeometry>
+
+    <!-- Phụ huynh → UC1 -->
+    <mxCell id="30" edge="1" parent="1" source="46" target="10" style="endArrow=none;startArrow=none;">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="35" edge="1" parent="1" style="edgeStyle=none;" target="16">
-      <mxGeometry relative="1" as="geometry">
-        <mxPoint x="120" y="453.2317073170732" as="sourcePoint" />
-      </mxGeometry>
+    <!-- Phụ huynh → UC2 -->
+    <mxCell id="31" edge="1" parent="1" source="46" target="11" style="endArrow=none;startArrow=none;">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="40" edge="1" parent="1" style="edgeStyle=none;" target="12" value="">
-      <mxGeometry relative="1" as="geometry">
-        <mxPoint x="979.9999999999998" y="376.90930860437516" as="sourcePoint" />
-      </mxGeometry>
+    <!-- Phụ huynh → UC3 -->
+    <mxCell id="32" edge="1" parent="1" source="46" target="12" style="endArrow=none;startArrow=none;">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="41" edge="1" parent="1" style="edgeStyle=none;" target="14" value="">
-      <mxGeometry relative="1" as="geometry">
-        <mxPoint x="979.9999999999998" y="389.2683122798777" as="sourcePoint" />
-      </mxGeometry>
+    <!-- Phụ huynh → UC4 -->
+    <mxCell id="33" edge="1" parent="1" source="46" target="13" style="endArrow=none;startArrow=none;">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="42" edge="1" parent="1" style="edgeStyle=none;" target="15" value="">
-      <mxGeometry relative="1" as="geometry">
-        <mxPoint x="979.9999999999998" y="395.4398539889337" as="sourcePoint" />
-      </mxGeometry>
+    <!-- Phụ huynh → UC5 -->
+    <mxCell id="34" edge="1" parent="1" source="46" target="14" style="endArrow=none;startArrow=none;">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="43" edge="1" parent="1" style="edgeStyle=none;" target="14" value="">
-      <mxGeometry relative="1" as="geometry">
-        <mxPoint x="979.9999999999998" y="539.8478661867448" as="sourcePoint" />
-      </mxGeometry>
+    <!-- Phụ huynh → UC6 -->
+    <mxCell id="35" edge="1" parent="1" source="46" target="15" style="endArrow=none;startArrow=none;">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="50" edge="1" parent="1" style="edgeStyle=none;" target="15" value="">
-      <mxGeometry relative="1" as="geometry">
-        <mxPoint x="120" y="445" as="sourcePoint" />
-      </mxGeometry>
+    <!-- Phụ huynh → UC7 -->
+    <mxCell id="36" edge="1" parent="1" source="46" target="16" style="endArrow=none;startArrow=none;">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="51" edge="1" parent="1" style="edgeStyle=none;" target="15" value="">
-      <mxGeometry relative="1" as="geometry">
-        <mxPoint x="979.9999999999998" y="555" as="sourcePoint" />
-      </mxGeometry>
+    <!-- Phụ huynh → UC8 -->
+    <mxCell id="37" edge="1" parent="1" source="46" target="17" style="endArrow=none;startArrow=none;">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="3MMy72o8qJlYlcM_PG7V-46" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Phụ huynh&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
-      <mxGeometry height="60" width="30" x="75" y="400" as="geometry" />
+
+    <!-- Thiết bị IoT → UC4 -->
+    <mxCell id="40" edge="1" parent="1" source="47" target="13" style="endArrow=none;startArrow=none;">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="3MMy72o8qJlYlcM_PG7V-47" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Thiết bị phần cứng" vertex="1">
-      <mxGeometry height="60" width="30" x="995" y="350" as="geometry" />
+    <!-- Thiết bị IoT → UC6 -->
+    <mxCell id="41" edge="1" parent="1" source="47" target="15" style="endArrow=none;startArrow=none;">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="3MMy72o8qJlYlcM_PG7V-51" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Dịch vụ thông báo" vertex="1">
-      <mxGeometry height="60" width="30" x="995" y="510" as="geometry" />
+    <!-- Thiết bị IoT → UC7 -->
+    <mxCell id="42" edge="1" parent="1" source="47" target="16" style="endArrow=none;startArrow=none;">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- Dịch vụ thông báo → UC6 -->
+    <mxCell id="43" edge="1" parent="1" source="51" target="15" style="endArrow=none;startArrow=none;">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <!-- Dịch vụ thông báo → UC7 -->
+    <mxCell id="44" edge="1" parent="1" source="51" target="16" style="endArrow=none;startArrow=none;">
+      <mxGeometry relative="1" as="geometry" />
     </mxCell>
   </root>
 </mxGraphModel>

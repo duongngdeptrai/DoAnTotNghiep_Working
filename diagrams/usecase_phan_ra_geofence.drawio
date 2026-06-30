@@ -33,28 +33,25 @@
       <mxGeometry height="55" width="170" x="600" y="260" as="geometry" />
     </mxCell>
 
-    <!-- Include arrows -->
-    <mxCell id="30" edge="1" parent="1" source="10" target="11" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="«include»">
+    <!-- Mũi tên thường (không stereotype) — các tác vụ thay thế nhau -->
+    <mxCell id="30" edge="1" parent="1" source="10" target="11" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="">
       <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="31" edge="1" parent="1" source="10" target="12" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="«include»">
+    <mxCell id="31" edge="1" parent="1" source="10" target="12" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="">
       <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="32" edge="1" parent="1" source="10" target="13" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="«include»">
+    <mxCell id="32" edge="1" parent="1" source="10" target="13" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="">
       <mxGeometry relative="1" as="geometry" />
     </mxCell>
 
-    <!-- Phụ huynh actor -->
+    <!-- Actor: Phụ huynh -->
     <mxCell id="40" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Phụ huynh" vertex="1">
       <mxGeometry height="60" width="30" x="55" y="255" as="geometry" />
     </mxCell>
-
-    <!-- Arrow: Phụ huynh -> Parent UC -->
     <mxCell id="41" edge="1" parent="1" style="edgeStyle=none;" target="10" value="">
       <mxGeometry relative="1" as="geometry">
         <mxPoint x="100" y="275" as="sourcePoint" />
       </mxGeometry>
     </mxCell>
-
   </root>
 </mxGraphModel>

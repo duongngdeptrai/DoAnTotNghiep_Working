@@ -1,11 +1,114 @@
 \documentclass[../DoAn.tex]{subfiles}
 \begin{document}
-Nếu trong nội dung chính không đủ không gian cho các use case khác (ngoài các use case nghiệp vụ chính) thì đặc tả thêm cho các use case đó ở đây.
 
-\section{Đặc tả use case ``Thống kê tình hình mượn sách''}
-\ldots
+Phụ lục này đặc tả các use case bổ sung không được trình bày đầy đủ trong Chương \ref{chapter:Related_works} do giới hạn về không gian. Các use case dưới đây thuộc nhóm quản lý thiết bị và quản lý vùng an toàn -- hai nhóm chức năng có cấu trúc CRUD tương tự nhau.
 
-\section{Đặc tả use case ``Đăng ký làm thẻ mượn''}
-\ldots
+\section{Đặc tả use case: Đổi tên thiết bị}
+
+\begin{table}[H]
+\centering
+\caption{Đặc tả use case Đổi tên thiết bị}
+\label{table:uc_rename_device}
+\begin{tabular}{|l|p{9.5cm}|}
+\hline
+\textbf{Tên use case}       & Đổi tên thiết bị \\
+\hline
+\textbf{Tác nhân}           & Phụ huynh \\
+\hline
+\textbf{Tiền điều kiện}     & Phụ huynh đã đăng nhập; thiết bị đã được đăng ký với tài khoản. \\
+\hline
+\textbf{Luồng sự kiện chính} &
+1. Phụ huynh chọn thiết bị cần đổi tên trong danh sách. \newline
+2. Phụ huynh chọn chức năng chỉnh sửa và nhập tên mới. \newline
+3. Hệ thống cập nhật tên thiết bị trong cơ sở dữ liệu. \newline
+4. Ứng dụng hiển thị tên mới ngay lập tức trên danh sách và bản đồ. \\
+\hline
+\textbf{Luồng phát sinh}    & Nếu tên mới để trống, hệ thống giữ nguyên tên cũ. \\
+\hline
+\textbf{Hậu điều kiện}      & Thiết bị hiển thị với tên mới trên toàn bộ giao diện ứng dụng. \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Đặc tả use case: Xóa thiết bị}
+
+\begin{table}[H]
+\centering
+\caption{Đặc tả use case Xóa thiết bị}
+\label{table:uc_delete_device}
+\begin{tabular}{|l|p{9.5cm}|}
+\hline
+\textbf{Tên use case}       & Xóa thiết bị \\
+\hline
+\textbf{Tác nhân}           & Phụ huynh \\
+\hline
+\textbf{Tiền điều kiện}     & Phụ huynh đã đăng nhập; thiết bị đang được liên kết với tài khoản. \\
+\hline
+\textbf{Luồng sự kiện chính} &
+1. Phụ huynh chọn thiết bị cần xóa trong danh sách. \newline
+2. Phụ huynh chọn chức năng xóa; ứng dụng hiển thị hộp thoại xác nhận. \newline
+3. Phụ huynh xác nhận xóa. \newline
+4. Hệ thống hủy liên kết thiết bị khỏi tài khoản. \\
+\hline
+\textbf{Luồng phát sinh}    & Nếu phụ huynh hủy tại bước xác nhận, không có thay đổi nào được thực hiện. \\
+\hline
+\textbf{Hậu điều kiện}      & Thiết bị không còn xuất hiện trong danh sách; dữ liệu lịch sử vị trí liên quan được giữ nguyên trong cơ sở dữ liệu. \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Đặc tả use case: Sửa vùng an toàn}
+
+\begin{table}[H]
+\centering
+\caption{Đặc tả use case Sửa vùng an toàn}
+\label{table:uc_edit_geofence}
+\begin{tabular}{|l|p{9.5cm}|}
+\hline
+\textbf{Tên use case}       & Sửa vùng an toàn \\
+\hline
+\textbf{Tác nhân}           & Phụ huynh \\
+\hline
+\textbf{Tiền điều kiện}     & Phụ huynh đã đăng nhập; tồn tại ít nhất một vùng an toàn trong tài khoản. \\
+\hline
+\textbf{Luồng sự kiện chính} &
+1. Phụ huynh chọn vùng an toàn cần chỉnh sửa trên bản đồ hoặc trong danh sách. \newline
+2. Phụ huynh thay đổi các thông số: tên, bán kính (đối với vùng tròn) hoặc các điểm tọa độ (đối với chế độ đường đi), hoặc trạng thái kích hoạt. \newline
+3. Phụ huynh xác nhận lưu thay đổi. \newline
+4. Hệ thống cập nhật cấu hình vùng an toàn và bắt đầu áp dụng ngay cho các bản tin vị trí tiếp theo. \\
+\hline
+\textbf{Luồng phát sinh}    & Nếu phụ huynh vô hiệu hóa vùng an toàn, hệ thống tạm dừng kiểm tra vi phạm cho vùng đó mà không xóa cấu hình. \\
+\hline
+\textbf{Hậu điều kiện}      & Vùng an toàn được cập nhật; backend áp dụng cấu hình mới từ bản tin vị trí tiếp theo nhận được. \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Đặc tả use case: Xóa vùng an toàn}
+
+\begin{table}[H]
+\centering
+\caption{Đặc tả use case Xóa vùng an toàn}
+\label{table:uc_delete_geofence}
+\begin{tabular}{|l|p{9.5cm}|}
+\hline
+\textbf{Tên use case}       & Xóa vùng an toàn \\
+\hline
+\textbf{Tác nhân}           & Phụ huynh \\
+\hline
+\textbf{Tiền điều kiện}     & Phụ huynh đã đăng nhập; tồn tại ít nhất một vùng an toàn trong tài khoản. \\
+\hline
+\textbf{Luồng sự kiện chính} &
+1. Phụ huynh chọn vùng an toàn cần xóa và chọn chức năng xóa. \newline
+2. Ứng dụng hiển thị hộp thoại xác nhận. \newline
+3. Phụ huynh xác nhận xóa. \newline
+4. Hệ thống xóa cấu hình vùng an toàn; backend ngừng kiểm tra vi phạm cho vùng đó ngay lập tức. \\
+\hline
+\textbf{Luồng phát sinh}    & Nếu phụ huynh hủy tại bước xác nhận, không có thay đổi nào được thực hiện. \\
+\hline
+\textbf{Hậu điều kiện}      & Vùng an toàn không còn xuất hiện trên bản đồ; lịch sử cảnh báo liên quan được giữ nguyên. \\
+\hline
+\end{tabular}
+\end{table}
 
 \end{document}

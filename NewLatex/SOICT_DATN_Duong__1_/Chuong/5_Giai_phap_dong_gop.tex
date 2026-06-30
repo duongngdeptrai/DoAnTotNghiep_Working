@@ -15,7 +15,7 @@ Cách tiếp cận truyền thống là sử dụng hai module riêng biệt: m�
 
 \subsection{Giải pháp thiết kế}
 
-Đề tài lựa chọn module SIM7600 (được giới thiệu chi tiết tại mục \ref{subsection:3.1.2}) — module tích hợp cả bộ thu GNSS (GPS/GLONASS/BeiDou) lẫn modem di động 4G LTE Cat-1 trong một linh kiện duy nhất với một anten duy nhất và một cổng UART duy nhất.
+Đề tài lựa chọn module SIM7600 (được giới thiệu chi tiết tại mục \ref{subsection:3.1.2}) — module tích hợp cả bộ thu GNSS (GPS/GLONASS/BeiDou) lẫn modem di động 4G LTE Cat-4 trong một linh kiện duy nhất với một anten duy nhất và một cổng UART duy nhất.
 
 Đóng góp không nằm đơn thuần ở việc chọn đúng linh kiện, mà ở \textbf{thiết kế tích hợp phần mềm điều khiển}. Thư viện TinyGSM trừu tượng hóa toàn bộ tập lệnh AT command của SIM7600 thành API cấp cao, cho phép ESP32 gọi \texttt{modem.getGPS()} để lấy tọa độ và \texttt{client.publish()} để gửi MQTT — tất cả thông qua cùng một kênh UART2, không cần chuyển đổi bus vật lý.
 
@@ -96,7 +96,7 @@ Thiết kế này đạt được \textbf{phân tách trách nhiệm rõ ràng} 
 
 \subsection{Kết quả đạt được}
 
-Kiến trúc lai đạt độ trễ end-to-end (từ khi ESP32 đọc tọa độ GPS đến khi bản đồ Flutter cập nhật) dưới 2 giây trong điều kiện mạng bình thường, trong đó phần lớn độ trễ đến từ chu kỳ cập nhật GPS 5 giây của phần cứng. Độ trễ truyền thông thuần túy (MQTT broker → FastAPI → WebSocket → Flutter) đo được dưới 300 mili giây trong điều kiện thử nghiệm. Kiến trúc này cũng cho phép nhiều phụ huynh (nhiều kết nối WebSocket) cùng theo dõi một thiết bị mà không cần thay đổi firmware hay logic MQTT.
+Kiến trúc lai đạt độ trễ end-to-end (từ khi ESP32 đọc tọa độ GPS đến khi bản đồ Flutter cập nhật) dưới 5 giây trong điều kiện mạng bình thường, trong đó phần lớn độ trễ đến từ chu kỳ cập nhật GPS 5 giây của phần cứng. Độ trễ truyền thông thuần túy (MQTT broker → FastAPI → WebSocket → Flutter) đo được dưới 300 mili giây trong điều kiện thử nghiệm. Kiến trúc này cũng cho phép nhiều phụ huynh (nhiều kết nối WebSocket) cùng theo dõi một thiết bị mà không cần thay đổi firmware hay logic MQTT.
 
 % ===========================================================
 \section{Cơ chế cảnh báo đa kênh song song}
@@ -108,14 +108,14 @@ Cảnh báo geofence và tín hiệu SOS là hai sự kiện quan trọng nhất
 
 \subsection{Giải pháp thiết kế}
 
-Khi backend phát hiện vi phạm geofence hoặc nhận tín hiệu SOS, hệ thống kích hoạt \textbf{ba kênh thông báo song song}, không phụ thuộc nhau:
+Khi backend phát hiện vi phạm geofence, hệ thống kích hoạt \textbf{ba kênh thông báo song song}, không phụ thuộc nhau. Khi nhận tín hiệu SOS, hệ thống kích hoạt \textbf{hai kênh} (WebSocket và Telegram):
 
 \begin{enumerate}
     \item \textbf{WebSocket (trong ứng dụng):} Bản tin cảnh báo được broadcast đến tất cả kết nối WebSocket của phụ huynh đang xem bản đồ theo thời gian thực. Ứng dụng Flutter hiển thị thông báo popup và âm thanh cảnh báo ngay lập tức. Kênh này có độ trễ thấp nhất nhưng chỉ hoạt động khi ứng dụng đang mở.
 
-    \item \textbf{Telegram Bot:} Backend gọi Telegram Bot API để gửi tin nhắn văn bản kèm tọa độ GPS và liên kết Google Maps trực tiếp đến số điện thoại/tài khoản Telegram của phụ huynh. Kênh này hoạt động hoàn toàn độc lập với ứng dụng di động; Telegram có cơ chế push notification riêng của mình và hoạt động tốt kể cả khi ứng dụng đang đóng. Với tín hiệu SOS, tin nhắn Telegram bao gồm thêm link bản đồ Google Maps định vị tức thì vị trí của trẻ.
+    \item \textbf{Telegram Bot:} Backend gọi Telegram Bot API để gửi tin nhắn văn bản kèm tọa độ GPS và liên kết Google Maps trực tiếp đến tài khoản Telegram của phụ huynh. Kênh này hoạt động hoàn toàn độc lập với ứng dụng di động và tốt kể cả khi ứng dụng đang đóng. Với tín hiệu SOS, tin nhắn bao gồm thêm link bản đồ Google Maps định vị tức thì vị trí của trẻ.
 
-    \item \textbf{Email:} Backend gửi email cảnh báo qua SMTP đến địa chỉ email đã đăng ký của phụ huynh. Kênh này là lớp dự phòng cuối cùng, đảm bảo phụ huynh có bằng chứng ghi nhận và có thể tra cứu lại lịch sử cảnh báo ngay cả khi không nhận được hai kênh trên.
+    \item \textbf{Email (chỉ với cảnh báo geofence):} Backend gửi email cảnh báo qua SMTP đến địa chỉ email đã đăng ký. Kênh này là lớp dự phòng cuối cùng, đảm bảo phụ huynh có bằng chứng ghi nhận và có thể tra cứu lại lịch sử cảnh báo ngay cả khi không nhận được hai kênh trên.
 \end{enumerate}
 
 Đồng thời, bất kể kênh nào được kích hoạt, sự kiện cảnh báo đều được ghi vào collection \texttt{alerts} trong MongoDB với đầy đủ thông tin: loại cảnh báo, tọa độ, thời gian, tên geofence vi phạm (nếu có). Điều này cho phép phụ huynh xem lại toàn bộ lịch sử cảnh báo trong ứng dụng sau đó.

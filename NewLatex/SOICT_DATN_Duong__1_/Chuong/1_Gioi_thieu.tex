@@ -26,7 +26,7 @@ Phạm vi đề tài tập trung vào xây dựng nguyên mẫu hoàn chỉnh c�
 
 Từ việc xác định rõ các yêu cầu ở phần \ref{section:1.2}, đề tài lựa chọn hướng tiếp cận xây dựng hệ thống IoT nhúng theo kiến trúc ba tầng: tầng thiết bị, tầng backend và tầng ứng dụng di động.
 
-Về phần cứng, vi điều khiển ESP32 được chọn làm đơn vị xử lý trung tâm nhờ kiến trúc lõi kép (dual-core Xtensa LX6), hiệu năng xử lý cao và hỗ trợ kết nối không dây tích hợp. Module SIM7600 tích hợp đồng thời bộ thu GPS và modem di động (4G LTE) trong một linh kiện duy nhất, cho phép thiết bị kết nối internet qua mạng di động (4G LTE/APN Viettel) và lấy tọa độ GPS mà không cần thêm module ngoài.
+Về phần cứng, vi điều khiển ESP32 được chọn làm đơn vị xử lý trung tâm nhờ kiến trúc lõi kép (dual-core Xtensa LX6), hiệu năng xử lý cao và hỗ trợ kết nối không dây tích hợp. Module SIM7600 tích hợp đồng thời bộ thu GNSS và modem di động LTE Cat-4 trong một linh kiện duy nhất, cho phép thiết bị kết nối internet qua mạng di động (APN Viettel) và lấy tọa độ GPS mà không cần thêm module ngoài.
 
 Về giao thức truyền thông, MQTT (Message Queuing Telemetry Transport) được chọn để truyền dữ liệu vị trí từ thiết bị lên server. MQTT là giao thức nhẹ theo mô hình publish/subscribe, thiết kế đặc biệt cho thiết bị IoT có tài nguyên hạn chế và kết nối không ổn định, đảm bảo độ trễ thấp và độ tin cậy cao với cơ chế QoS.
 
@@ -34,7 +34,7 @@ Về backend, framework FastAPI (Python) được sử dụng để xây dựng 
 
 Về ứng dụng di động, Flutter (Dart) được chọn để xây dựng ứng dụng đa nền tảng Android và iOS từ một codebase duy nhất. Ứng dụng nhận cập nhật vị trí theo thời gian thực từ backend qua WebSocket và hiển thị trên bản đồ OpenStreetMap qua thư viện flutter\_map.
 
-Đóng góp chính của đề tài là một nguyên mẫu hệ thống IoT theo dõi vị trí hoàn chỉnh, hoạt động độc lập không cần điện thoại của trẻ, với độ trễ end-to-end dưới 2 giây và độ chính xác GPS khoảng 3{,}2\,m ở chu kỳ cập nhật 5 giây. Kết quả đo thời lượng pin thực tế được trình bày trong Chương 4.
+Đóng góp chính của đề tài là một nguyên mẫu hệ thống IoT theo dõi vị trí hoàn chỉnh, hoạt động độc lập không cần điện thoại của trẻ, với độ trễ end-to-end dưới 5 giây và độ chính xác GPS khoảng 3{,}2\,m ở chu kỳ cập nhật 5 giây.
 
 \section{Bố cục đồ án}
 \label{section:1.4}

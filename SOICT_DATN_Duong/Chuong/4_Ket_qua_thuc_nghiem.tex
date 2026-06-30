@@ -1,71 +1,334 @@
-\documentclass[../DoAn.tex]{subfiles}
-\begin{document}
+    \documentclass[../DoAn.tex]{subfiles}
+    \begin{document}
 
-\section{Thiết kế kiến trúc}
-\subsection{Lựa chọn kiến trúc phần mềm}
-Mục này có độ dài từ một đến ba trang. Sinh viên cần lựa chọn kiến trúc phần mềm cho ứng dụng của mình như: kiến trúc ba lớp MVC, MVP, SOA, Microservice, v.v. rồi giải thích sơ bộ về kiến trúc đó (không giải thích chi tiết/dài dòng).
-Sử dụng kiến trúc phần mềm đã chọn ở trên, sinh viên mô tả kiến trúc cụ thể cho ứng dụng của mình. Gợi ý: sinh viên áp dụng lý thuyết chung vào hệ thống/sản phẩm của mình như thế nào, có thay đổi, bổ sung hoặc cải tiến gì không. Ví dụ, thành phần M trong kiến trúc lý thuyết MVC sẽ là những thành phần cụ thể nào (ví dụ: là interface I + class C1 + class C2, v.v.) trong kiến trúc phần mềm của sinh viên.
+    % Lệnh tạo khung ảnh trống — thay bằng \includegraphics khi đã có hình.
+    \providecommand{\hinhcho}[1]{\fbox{\begin{minipage}[c][5.5cm][c]{0.85\textwidth}\centering\textit{[#1]}\end{minipage}}}
 
-\subsection{Thiết kế tổng quan}
-Sinh viên vẽ biểu đồ gói UML (UML package diagram), nêu rõ sự phụ thuộc giữa các gói (package). SV cần vẽ các gói sao cho chúng được phân theo các tầng rõ ràng, không được sắp đặt package lộn xộn trong hình vẽ. Sinh viên chú ý các quy tắc thiết kế (Các gói không phụ thuộc lẫn nhau, gói tầng dưới không phụ thuộc gói tầng trên, không phụ thuộc bỏ qua tầng, v.v.) và cần giải thích sơ lược về mục đích/nhiệm vụ của từng package. SV tham khảo ví dụ minh họa trong Hình \ref{fig:Fig1}
-\begin{figure}[H]
+    Chương này trình bày quá trình phân tích thiết kế, xây dựng, kiểm thử và triển khai hệ thống dựa trên các yêu cầu đã xác định ở Chương \ref{chapter:Related_works} và nền tảng công nghệ đã lựa chọn ở Chương \ref{chapter:Methodology}. Nội dung lần lượt đi từ kiến trúc tổng thể, thiết kế chi tiết các thành phần, đến kết quả hiện thực hóa, kiểm thử và triển khai thực tế.
+
+    \section{Thiết kế kiến trúc}
+
+    \subsection{Lựa chọn kiến trúc phần mềm}
+
+    Hệ thống là một ứng dụng IoT phân tán gồm ba thành phần độc lập triển khai trên các môi trường khác nhau: thiết bị nhúng (firmware ESP32), máy chủ xử lý (backend FastAPI) và ứng dụng người dùng (Flutter). Ba thành phần này không giao tiếp trực tiếp với nhau mà thông qua hai kênh trung gian theo mô hình \textbf{hướng sự kiện} (event-driven): kênh MQTT publish/subscribe cho luồng dữ liệu từ thiết bị lên server, và kênh WebSocket/REST cho luồng giữa server và ứng dụng. Mô hình hướng sự kiện được lựa chọn vì nó tách rời (decouple) hoàn toàn bên gửi và bên nhận — thiết bị chỉ cần publish dữ liệu lên broker mà không cần biết backend có đang trực tuyến hay không, còn backend xử lý dữ liệu ngay khi sự kiện đến mà không phải hỏi vòng (polling).
+
+    Bên trong mỗi thành phần, đề tài áp dụng \textbf{kiến trúc phân tầng} (layered architecture) — một biến thể được tinh chỉnh từ mô hình ba lớp kinh điển. Kiến trúc phân tầng quy ước mỗi tầng chỉ phụ thuộc vào tầng ngay bên dưới, giúp cô lập thay đổi, tăng khả năng kiểm thử và tái sử dụng. Cụ thể, backend được tổ chức thành bốn tầng:
+
+    \begin{itemize}
+        \item \textbf{Tầng API} (gói \texttt{api}): tiếp nhận yêu cầu HTTP/WebSocket, kiểm tra xác thực và chuyển tiếp xuống tầng dịch vụ. Đây là điểm vào duy nhất của các yêu cầu từ ứng dụng di động.
+        \item \textbf{Tầng dịch vụ} (gói \texttt{services}): chứa toàn bộ logic nghiệp vụ — xử lý bản tin vị trí, kiểm tra geofence, đánh giá và gửi cảnh báo, tiêu thụ bản tin MQTT.
+        \item \textbf{Tầng hạ tầng} (gói \texttt{repositories}, \texttt{core}, \texttt{ws}): cung cấp các dịch vụ kỹ thuật dùng chung như truy xuất dữ liệu, xác thực JWT, mã hóa, và quản lý kết nối WebSocket.
+        \item \textbf{Tầng dữ liệu} (gói \texttt{models}, \texttt{db}): định nghĩa cấu trúc dữ liệu (Pydantic models) và lớp kết nối cơ sở dữ liệu MongoDB.
+    \end{itemize}
+
+    Tương ứng với mô hình lý thuyết MVC, có thể ánh xạ: thành phần \textit{Model} là gói \texttt{models} kết hợp \texttt{repositories} (dữ liệu và truy xuất dữ liệu); thành phần \textit{Controller} là gói \texttt{api} kết hợp \texttt{services} (điều phối và xử lý nghiệp vụ); còn thành phần \textit{View} không nằm ở backend mà được tách hẳn sang ứng dụng Flutter — nơi áp dụng mẫu \textbf{Provider/MVVM} với các tầng giao diện (\texttt{screens}, \texttt{widgets}), tầng quản lý trạng thái (\texttt{providers}), tầng dịch vụ (\texttt{services}) và tầng mô hình (\texttt{models}).
+
+    Hình \ref{fig:kientruc_tongthe} minh họa kiến trúc tổng thể của hệ thống theo năm tầng chức năng, từ tầng thu thập (thiết bị) đến tầng thông báo.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.95\textwidth]{Hinhve/kientruc_tongthe.png}
+        \caption{Kiến trúc tổng thể của hệ thống theo các tầng chức năng}
+        \label{fig:kientruc_tongthe}
+    \end{figure}
+
+    \subsection{Thiết kế tổng quan}
+
+    Hình \ref{fig:bieudo_goi} trình bày biểu đồ gói (package diagram) của toàn hệ thống, phân tách rõ ba thành phần (ESP32 Firmware, Backend, Flutter App) cùng các thành phần ngoài (MQTT Broker, MongoDB, Telegram/Email). Các gói được sắp xếp theo tầng và tuân thủ nguyên tắc phụ thuộc một chiều: gói tầng trên phụ thuộc gói tầng dưới, không có phụ thuộc ngược và không phụ thuộc vượt tầng.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.95\textwidth]{Hinhve/bieudo_goi.png}
+        \caption{Biểu đồ gói tổng quan của hệ thống}
+        \label{fig:bieudo_goi}
+    \end{figure}
+
+    Nhiệm vụ của từng gói được tóm tắt như sau:
+
+    \begin{itemize}
+        \item \textbf{Backend} — \texttt{api}: định tuyến REST và WebSocket; \texttt{services}: logic nghiệp vụ; \texttt{repositories}: truy xuất MongoDB; \texttt{core}: cấu hình, xác thực, mã hóa; \texttt{ws}: quản lý kết nối WebSocket; \texttt{models}: lược đồ dữ liệu; \texttt{db}: kết nối cơ sở dữ liệu.
+        \item \textbf{Flutter App} — \texttt{screens}: các màn hình; \texttt{widgets}: thành phần giao diện tái sử dụng (bản đồ, panel geofence, toast); \texttt{providers}: quản lý trạng thái toàn cục; \texttt{services}: giao tiếp HTTP/WebSocket/định vị; \texttt{models}: mô hình dữ liệu; \texttt{config} và \texttt{utils}: cấu hình và tiện ích.
+        \item \textbf{ESP32 Firmware} — \texttt{gps}: đọc tọa độ từ module; \texttt{mqtt\_client}: kết nối và publish bản tin MQTT.
+    \end{itemize}
+
+    Quan hệ liên thành phần thể hiện đúng mô hình hướng sự kiện: firmware \texttt{mqtt\_client} \textit{publish} lên Broker, Broker chuyển \textit{subscribe} cho tầng \texttt{services} của backend; tầng \texttt{db} đọc/ghi MongoDB; tầng \texttt{services} gửi cảnh báo tới Telegram/Email; còn tầng \texttt{services} của Flutter trao đổi REST/WebSocket với gói \texttt{api}.
+
+    \subsection{Thiết kế chi tiết gói và thiết bị nhúng}
+
+    Trọng tâm xử lý nghiệp vụ nằm ở tầng dịch vụ của backend. Gói \texttt{services} gồm các lớp chính: \texttt{MQTTService} (tiêu thụ bản tin MQTT), \texttt{LocationProcessor} (điều phối xử lý một bản tin vị trí), \texttt{GeofenceService} (quản lý vùng an toàn và tính toán hình học), \texttt{AlertStateService} (quản lý trạng thái và quyết định thời điểm cảnh báo) và \texttt{NotificationService} (gửi thông báo đa kênh). Các lớp này gọi xuống tầng \texttt{repositories} (\texttt{LocationRepository}, \texttt{AlertRepository}, \texttt{GeofenceConfigRepository}, \dots) để bền vững hóa dữ liệu, và gọi \texttt{ConnectionManager} ở gói \texttt{ws} để phát dữ liệu thời gian thực.
+
+    Về phía thiết bị nhúng, firmware được tổ chức quanh hai chức năng chính là đọc GPS và truyền MQTT, vận hành theo ba giai đoạn: khởi tạo, vòng lặp chính và xử lý SOS. Hình \ref{fig:phancung} mô tả sơ đồ kết nối phần cứng.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.95\textwidth]{Hinhve/phancung.png}
+        \caption{Sơ đồ kết nối phần cứng của thiết bị}
+        \label{fig:phancung}
+    \end{figure}
+
+    Thiết bị gồm ESP32 làm bộ xử lý trung tâm, kết nối module SIM7600 qua UART2 để vừa đọc tọa độ GPS vừa truyền dữ liệu di động; nút BOOT (GPIO0) đóng vai trò nút SOS với cơ chế ngắt sườn xuống (FALLING, tích cực mức thấp); hai anten GPS và GSM phục vụ thu tín hiệu định vị và mạng.
+
+    Hình \ref{fig:firmware_setup} mô tả giai đoạn khởi tạo: firmware lần lượt khởi động UART, reset và bật GPS cho module SIM7600, sau đó lặp lại cho đến khi kết nối GPRS và MQTT thành công, cuối cùng đăng ký ngắt FALLING cho nút SOS trên GPIO0.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.72\textwidth]{Hinhve/firmware_setup.png}
+        \caption{Lưu đồ giai đoạn khởi tạo (Setup) của firmware ESP32}
+        \label{fig:firmware_setup}
+    \end{figure}
+
+    Hình \ref{fig:firmware_loop} mô tả vòng lặp chính: mỗi chu kỳ firmware duy trì kết nối MQTT, kiểm tra cờ \texttt{sosPending} do ngắt đặt, và cứ mỗi 5 giây đọc tọa độ GPS để publish lên broker nếu đã có định vị hợp lệ.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.72\textwidth]{Hinhve/firmware_loop.png}
+        \caption{Lưu đồ vòng lặp chính (Main Loop) của firmware ESP32}
+        \label{fig:firmware_loop}
+    \end{figure}
+
+    Hình \ref{fig:firmware_sos} mô tả trình xử lý ngắt SOS: khi GPIO0 kích hoạt, firmware xóa cờ, chờ khử rung 50\,ms, xác nhận tín hiệu còn ở mức thấp, đọc GPS mới (fallback về vị trí cache nếu thất bại), kiểm tra cooldown 10 giây để tránh gửi trùng, rồi publish payload SOS lên MQTT và nhấp nháy LED ba lần xác nhận.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.72\textwidth]{Hinhve/firmware_sos.png}
+        \caption{Lưu đồ xử lý ngắt SOS của firmware ESP32}
+        \label{fig:firmware_sos}
+    \end{figure}
+
+    \section{Thiết kế chi tiết}
+
+    \subsection{Thiết kế giao diện}
+
+    Ứng dụng hướng tới điện thoại thông minh chạy Android (từ phiên bản 6.0) và iOS (từ phiên bản 12.0), với màn hình cảm ứng phổ biến kích thước 5--6,7 inch, độ phân giải từ HD+ (720$\times$1280) trở lên và hỗ trợ màu 24-bit. Do dùng Flutter render bằng engine đồ họa riêng, giao diện hiển thị nhất quán trên mọi kích thước màn hình thông qua bố cục co giãn (responsive layout).
+
+    Một số quy ước thiết kế thống nhất được áp dụng:
+
+    \begin{itemize}
+        \item \textbf{Phối màu:} sử dụng một màu chủ đạo cho thanh điều hướng và các nút hành động chính; màu cảnh báo (đỏ/cam) dành riêng cho thông báo vi phạm geofence và SOS; mỗi thiết bị được gán một màu định danh sinh tự động và cố định để phân biệt trên bản đồ.
+        \item \textbf{Điều khiển:} các nút hành động chính đặt ở vị trí dễ chạm; thao tác quan trọng (xem bản đồ, tạo vùng an toàn) đạt được trong tối đa ba lần chạm từ màn hình chính.
+        \item \textbf{Phản hồi:} thông điệp phản hồi hiển thị dạng toast nổi ở phía trên màn hình, tự động biến mất; cảnh báo khẩn (SOS) hiển thị dạng popup nổi bật.
+    \end{itemize}
+
+    Ứng dụng gồm bốn màn hình chính: màn hình \textbf{xác thực} (đăng nhập/đăng ký), màn hình \textbf{bảng điều khiển} (bản đồ theo dõi, danh sách thiết bị, trình chỉnh sửa geofence), màn hình \textbf{thống kê} (biểu đồ hành trình) và màn hình \textbf{hồ sơ} người dùng. Hình \ref{fig:tk_giaodien} minh họa thiết kế giao diện của màn hình bảng điều khiển.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{Hinhve/tk_giaodien.png}
+        \caption{Thiết kế giao diện màn hình bảng điều khiển}
+        \label{fig:tk_giaodien}
+    \end{figure}
+
+    \subsection{Thiết kế lớp}
+
+    Phần này trình bày thiết kế chi tiết một số lớp chủ đạo ở tầng dịch vụ của backend.
+
+    \textbf{Lớp \texttt{LocationProcessor}} là trung tâm điều phối xử lý mỗi bản tin vị trí. Lớp này nhận payload thô, hợp lệ hóa thành đối tượng \texttt{LocationIn} (gồm \texttt{deviceId}, \texttt{lat}, \texttt{lng}, \texttt{timestamp}), lọc nhiễu, gọi \texttt{GeofenceService} để xác định trạng thái trong/ngoài vùng an toàn, lưu bản ghi qua \texttt{LocationRepository}, đánh giá cảnh báo qua \texttt{AlertStateService} và phát dữ liệu qua \texttt{ConnectionManager}. Phương thức chính là \texttt{process(raw\_payload)}.
+
+    \textbf{Lớp \texttt{GeofenceService}} quản lý cấu hình vùng an toàn và đảm nhận toàn bộ tính toán hình học. Các phương thức tiêu biểu: \texttt{is\_inside(lat, lng)} trả về bộ ba (đang ở trong vùng nào không, khoảng cách nhỏ nhất, định danh vùng khớp); \texttt{haversine\_distance\_m()} tính khoảng cách theo công thức Haversine; \texttt{set\_fixed\_mode()}, \texttt{set\_mobile\_mode()}, \texttt{update\_path()} cấu hình hai chế độ vùng tròn và đường đi.
+
+    \textbf{Lớp \texttt{AlertStateService}} lưu trạng thái theo dõi của từng thiết bị và quyết định khi nào phát cảnh báo. Phương thức \texttt{evaluate\_alert(device\_id, inside, gf\_id)} phân tích chuyển trạng thái (ra ngoài, vào lại, di chuyển sang vùng khác) và áp dụng thời gian chờ (cooldown) để tránh gửi trùng; \texttt{should\_ignore\_as\_noise()} loại bỏ các điểm dao động nhỏ do sai số GPS.
+
+    \textbf{Lớp \texttt{ConnectionManager}} (gói \texttt{ws}) quản lý tập kết nối WebSocket đang mở và cung cấp \texttt{broadcast\_from\_thread()} để phát bản tin từ luồng MQTT tới các ứng dụng đang theo dõi thiết bị tương ứng.
+
+    Để minh họa luồng truyền thông điệp giữa các đối tượng, đề tài thiết kế biểu đồ trình tự cho ba use case quan trọng nhất.
+
+    Hình \ref{fig:sd01} mô tả luồng cập nhật vị trí thời gian thực (SD01): ESP32 gửi dữ liệu GPS lên Broker, Broker chuyển tiếp cho Backend, Backend xử lý và lưu vào MongoDB rồi phát qua WebSocket để ứng dụng Flutter cập nhật bản đồ.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.95\textwidth]{Hinhve/sequence_vitri.png}
+        \caption{SD01 – Biểu đồ tuần tự: Cập nhật vị trí GPS thời gian thực}
+        \label{fig:sd01}
+    \end{figure}
+
+    Hình \ref{fig:sd02} mô tả luồng cảnh báo geofence (SD02): tiếp nối luồng SD01, khi Backend phát hiện vi phạm vùng an toàn, hệ thống lưu cảnh báo, gửi thông báo qua Telegram/Email và phát cảnh báo qua WebSocket tới ứng dụng.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.95\textwidth]{Hinhve/sequence_geofence.png}
+        \caption{SD02 – Biểu đồ tuần tự: Cảnh báo vi phạm vùng an toàn}
+        \label{fig:sd02}
+    \end{figure}
+
+    Hình \ref{fig:sd03} mô tả luồng tín hiệu SOS khẩn cấp (SD03): ESP32 gửi tín hiệu SOS, Backend phát hiện, lưu cảnh báo và gửi ngay thông báo SOS kèm liên kết bản đồ tới phụ huynh qua Telegram.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.95\textwidth]{Hinhve/sequence_sos.png}
+        \caption{SD03 – Biểu đồ tuần tự: Gửi tín hiệu SOS khẩn cấp}
+        \label{fig:sd03}
+    \end{figure}
+
+    \subsection{Thiết kế cơ sở dữ liệu}
+
+    Hệ thống dùng MongoDB — cơ sở dữ liệu NoSQL hướng tài liệu. Dù MongoDB không ràng buộc lược đồ cứng, đề tài vẫn mô hình hóa quan hệ logic giữa các thực thể bằng biểu đồ thực thể liên kết (E-R) ở Hình \ref{fig:erd} để làm rõ cấu trúc dữ liệu.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.95\textwidth]{Hinhve/er_diagram.png}
+        \caption{Biểu đồ thực thể liên kết (E-R) của cơ sở dữ liệu}
+        \label{fig:erd}
+    \end{figure}
+
+    Cơ sở dữ liệu gồm sáu collection, vai trò và quan hệ như sau:
+
+    \begin{itemize}
+        \item \texttt{users}: tài khoản phụ huynh (\texttt{email}, \texttt{passwordHash}, \texttt{createdAt}).
+        \item \texttt{device\_permissions}: liên kết giữa người dùng và thiết bị kèm vai trò (\texttt{deviceId}, \texttt{userId}, \texttt{role} là \textit{owner} hoặc \textit{shared}). Một người dùng có thể có nhiều bản ghi quyền (quan hệ 1--N với \texttt{users}).
+        \item \texttt{device\_configs}: cấu hình từng thiết bị (\texttt{deviceId}, \texttt{parentEmail}, \texttt{alertEnabled}) — quan hệ 1--1 với thiết bị.
+        \item \texttt{locations}: chuỗi tọa độ GPS theo thời gian (\texttt{deviceId}, \texttt{lat}, \texttt{lng}, \texttt{timestamp}, \texttt{insideGeofence}, \texttt{distanceFromCenterM}, \texttt{geofenceId}, \texttt{receivedAt}) — quan hệ 1--N theo thiết bị.
+        \item \texttt{geofence\_configs}: cấu hình vùng an toàn của người dùng (\texttt{user\_id}, \texttt{device\_id}, mảng \texttt{geofences} chứa các đối tượng có \texttt{mode}, \texttt{centerLat}/\texttt{centerLng}, \texttt{radiusM}, \texttt{path}\dots).
+        \item \texttt{alerts}: lịch sử cảnh báo (\texttt{deviceId}, \texttt{type}, \texttt{event}, \texttt{lat}, \texttt{lng}, \texttt{timestamp}, \texttt{geofenceId}, \texttt{geofenceName}, \texttt{receivedAt}) — quan hệ 1--N theo thiết bị.
+    \end{itemize}
+
+    Về tổ chức chỉ mục, collection \texttt{locations} dùng chỉ mục phức hợp trên (\texttt{deviceId}, \texttt{timestamp}) để truy vấn nhanh lịch sử theo thiết bị và khoảng thời gian, đồng thời áp dụng chỉ mục TTL trên \texttt{receivedAt} để tự động xóa dữ liệu cũ sau thời gian lưu trữ quy định (30 ngày). Collection \texttt{users} đặt chỉ mục duy nhất trên \texttt{email}.
+
+    \section{Xây dựng ứng dụng}
+
+    \subsection{Thư viện và công cụ sử dụng}
+
+    Bảng \ref{table:congcu} liệt kê các công cụ, ngôn ngữ và thư viện chính được sử dụng để phát triển ba thành phần của hệ thống cùng phiên bản tương ứng.
+
+    \begin{table}[H]
     \centering
-    \includegraphics{Hinhve/Picture1.png}
-    \caption{Ví dụ biểu đồ phụ thuộc gói}
-    \label{fig:Fig1}
-\end{figure}
-\subsection{Thiết kế chi tiết gói}
-Sinh viên thiết kế và lần lượt vẽ biểu đồ thiết kế cho từng package, hoặc một nhóm các package liên quan để giải quyết một vấn đề gì đó. Khi vẽ thiết kế gói, sinh viên chỉ cần đưa tên lớp, không cần chỉ ra các thành viên phương thức và thuộc tính. SV tham khảo ví dụ minh họa trong Hình \ref{fig:Fig2}.
-
-Sinh viên cần vẽ rõ ràng quan hệ giữa các lớp trong biểu đồ. Các quan hệ bao gồm: phụ thuộc (dependency), kết hợp (association), kết tập (aggregation), hợp thành (composition), kế thừa (inheritance), và thực thi (implementation). Các quan hệ này đều đã được minh họa trong \ref{fig:Fig2}.
-
-Sau khi vẽ hình minh họa, sinh viên cần giải thích ngắn gọn về thiết kế của mình.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics{Hinhve/Picture2.png}
-    \caption{Ví dụ thiết kế gói}
-    \label{fig:Fig2}
-\end{figure}
-
-\section{Thiết kế chi tiết}
-\subsection{Thiết kế giao diện}
-Phần này có độ dài từ hai đến ba trang. Sinh viên đặc tả thông tin về màn hình mà ứng dụng của mình hướng tới, bao gồm độ phân giải màn hình, kích thước màn hình, số lượng màu sắc hỗ trợ, v.v. Tiếp đến, sinh viên đưa ra các thống nhất/chuẩn hóa của mình khi thiết kế giao diện như thiết kế nút, điều khiển, vị trí hiển thị thông điệp phản hồi, phối màu, v.v. Sau cùng sinh viên đưa ra một số hình ảnh minh họa thiết kế giao diện cho các chức năng quan trọng nhất. Lưu ý, sinh viên không nhầm lẫn giao diện thiết kế với giao diện của sản phẩm sau cùng.
-\subsection{Thiết kế lớp}
-Phần này có độ dài từ ba đến bốn trang. Sinh viên trình bày thiết kế chi tiết các thuộc tính và phương thức cho một số lớp chủ đạo/quan trọng nhất của ứng dụng (từ 2-4 lớp). Thiết kế chi tiết cho các lớp khác, nếu muốn trình bày, sinh viên đưa vào phần phụ lục.
-
-Để minh họa thiết kế lớp, sinh viên thiết kế luồng truyền thông điệp giữa các đối tượng tham gia cho 2 đến 3 use case quan trọng nào đó bằng biểu đồ trình tự (hoặc biểu đồ giao tiếp).
-\subsection{Thiết kế cơ sở dữ liệu}
-Phần này có độ dài từ hai đến bốn trang. Sinh viên thiết kế, vẽ và giải thích biểu đồ thực thể liên kết (E-R diagram). Từ đó, sinh viên thiết kế cơ sở dữ liệu tùy theo hệ quản trị cơ sở dữ liệu mà mình sử dụng (SQL, NoSQL, Firebase, v.v.)
-
-\section{Xây dựng ứng dụng}
-\subsection{Thư viện và công cụ sử dụng}
-Sinh viên liệt kê các công cụ, ngôn ngữ lập trình, API, thư viện, IDE, công cụ kiểm thử, v.v. mà mình sử dụng để phát triển ứng dụng. Mỗi công cụ phải được chỉ rõ phiên bản sử dụng. SV nên kẻ bảng mô tả tương tự như Bảng \ref{table:my_label}. Nếu có nhiều nội dung trình bày, sinh viên cần xoay ngang bảng.
-
-\begin{table}[H]
-\centering{}
-    \begin{tabular}{lll}
-        \hline
-        \textbf{Mục đích} & \textbf{Công cụ}       & \textbf{Địa chỉ URL}    \\ \hline
-        IDE lập trình     & Eclipse Oxygen a64 bit & http://www.eclipse.org/ \\ \hline
-        v.v.              & v.v.                   & v.v.                    \\ \hline
-        \end{tabular}
     \caption{Danh sách thư viện và công cụ sử dụng}
-    \label{table:my_label}
-\end{table}
+    \label{table:congcu}
+    \begin{tabular}{|l|l|l|}
+    \hline
+    \textbf{Thành phần} & \textbf{Công cụ / Thư viện} & \textbf{Phiên bản} \\ \hline
+    Backend & Python & 3.12 \\ \hline
+    Backend & FastAPI & 0.115.12 \\ \hline
+    Backend & Uvicorn & 0.34.2 \\ \hline
+    Backend & paho-mqtt & 2.1.0 \\ \hline
+    Backend & PyMongo & 4.12.0 \\ \hline
+    Backend & Pydantic & 2.12.0 \\ \hline
+    Backend & python-jose (JWT) & 3.3.0 \\ \hline
+    Backend & passlib/bcrypt & 1.7.4 / 4.0.1 \\ \hline
+    Backend & pycryptodome (AES) & 3.21.0 \\ \hline
+    Ứng dụng & Flutter / Dart SDK & Dart $\geq$ 3.0 \\ \hline
+    Ứng dụng & flutter\_map & 6.1.0 \\ \hline
+    Ứng dụng & latlong2 & 0.9.0 \\ \hline
+    Ứng dụng & web\_socket\_channel & 2.4.0 \\ \hline
+    Ứng dụng & provider & 6.1.1 \\ \hline
+    Ứng dụng & geolocator & 10.1.0 \\ \hline
+    Ứng dụng & fl\_chart & 0.68.0 \\ \hline
+    Ứng dụng & http & 1.1.0 \\ \hline
+    Firmware & Arduino framework (ESP32) & --- \\ \hline
+    Firmware & PubSubClient & 2.8 \\ \hline
+    Firmware & TinyGSM & 0.11.7 \\ \hline
+    Hạ tầng & MongoDB / Atlas & 7.x \\ \hline
+    Hạ tầng & EMQX Public Broker & --- \\ \hline
+    Công cụ & VS Code, PlatformIO, Git & --- \\ \hline
+    \end{tabular}
+    \end{table}
 
-\subsection{Kết quả đạt được}
-Sinh viên trước tiên mô tả kết quả đạt được của mình là gì, ví dụ như các sản phẩm được đóng gói là gì, bao gồm những thành phần nào, ý nghĩa, vai trò?
+    \subsection{Kết quả đạt được}
 
-Sinh viên cần thống kê các thông tin về ứng dụng của mình như: số dòng code, số lớp, số gói, dung lượng toàn bộ mã nguồn, dung lượng của từng sản phẩm đóng gói, v.v. Tương tự như phần liệt kê về công cụ sử dụng, sinh viên cũng nên dùng bảng để mô tả phần thông tin thống kê này.
+    Đề tài đã hoàn thiện một hệ thống chạy được đầu cuối, đóng gói thành ba sản phẩm:
 
-\subsection{Minh họa các chức năng chính}
-Sinh viên lựa chọn và đưa ra màn hình cho các chức năng chính, quan trọng, và thú vị nhất. Mỗi giao diện cần phải có lời giải thích ngắn gọn. Khi giải thích, sinh viên có thể kết hợp với các chú thích ở trong hình ảnh giao diện.
+    \begin{itemize}
+        \item \textbf{Firmware thiết bị:} chương trình nạp cho ESP32 (kèm module SIM7600), thực hiện đọc GPS, phát hiện SOS và truyền dữ liệu qua MQTT.
+        \item \textbf{Dịch vụ backend:} máy chủ FastAPI cung cấp REST API, kênh WebSocket và bộ tiêu thụ MQTT, kết nối MongoDB và dịch vụ thông báo.
+        \item \textbf{Ứng dụng di động:} ứng dụng Flutter đa nền tảng (Android/iOS) cho phụ huynh theo dõi và quản lý.
+    \end{itemize}
 
-\section{Kiểm thử}
-Phần này có độ dài từ hai đến ba trang. Sinh viên thiết kế các trường hợp kiểm thử cho hai đến ba chức năng quan trọng nhất. Sinh viên cần chỉ rõ các kỹ thuật kiểm thử đã sử dụng. Chi tiết các trường hợp kiểm thử khác, nếu muốn trình bày, sinh viên đưa vào phần phụ lục.
-Sinh viên sau cùng tổng kết về số lượng các trường hợp kiểm thử và kết quả kiểm thử. Sinh viên cần phân tích lý do nếu kết quả kiểm thử không đạt.
-\section{Triển khai}
-Sinh viên trình bày mô hình và/hoặc cách thức triển khai thử nghiệm/thực tế. Ứng dụng của sinh viên được triển khai trên server/thiết bị gì, cấu hình như thế nào. Kết quả triển khai thử nghiệm nếu có (số lượng người dùng, số lượng truy cập, thời gian phản hồi, phản hồi người dùng, khả năng chịu tải, các thống kê, v.v.)
+    Bảng \ref{table:thongke} thống kê quy mô mã nguồn của hệ thống.
 
-\end{document}
+    \begin{table}[H]
+    \centering
+    \caption{Thống kê quy mô mã nguồn}
+    \label{table:thongke}
+    \begin{tabular}{|l|c|c|}
+    \hline
+    \textbf{Thành phần} & \textbf{Số tệp} & \textbf{Số dòng mã (xấp xỉ)} \\ \hline
+    Backend (Python)        & 31 & 2.337 \\ \hline
+    Ứng dụng (Dart)         & 27 & 5.348 \\ \hline
+    Firmware (C++/Arduino)  & 3  & 570 \\ \hline
+    \textbf{Tổng}           & \textbf{61} & \textbf{8.255} \\ \hline
+    \end{tabular}
+    \end{table}
+
+    Về tổ chức, backend gồm 7 gói (\texttt{api}, \texttt{services}, \texttt{repositories}, \texttt{core}, \texttt{ws}, \texttt{models}, \texttt{db}) với hơn 25 REST endpoint; cơ sở dữ liệu gồm 6 collection; ứng dụng Flutter gồm 4 màn hình chính cùng các widget và provider quản lý trạng thái.
+
+    \subsection{Minh họa các chức năng chính}
+
+    Phần này minh họa các chức năng quan trọng nhất của hệ thống qua ảnh chụp màn hình thực tế.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{Hinhve/demo_auth.png}
+        \caption{Màn hình đăng nhập và đăng ký tài khoản}
+        \label{fig:demo_auth}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{Hinhve/demo_map.png}
+        \caption{Theo dõi vị trí trẻ theo thời gian thực trên bản đồ}
+        \label{fig:demo_map}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{Hinhve/demo_geofence.png}
+        \caption{Tạo và chỉnh sửa vùng an toàn trên bản đồ}
+        \label{fig:demo_geofence}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{Hinhve/demo_alert.png}
+        \caption{Thông báo cảnh báo vi phạm vùng an toàn và tín hiệu SOS}
+        \label{fig:demo_alert}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.75\textwidth]{Hinhve/demo_stats.png}
+        \caption{Thống kê hành trình và số lần vi phạm}
+        \label{fig:demo_stats}
+    \end{figure}
+
+    \section{Kiểm thử}
+
+    Hệ thống được kiểm thử chủ yếu bằng kỹ thuật \textbf{kiểm thử hộp đen} (black-box testing) ở mức chức năng và \textbf{kiểm thử tích hợp} đầu cuối, do tính chất hệ thống phân tán gồm nhiều thành phần giao tiếp qua mạng. Việc kiểm thử được thực hiện thủ công kết hợp với một thiết bị mô phỏng publish bản tin MQTT để tái lập các kịch bản di chuyển mà không cần thiết bị vật lý.
+
+    Đề tài thiết kế các trường hợp kiểm thử cho ba chức năng quan trọng nhất: cập nhật vị trí thời gian thực, cảnh báo vi phạm geofence, và gửi tín hiệu SOS. Bảng \ref{table:kiemthu} trình bày một số trường hợp tiêu biểu.
+
+    \begin{table}[H]
+    \centering
+    \caption{Một số trường hợp kiểm thử tiêu biểu}
+    \label{table:kiemthu}
+    \begin{tabular}{|c|p{4.2cm}|p{4.2cm}|c|}
+    \hline
+    \textbf{Mã} & \textbf{Mô tả} & \textbf{Kết quả mong đợi} & \textbf{KQ} \\ \hline
+    TC01 & Thiết bị gửi tọa độ hợp lệ & Bản đồ cập nhật vị trí trong dưới 3 giây & Đạt \\ \hline
+    TC02 & Thiết bị mất tín hiệu GPS & Không publish, giữ vị trí cuối & Đạt \\ \hline
+    TC03 & Trẻ ra ngoài vùng an toàn & Sinh cảnh báo, gửi Telegram/Email & Đạt \\ \hline
+    TC04 & Trẻ quay lại vùng an toàn & Gửi thông báo trở về vùng an toàn & Đạt \\ \hline
+    TC05 & Hai cảnh báo liên tiếp trong cooldown & Chỉ gửi một cảnh báo & Đạt \\ \hline
+    TC06 & Dao động GPS nhỏ quanh ranh giới & Bỏ qua nhiễu, không cảnh báo sai & Đạt \\ \hline
+    TC07 & Nhấn nút SOS & Gửi cảnh báo SOS kèm link bản đồ qua Telegram & Đạt \\ \hline
+    TC08 & Đăng nhập sai mật khẩu & Báo lỗi, không cấp token & Đạt \\ \hline
+    TC09 & Truy cập API không kèm token hợp lệ & Từ chối truy cập (401) & Đạt \\ \hline
+    TC10 & Mất kết nối WebSocket & Ứng dụng tự kết nối lại & Đạt \\ \hline
+    \end{tabular}
+    \end{table}
+
+    Tổng cộng 10 trường hợp kiểm thử cho ba chức năng cốt lõi đều cho kết quả đạt, cho thấy hệ thống đáp ứng đúng các yêu cầu chức năng đã đặc tả ở Chương \ref{chapter:Related_works}. Các trường hợp kiểm thử chi tiết khác được trình bày trong phần phụ lục.
+
+    \section{Triển khai}
+
+    Hệ thống được triển khai theo mô hình đám mây cho phần backend và sử dụng các dịch vụ công khai cho hạ tầng trung gian, nhằm tối thiểu hóa chi phí vận hành ở giai đoạn nguyên mẫu:
+
+    \begin{itemize}
+        \item \textbf{Backend} được đóng gói bằng Docker và triển khai trên nền tảng đám mây (Render), chạy bằng máy chủ ASGI Uvicorn. Cấu hình được nạp qua biến môi trường (chuỗi kết nối MongoDB, khóa bí mật JWT, thông tin Telegram/SMTP, tham số geofence mặc định).
+        \item \textbf{Cơ sở dữ liệu} dùng MongoDB Atlas gói miễn phí, có sao lưu tự động.
+        \item \textbf{Broker MQTT} dùng EMQX public broker (\texttt{broker.emqx.io}), không cần tự vận hành hạ tầng.
+        \item \textbf{Thiết bị} nạp firmware qua PlatformIO và hoạt động độc lập ngoài hiện trường, kết nối Internet qua SIM dữ liệu (APN Viettel).
+        \item \textbf{Ứng dụng di động} đóng gói thành tệp cài đặt (APK cho Android) để cài trực tiếp lên thiết bị phụ huynh.
+    \end{itemize}
+
+    Trong môi trường phát triển, toàn bộ hạ tầng phụ trợ (MongoDB và broker Mosquitto cục bộ) có thể khởi chạy nhanh bằng Docker Compose, giúp kiểm thử mà không phụ thuộc dịch vụ ngoài. Kết quả triển khai thử nghiệm cho thấy hệ thống vận hành ổn định với độ trễ cập nhật vị trí đầu cuối dưới 3 giây và gửi cảnh báo gần như tức thì trong điều kiện mạng di động thông thường.
+
+    \end{document}

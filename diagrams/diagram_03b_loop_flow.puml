@@ -1,0 +1,48 @@
+@startuml
+skinparam defaultTextAlignment center
+skinparam backgroundColor white
+skinparam ActivityBackgroundColor #F0F4F8
+skinparam ActivityBorderColor #4A5568
+skinparam ActivityBorderThickness 1.5
+skinparam ActivityFontSize 11
+skinparam ArrowColor #2D3748
+skinparam ConditionStyle diamond
+skinparam ConditionBackgroundColor #FEF3C7
+skinparam ConditionBorderColor #D97706
+skinparam PartitionBackgroundColor #EFF6FF
+skinparam PartitionBorderColor #3B82F6
+skinparam PartitionFontStyle bold
+
+title Vòng lặp chính (Main Loop) — Firmware ESP32
+
+start
+
+partition "Main Loop" {
+  repeat
+
+    if (MQTT còn kết nối?) then (Chưa)
+      :Kết nối lại MQTT Broker;
+    endif
+
+    :Duy trì keep-alive MQTT;
+
+    if (sosPending = true?) then (Có)
+      :Gọi xử lý SOS\n(xem lưu đồ SOS);
+    endif
+
+    if (millis() − lastPublish ≥ 5000 ms?) then (Có)
+      :lastPublish = millis();
+      :Đọc tọa độ GPS từ modem → cachedGps;
+      if (Có tín hiệu GPS?) then (Chưa)
+        :Bỏ qua, không publish;
+      else (Có)
+        :Publish tọa độ GPS lên MQTT;
+        :Nhấp nháy LED × 1;
+      endif
+    endif
+
+  repeat while (Mãi mãi)
+}
+
+stop
+@enduml

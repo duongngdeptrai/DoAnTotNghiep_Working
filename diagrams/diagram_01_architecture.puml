@@ -6,7 +6,7 @@ skinparam roundCorner 8
 skinparam backgroundColor white
 
 node "Perception Layer" {
-  component "ESP32\n+ SIM7000G" as device
+  component "ESP32\n+ SIM7600" as device
 }
 
 node "Transport Layer" {

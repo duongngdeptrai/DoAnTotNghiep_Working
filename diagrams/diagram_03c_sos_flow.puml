@@ -1,0 +1,42 @@
+@startuml
+skinparam defaultTextAlignment center
+skinparam backgroundColor white
+skinparam ActivityBackgroundColor #F0F4F8
+skinparam ActivityBorderColor #4A5568
+skinparam ActivityBorderThickness 1.5
+skinparam ActivityFontSize 11
+skinparam ArrowColor #2D3748
+skinparam ConditionStyle diamond
+skinparam ConditionBackgroundColor #FEF3C7
+skinparam ConditionBorderColor #D97706
+skinparam PartitionBackgroundColor #EFF6FF
+skinparam PartitionBorderColor #3B82F6
+skinparam PartitionFontStyle bold
+
+title Xử lý SOS (Interrupt Handler) — Firmware ESP32
+
+start
+
+partition "SOS Handler" {
+  :sosPending = false;
+  :Chờ 50 ms (khử rung);
+
+  if (GPIO0 vẫn ở mức LOW?) then (Không)
+    :Bỏ qua (nhiễu);
+    stop
+  else (Có)
+    :Đọc GPS mới\n(dùng cachedGps nếu thất bại);
+
+    if (now − lastSosTime < 10 s?) then (Có)
+      :Bỏ qua (cooldown chưa hết);
+      stop
+    else (Không)
+      :lastSosTime = now;
+      :Publish SOS payload lên MQTT\n(type="sos", lat, lng, timestamp);
+      :Nhấp nháy LED × 3;
+    endif
+  endif
+}
+
+stop
+@enduml

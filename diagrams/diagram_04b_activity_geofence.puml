@@ -1,0 +1,55 @@
+@startuml
+skinparam defaultTextAlignment center
+skinparam monochrome true
+skinparam ConditionStyle diamond
+skinparam ActivityFontSize 11
+skinparam swimlaneTitleFontStyle bold
+skinparam swimlaneTitleFontSize 12
+
+title AD02 – Cảnh báo vi phạm vùng an toàn
+
+|Backend (FastAPI)|
+start
+:Nhận tọa độ mới từ AD01;
+:Lấy danh sách vùng an toàn\ncủa thiết bị từ cơ sở dữ liệu;
+
+if (Thiết bị có vùng an toàn\nđang bật?) then (Không)
+  :Bỏ qua kiểm tra;
+  stop
+endif
+
+:Tính khoảng cách đến từng vùng\n(công thức Haversine);
+
+if (Thiết bị đang trong\nít nhất một vùng an toàn?) then (Có)
+  :Cập nhật trạng thái: trong vùng;
+  stop
+endif
+
+note right
+  Thiết bị nằm ngoài
+  tất cả vùng an toàn
+end note
+
+:Kiểm tra trạng thái trước đó\n(AlertStateService);
+
+if (Đã gửi cảnh báo\ntrong 60 giây gần đây?) then (Có)
+  :Bỏ qua (cooldown chưa hết);
+  stop
+endif
+
+:Tạo bản ghi cảnh báo geofence\nvào MongoDB;
+:Cập nhật thời gian cảnh báo cuối;
+
+fork
+  :Gửi thông báo Telegram\nkèm liên kết bản đồ;
+fork again
+  :Phát sự kiện cảnh báo\nqua WebSocket;
+end fork
+
+|Ứng dụng (Flutter)|
+:Nhận sự kiện cảnh báo;
+:Hiển thị popup cảnh báo\nvi phạm vùng an toàn;
+:Phát âm thanh/rung thông báo;
+
+stop
+@enduml

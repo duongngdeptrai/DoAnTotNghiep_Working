@@ -6,7 +6,7 @@ skinparam backgroundColor white
 
 node "Power Supply" as battery
 node "ESP32" as esp32
-node "SIM7000G Module\n(GPS + GPRS)" as sim7000g
+node "SIM7600 Module\n(GPS + 4G LTE)" as sim7000g
 
 component "BOOT Button\n(GPIO0 - SOS)" as sos
 component "GPS Antenna" as ant_gps

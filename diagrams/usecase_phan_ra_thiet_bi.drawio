@@ -1,52 +1,65 @@
-<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="430" math="0" shadow="0">
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="480" math="0" shadow="0">
   <root>
     <mxCell id="0" />
     <mxCell id="1" parent="0" />
 
     <!-- System boundary -->
     <mxCell id="2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
-      <mxGeometry height="360" width="500" x="150" y="40" as="geometry" />
+      <mxGeometry height="390" width="720" x="140" y="50" as="geometry" />
     </mxCell>
 
     <!-- Title -->
     <mxCell id="3" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=14;fillColor=none;strokeColor=none;" value="&lt;b&gt;Hệ thống theo dõi vị trí trẻ em&lt;/b&gt;" vertex="1">
-      <mxGeometry height="36" width="400" x="200" y="8" as="geometry" />
+      <mxGeometry height="36" width="400" x="300" y="16" as="geometry" />
     </mxCell>
 
     <!-- Parent UC -->
     <mxCell id="10" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Quản lý thiết bị GPS" vertex="1">
-      <mxGeometry height="55" width="230" x="260" y="90" as="geometry" />
+      <mxGeometry height="55" width="240" x="380" y="100" as="geometry" />
     </mxCell>
 
     <!-- Sub UC 1: Đăng ký thiết bị -->
     <mxCell id="11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Đăng ký thiết bị" vertex="1">
-      <mxGeometry height="55" width="175" x="175" y="260" as="geometry" />
+      <mxGeometry height="55" width="160" x="155" y="290" as="geometry" />
     </mxCell>
 
-    <!-- Sub UC 2: Xóa thiết bị -->
-    <mxCell id="12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xóa thiết bị" vertex="1">
-      <mxGeometry height="55" width="150" x="430" y="260" as="geometry" />
+    <!-- Sub UC 2: Xem danh sách thiết bị (mới bổ sung) -->
+    <mxCell id="12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xem danh sách thiết bị" vertex="1">
+      <mxGeometry height="55" width="180" x="345" y="290" as="geometry" />
     </mxCell>
 
-    <!-- Include arrows -->
-    <mxCell id="30" edge="1" parent="1" source="10" target="11" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="«include»">
+    <!-- Sub UC 3: Đổi tên thiết bị (mới bổ sung) -->
+    <mxCell id="13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Đổi tên thiết bị" vertex="1">
+      <mxGeometry height="55" width="160" x="550" y="290" as="geometry" />
+    </mxCell>
+
+    <!-- Sub UC 4: Xóa thiết bị -->
+    <mxCell id="14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffffff;strokeColor=#000000;" value="Xóa thiết bị" vertex="1">
+      <mxGeometry height="55" width="140" x="735" y="290" as="geometry" />
+    </mxCell>
+
+    <!-- Mũi tên thường (không stereotype) — các tác vụ thay thế nhau -->
+    <mxCell id="30" edge="1" parent="1" source="10" target="11" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="">
       <mxGeometry relative="1" as="geometry" />
     </mxCell>
-    <mxCell id="31" edge="1" parent="1" source="10" target="12" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="«include»">
+    <mxCell id="31" edge="1" parent="1" source="10" target="12" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="32" edge="1" parent="1" source="10" target="13" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="33" edge="1" parent="1" source="10" target="14" style="dashed=1;endArrow=open;endFill=0;fontSize=11;" value="">
       <mxGeometry relative="1" as="geometry" />
     </mxCell>
 
-    <!-- Phụ huynh actor -->
+    <!-- Actor: Phụ huynh -->
     <mxCell id="40" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Phụ huynh" vertex="1">
-      <mxGeometry height="60" width="30" x="55" y="255" as="geometry" />
+      <mxGeometry height="60" width="30" x="50" y="290" as="geometry" />
     </mxCell>
-
-    <!-- Arrow: Phụ huynh -> Parent UC -->
     <mxCell id="41" edge="1" parent="1" style="edgeStyle=none;" target="10" value="">
       <mxGeometry relative="1" as="geometry">
-        <mxPoint x="100" y="275" as="sourcePoint" />
+        <mxPoint x="95" y="310" as="sourcePoint" />
       </mxGeometry>
     </mxCell>
-
   </root>
 </mxGraphModel>

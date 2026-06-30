@@ -1,0 +1,52 @@
+@startuml
+skinparam defaultTextAlignment center
+skinparam monochrome true
+skinparam ConditionStyle diamond
+skinparam ActivityFontSize 11
+skinparam swimlaneTitleFontStyle bold
+skinparam swimlaneTitleFontSize 12
+
+title AD03 – Xử lý tín hiệu SOS khẩn cấp
+
+|Thiết bị (ESP32)|
+start
+:Trẻ nhấn nút SOS\n(GPIO0 kích hoạt ngắt FALLING);
+:Khử rung 50 ms;
+
+if (Tín hiệu vẫn ở mức LOW?) then (Không)
+  :Bỏ qua (nhiễu);
+  stop
+endif
+
+if (Cooldown 10 giây\nchưa hết?) then (Có)
+  :Bỏ qua (chống gửi trùng);
+  stop
+endif
+
+:Đọc tọa độ GPS mới\n(dùng cachedGps nếu thất bại);
+:Publish SOS payload\n{ type="sos", lat, lng, timestamp }\nlên MQTT Broker;
+:Nhấp nháy LED xác nhận × 3;
+
+|MQTT Broker|
+:Nhận bản tin SOS;
+:Chuyển tiếp đến Backend;
+
+|Backend (FastAPI)|
+:Nhận bản tin MQTT;
+:Phát hiện type = "sos";
+:Tạo bản ghi cảnh báo SOS\nvào MongoDB\n(mức độ: khẩn cấp);
+
+fork
+  :Gửi thông báo SOS qua Telegram\nkèm tọa độ + liên kết bản đồ;
+fork again
+  :Phát sự kiện SOS\nqua WebSocket\n(tất cả phiên đang theo dõi);
+end fork
+
+|Ứng dụng (Flutter)|
+:Nhận sự kiện SOS;
+:Hiển thị popup SOS\nnổi bật (màu đỏ, toàn màn hình);
+:Phát âm thanh cảnh báo khẩn;
+:Hiển thị tọa độ và\nnút "Xem trên bản đồ";
+
+stop
+@enduml

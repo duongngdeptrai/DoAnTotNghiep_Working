@@ -1,0 +1,51 @@
+@startuml
+skinparam defaultTextAlignment center
+skinparam monochrome true
+skinparam ConditionStyle diamond
+skinparam ActivityFontSize 11
+skinparam swimlaneTitleFontStyle bold
+skinparam swimlaneTitleFontSize 12
+
+title AD01 – Cập nhật vị trí GPS thời gian thực
+
+|Thiết bị (ESP32)|
+start
+:Chờ đủ 5 giây;
+:Đọc tọa độ GPS từ modem SIM7600;
+
+if (Có tín hiệu GPS hợp lệ?) then (Có)
+else (Không)
+  :Bỏ qua chu kỳ này;
+  stop
+endif
+
+if (MQTT đang kết nối?) then (Chưa)
+  :Kết nối lại MQTT Broker;
+endif
+
+:Publish payload JSON\n{ deviceId, lat, lng, timestamp }\nlên topic MQTT;
+
+|MQTT Broker|
+:Nhận bản tin từ ESP32;
+:Chuyển tiếp đến Backend\n(subscriber đã đăng ký);
+
+|Backend (FastAPI)|
+:Nhận bản tin MQTT;
+:Validate payload\n(kiểm tra deviceId, lat, lng);
+
+if (Payload hợp lệ?) then (Không)
+  :Ghi log lỗi, bỏ qua;
+  stop
+endif
+
+:Lưu bản ghi vị trí vào MongoDB;
+:Kiểm tra vị trí với các vùng an toàn\n(GeofenceService);
+:Phát vị trí mới qua WebSocket\n(ConnectionManager.broadcast);
+
+|Ứng dụng (Flutter)|
+:Nhận sự kiện WebSocket;
+:Cập nhật marker thiết bị\ntrên bản đồ;
+:Hiển thị thời gian cập nhật mới nhất;
+
+stop
+@enduml
