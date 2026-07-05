@@ -3,7 +3,8 @@ import 'package:latlong2/latlong.dart';
 class GeofencePendingConfig {
   String id;
   String name;
-  String mode; // 'fixed' | 'mobile'
+  String mode; // 'fixed' | 'path' — chỉ dùng phía client trong trình sửa;
+  // luôn chuẩn hóa về 'fixed' trước khi gửi lên API (shape thật do path[] quyết định)
   double radius;
   double? centerLat;
   double? centerLng;

@@ -3,7 +3,9 @@ import 'package:latlong2/latlong.dart';
 class Geofence {
   final String id;
   final String name;
-  final String mode; // 'fixed' | 'mobile'
+  // 'fixed' (cố định — hình tròn hoặc đường đi, phân biệt qua path.isNotEmpty)
+  // | 'mobile' (tâm bám theo GPS điện thoại, luôn là hình tròn, path luôn rỗng)
+  final String mode;
   final double? centerLat;
   final double? centerLng;
   final double radiusM;

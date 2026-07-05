@@ -1,0 +1,56 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+Chương 1 giới thiệu tổng quan về đề tài nghiên cứu, bao gồm bối cảnh và sự cần thiết của hệ thống theo dõi vị trí trẻ em theo thời gian thực, mục tiêu và phạm vi đặt ra, định hướng giải pháp kỹ thuật, và cấu trúc tổng thể của báo cáo.
+
+\section{Đặt vấn đề}
+\label{section:1.1}
+
+An toàn trẻ em luôn là mối quan tâm hàng đầu của các bậc phụ huynh trong xã hội hiện đại. Theo thống kê của Cục Trẻ em (Bộ Lao động – Thương binh và Xã hội), mỗi năm tại Việt Nam ghi nhận hàng nghìn trường hợp trẻ em bị mất tích, lạc đường hoặc gặp tai nạn bất ngờ ở các khu vực công cộng. Phần lớn các sự việc xảy ra tại các đô thị lớn với mật độ giao thông cao, nơi trẻ có thể dễ dàng bị lạc hoặc rơi vào các tình huống nguy hiểm. Thời gian phát hiện và xử lý chậm trễ trong những tình huống này có thể để lại hậu quả không thể khắc phục.
+
+Bên cạnh đó, nhiều phụ huynh phải để con tự di chuyển đến trường học, trung tâm học thêm hoặc các hoạt động ngoại khóa mà không thể trực tiếp giám sát. Đặc biệt đối với trẻ em trong độ tuổi tiểu học và trung học cơ sở, các em đã có khả năng di chuyển độc lập nhưng chưa đủ nhận thức để bảo vệ bản thân khỏi những nguy cơ tiềm ẩn. Trong thực tế, nhiều phụ huynh chỉ phát hiện con bị lạc hoặc không về đúng giờ khi đã quá trễ để xử lý kịp thời. Nhu cầu theo dõi vị trí của trẻ theo thời gian thực, kết hợp với cơ chế cảnh báo tự động khi trẻ rời khỏi vùng an toàn đã được xác định trước, là bài toán cấp thiết cần giải quyết.
+
+Sự phát triển mạnh mẽ của công nghệ Internet of Things (IoT) và hạ tầng viễn thông di động trong những năm gần đây đã mở ra cơ hội xây dựng các hệ thống theo dõi vị trí nhỏ gọn, chi phí thấp và hoạt động hoàn toàn độc lập \cite{iot_survey}. Nếu được giải quyết hiệu quả, bài toán này không chỉ mang lại sự yên tâm cho hàng triệu phụ huynh mà còn có thể được mở rộng sang các lĩnh vực liên quan như giám sát người cao tuổi mắc chứng mất trí nhớ, quản lý học sinh trong các chuyến dã ngoại tập thể, hoặc theo dõi tài sản di động.
+
+\section{Mục tiêu và phạm vi đề tài}
+\label{section:1.2}
+
+Hiện nay đã có nhiều giải pháp hỗ trợ theo dõi vị trí trẻ em trên thị trường. Ứng dụng Life360 \cite{life360} cho phép phụ huynh theo dõi vị trí của điện thoại thông minh mà trẻ mang theo. Tuy nhiên, giải pháp này phụ thuộc vào việc trẻ phải luôn mang theo điện thoại, thiết bị phải được kết nối Internet và ứng dụng phải hoạt động liên tục, điều không phải lúc nào cũng khả thi đối với trẻ nhỏ hoặc trong những trường hợp điện thoại bị hạn chế sử dụng tại trường học. Ngoài ra, các giải pháp dựa trên điện thoại thông minh hoặc đồng hồ thông minh còn có nhược điểm là dễ khiến trẻ bị phân tâm bởi các chức năng giải trí, trò chơi, mạng xã hội hoặc các ứng dụng khác, làm giảm sự tập trung trong học tập và sinh hoạt hằng ngày. Apple AirTag và các thiết bị định vị dựa trên Bluetooth tương tự hoạt động thông qua mạng lưới các thiết bị Apple ở gần để xác định vị trí, do đó không cung cấp khả năng định vị GPS độc lập và không phù hợp cho việc theo dõi vị trí theo thời gian thực. Các thiết bị GPS Tracker thương mại như Optimus 2.0 hay Bouncie sử dụng mạng di động để truyền dữ liệu vị trí và có khả năng theo dõi liên tục, tuy nhiên thường yêu cầu người dùng trả phí dịch vụ định kỳ, phụ thuộc vào nền tảng của nhà sản xuất và có khả năng tùy biến hạn chế.
+
+Từ những phân tích trên, có thể thấy các giải pháp hiện nay vẫn còn một số hạn chế như: phụ thuộc vào điện thoại hoặc hệ sinh thái của nhà cung cấp, dễ gây mất tập trung cho trẻ khi sử dụng thiết bị đa chức năng, chi phí vận hành tương đối cao, khả năng tùy chỉnh thấp và chưa đáp ứng tốt nhu cầu xây dựng một hệ thống theo dõi độc lập có thể mở rộng theo yêu cầu của người sử dụng.
+
+Xuất phát từ những hạn chế đó, đề tài hướng tới xây dựng một hệ thống theo dõi vị trí trẻ em theo thời gian thực dựa trên công nghệ Internet of Things (IoT). Hệ thống bao gồm ba thành phần chính: (i) thiết bị IoT chuyên dụng tích hợp bộ thu GPS và mô-đun truyền thông di động, hoạt động độc lập mà không yêu cầu trẻ mang theo điện thoại thông minh; (ii) hệ thống backend có nhiệm vụ tiếp nhận, xử lý và lưu trữ dữ liệu vị trí, đồng thời cung cấp các API phục vụ ứng dụng; và (iii) ứng dụng di động dành cho phụ huynh, cho phép theo dõi vị trí của trẻ theo thời gian thực, xem lịch sử di chuyển, thiết lập vùng an toàn địa lý (Geofence) và nhận cảnh báo ngay khi thiết bị đi vào hoặc ra khỏi vùng an toàn.
+
+Phạm vi của đề tài tập trung vào việc xây dựng một nguyên mẫu (prototype) hoàn chỉnh có khả năng vận hành trong thực tế, bao gồm thiết kế phần cứng, phát triển firmware cho thiết bị IoT, xây dựng hệ thống backend và phát triển ứng dụng di động. Đề tài không bao gồm việc thiết kế mạch PCB chuyên dụng, tối ưu hóa tiêu thụ năng lượng cho thời gian hoạt động dài, triển khai hệ thống trên hạ tầng quy mô lớn hoặc thương mại hóa sản phẩm. Kết quả của đề tài hướng đến việc chứng minh tính khả thi của một hệ thống theo dõi vị trí trẻ em thời gian thực có khả năng hoạt động độc lập, chi phí hợp lý và dễ dàng mở rộng, làm cơ sở cho các nghiên cứu và ứng dụng thực tiễn trong tương lai.
+
+\section{Định hướng giải pháp}
+\label{section:1.3}
+
+Dựa trên các mục tiêu và yêu cầu đã trình bày ở Mục \ref{section:1.2}, đề tài đề xuất xây dựng một hệ thống IoT theo dõi vị trí trẻ em theo thời gian thực với kiến trúc gồm ba tầng: tầng thiết bị (Device Layer), tầng backend (Backend Layer) và tầng ứng dụng (Application Layer). Kiến trúc này giúp phân tách rõ chức năng của từng thành phần, tạo điều kiện thuận lợi cho việc phát triển, bảo trì và mở rộng hệ thống trong tương lai.
+
+Ở tầng thiết bị, hệ thống sử dụng một thiết bị IoT chuyên dụng có khả năng thu thập tọa độ GPS và truyền dữ liệu vị trí đến máy chủ thông qua mạng di động. Thiết bị hoạt động độc lập, không yêu cầu trẻ mang theo điện thoại thông minh, từ đó giảm sự phụ thuộc vào các thiết bị cá nhân và hạn chế nguy cơ trẻ bị phân tâm trong quá trình học tập và sinh hoạt.
+
+Tầng backend chịu trách nhiệm tiếp nhận dữ liệu vị trí từ thiết bị, xử lý các nghiệp vụ của hệ thống, lưu trữ dữ liệu và cung cấp các dịch vụ cho ứng dụng di động thông qua các giao diện lập trình ứng dụng (API). Đồng thời, backend thực hiện giám sát vùng an toàn địa lý (Geofence) và gửi thông báo đến phụ huynh khi phát hiện thiết bị đi vào hoặc ra khỏi vùng đã thiết lập.
+
+Tầng ứng dụng di động cung cấp giao diện để phụ huynh theo dõi vị trí của trẻ theo thời gian thực, xem lịch sử di chuyển, thiết lập vùng an toàn và nhận các cảnh báo từ hệ thống. Việc sử dụng ứng dụng di động giúp người dùng dễ dàng quản lý và giám sát thiết bị ở mọi lúc, mọi nơi.
+
+Để hiện thực hóa giải pháp trên, đề tài lựa chọn các công nghệ phù hợp cho từng thành phần của hệ thống, bao gồm vi điều khiển ESP32 kết hợp mô-đun SIM7600 cho thiết bị IoT, giao thức MQTT để truyền dữ liệu, FastAPI để xây dựng hệ thống backend, MongoDB Atlas để lưu trữ dữ liệu và Flutter để phát triển ứng dụng di động đa nền tảng.
+
+Đóng góp chính của đề tài là xây dựng thành công một nguyên mẫu hệ thống IoT theo dõi vị trí trẻ em theo thời gian thực hoạt động độc lập với điện thoại thông minh của trẻ. Hệ thống tích hợp đầy đủ các thành phần từ thiết bị nhúng, backend đến ứng dụng di động, đồng thời hỗ trợ theo dõi vị trí, lưu trữ lịch sử di chuyển và cảnh báo khi thiết bị vi phạm vùng an toàn địa lý. Kết quả thực nghiệm cho thấy hệ thống đáp ứng yêu cầu hoạt động theo thời gian thực với độ trễ đầu cuối dưới 5 giây và sai số định vị GPS trung bình khoảng 3,2 m trong điều kiện thử nghiệm.
+
+\section{Bố cục đồ án}
+\label{section:1.4}
+
+Phần còn lại của báo cáo đồ án tốt nghiệp này được tổ chức như sau.
+
+Chương 2 trình bày kết quả khảo sát hiện trạng các giải pháp theo dõi vị trí trẻ em hiện có, từ đó phân tích và đặc tả các yêu cầu chức năng và phi chức năng của hệ thống cần xây dựng, bao gồm các biểu đồ use case và đặc tả chi tiết các kịch bản sử dụng chính.
+
+Trong Chương 3, đề tài giới thiệu nền tảng lý thuyết và các công nghệ được lựa chọn để triển khai hệ thống, bao gồm vi điều khiển ESP32, module SIM7600, giao thức MQTT, framework FastAPI, cơ sở dữ liệu MongoDB và framework Flutter. Với mỗi công nghệ, chương này phân tích lý do lựa chọn so với các phương án thay thế tương đương.
+
+Chương 4 trình bày toàn bộ quá trình phân tích thiết kế, triển khai và đánh giá hệ thống, bao gồm kiến trúc tổng thể, thiết kế firmware, thiết kế API và cơ sở dữ liệu, giao diện ứng dụng di động, kết quả kiểm thử và mô hình triển khai thực tế trên đám mây.
+
+Chương 5 tập trung trình bày các giải pháp kỹ thuật và đóng góp nổi bật của đề tài, gồm thiết kế tích hợp phần cứng một module, thuật toán geofencing hai chế độ, kiến trúc truyền thông lai MQTT–WebSocket và cơ chế cảnh báo đa kênh song song.
+
+Chương 6 tổng kết các kết quả đạt được, so sánh với mục tiêu ban đầu, chỉ ra các hạn chế còn tồn tại và đề xuất các hướng phát triển tiếp theo cho hệ thống.
+
+\end{document}

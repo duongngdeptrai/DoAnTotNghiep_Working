@@ -1,0 +1,17 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+\begin{center}
+    \Large{\textbf{ABSTRACT}}\\
+\end{center}
+\vspace{1cm}
+
+Real-time child location tracking is a practical problem driven by the safety concerns of modern families. Existing solutions each carry notable limitations: Life360 requires the child to carry a smartphone, Apple AirTag only works within short range and does not support continuous tracking, and commercial GPS trackers typically impose monthly subscription fees with limited customization. Starting from these observations, this thesis aims to build a system that operates independently of the child's mobile device, with low operating costs and sufficient flexibility to accommodate real-world usage scenarios.
+
+The system follows a three-tier architecture comprising an IoT hardware device, a processing backend, and a mobile application for parents. The hardware is built around an ESP32 microcontroller paired with a SIM7600 module -- a single component that integrates both a GPS receiver and a 4G LTE modem, enabling the device to determine its position and transmit data without any additional external modules. Location data is periodically published via MQTT to a FastAPI backend, stored in MongoDB, and forwarded to a Flutter application over WebSocket.
+
+The main technical contributions of this work fall into four areas. First, the integration of GPS and cellular connectivity on a single module combined with a state-machine firmware capable of self-recovery after signal loss. Second, a dual-mode geofencing algorithm that supports circular zones computed with the Haversine formula and path corridors evaluated using point-to-segment projection. Third, a hybrid MQTT-WebSocket communication architecture that uses an asynchronous queue to bridge the two protocols without blocking either thread. Fourth, a parallel multi-channel alert mechanism that delivers notifications simultaneously via WebSocket and Telegram Bot, with a cooldown timer to prevent duplicate messages.
+
+Measurements on the deployed prototype show an end-to-end latency from device to application of under two seconds, GPS positioning accuracy of approximately 3.2 m outdoors, and a five-second update cycle. The system has operated reliably under real-world conditions and meets all requirements defined at the outset.
+
+\end{document}

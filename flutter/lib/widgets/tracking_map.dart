@@ -85,10 +85,10 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
   }
 
   void _flyToGeofence(Geofence g) {
-    if (g.mode == 'fixed' && g.centerLat != null && g.centerLng != null) {
-      _flyTo(LatLng(g.centerLat!, g.centerLng!), zoom: _zoomForRadius(g.radiusM));
-    } else if (g.mode == 'mobile' && g.path.isNotEmpty) {
+    if (g.path.isNotEmpty) {
       _flyTo(g.path[g.path.length ~/ 2], zoom: _zoomForPath(g.path));
+    } else if (g.centerLat != null && g.centerLng != null) {
+      _flyTo(LatLng(g.centerLat!, g.centerLng!), zoom: _zoomForRadius(g.radiusM));
     }
   }
 
@@ -113,7 +113,7 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
   }
 
   void _showGeofencePopup(Geofence g) {
-    final center = g.mode == 'fixed' && g.centerLat != null
+    final center = g.path.isEmpty && g.centerLat != null
         ? '${g.centerLat!.toStringAsFixed(5)}, ${g.centerLng!.toStringAsFixed(5)}'
         : '${g.path.length} điểm';
     showDialog(
@@ -140,7 +140,7 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Divider(color: Colors.white12),
-            _PopupRow(label: 'Loại', value: g.mode == 'fixed' ? 'Vùng cố định' : 'Đường di chuyển'),
+            _PopupRow(label: 'Loại', value: g.path.isEmpty ? 'Vùng cố định' : 'Đường di chuyển'),
             _PopupRow(label: 'Bán kính', value: '${g.radiusM.toStringAsFixed(0)} m'),
             _PopupRow(label: 'Vị trí', value: center),
           ],
@@ -376,7 +376,7 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
     // ── Plan mode: path point markers ─────────────────────────────────────────
     if (widget.isPlanMode &&
         widget.pendingConfig != null &&
-        widget.pendingConfig!.mode == 'mobile') {
+        widget.pendingConfig!.mode == 'path') {
       for (var i = 0; i < widget.pendingConfig!.path.length; i++) {
         markers.add(Marker(
           point: widget.pendingConfig!.path[i],
@@ -405,10 +405,10 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
     // ── Geofence tap markers ──────────────────────────────────────────────────
     if (!widget.isMobileMode) for (final g in widget.geofences) {
       LatLng? tapCenter;
-      if (g.mode == 'fixed' && g.centerLat != null && g.centerLng != null) {
-        tapCenter = LatLng(g.centerLat!, g.centerLng!);
-      } else if (g.mode == 'mobile' && g.path.isNotEmpty) {
+      if (g.path.isNotEmpty) {
         tapCenter = g.path[g.path.length ~/ 2];
+      } else if (g.centerLat != null && g.centerLng != null) {
+        tapCenter = LatLng(g.centerLat!, g.centerLng!);
       }
       if (tapCenter == null) continue;
 
@@ -489,7 +489,7 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
     final polylines = <Polyline>[];
 
     if (!widget.isMobileMode) for (final g in widget.geofences) {
-      if (g.mode == 'mobile' && g.path.length > 1) {
+      if (g.path.length > 1) {
         final capsule = _calculateCapsulePolygon(g.path, g.radiusM);
         if (capsule.isNotEmpty) {
           polygons.add(Polygon(
@@ -506,7 +506,7 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
     // ── Preview pending path geofence in plan mode ────────────────────────────
     if (widget.isPlanMode &&
         widget.pendingConfig != null &&
-        widget.pendingConfig!.mode == 'mobile' &&
+        widget.pendingConfig!.mode == 'path' &&
         widget.pendingConfig!.path.length > 1) {
       final capsule = _calculateCapsulePolygon(
           widget.pendingConfig!.path, widget.pendingConfig!.radius);
@@ -572,7 +572,7 @@ class _TrackingMapState extends State<TrackingMap> with TickerProviderStateMixin
 
 List<CircleMarker> geofences_to_circles(List<Geofence> geofences) {
   return geofences
-      .where((g) => g.mode == 'fixed' && g.centerLat != null && g.centerLng != null)
+      .where((g) => g.path.isEmpty && g.centerLat != null && g.centerLng != null)
       .map((g) => CircleMarker(
             point: LatLng(g.centerLat!, g.centerLng!),
             radius: g.radiusM,

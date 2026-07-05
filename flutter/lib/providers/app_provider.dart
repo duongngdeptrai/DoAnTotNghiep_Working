@@ -539,7 +539,7 @@ class AppProvider with ChangeNotifier {
 
 	void handleMapTap(LatLng point) {
 		if (!_isPlanMode) return;
-		if (_pendingConfig.mode == 'mobile') {
+		if (_pendingConfig.mode == 'path') {
 			_pendingConfig = _pendingConfig.copyWith(
 				path: [..._pendingConfig.path, point],
 			);
@@ -569,10 +569,13 @@ class AppProvider with ChangeNotifier {
 			final cfg = _pendingConfig;
 			// Send as [[lat, lng], ...] to match backend's list[list[float]] type
 			final pathJson = cfg.path.map((p) => [p.latitude, p.longitude]).toList();
+			// Editor chỉ tạo vùng cố định (tròn hoặc đường đi); 'mobile' (GPS-follow)
+			// chỉ được thiết lập qua dock toggle, không qua trình sửa này.
+			final apiMode = cfg.mode == 'path' ? 'fixed' : cfg.mode;
 			final state = await _apiService.postGeofenceFull(
 				geofenceId: cfg.id,
 				name: cfg.name,
-				mode: cfg.mode,
+				mode: apiMode,
 				radiusM: cfg.radius,
 				lat: cfg.centerLat,
 				lng: cfg.centerLng,

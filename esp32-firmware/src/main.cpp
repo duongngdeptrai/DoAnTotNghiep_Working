@@ -167,7 +167,7 @@ void setup() {
 
   Serial.begin(115200);
   delay(500);
-  Serial.println("\n=== ESP32 GPS Tracker (SIM7000G 4G) ===");
+  Serial.println("\n=== ESP32 GPS Tracker (SIM7600G 4G) ===");
 
   Serial2.setRxBufferSize(2048);
   Serial2.begin(115200, SERIAL_8N1, MODEM_RX, MODEM_TX);

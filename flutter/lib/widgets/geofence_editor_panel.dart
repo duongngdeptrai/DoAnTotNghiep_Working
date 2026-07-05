@@ -202,7 +202,7 @@ class _GeofenceEditorPanelState extends State<GeofenceEditorPanel> {
 
   Widget _buildEditorView(BuildContext context, AppProvider provider) {
     final cfg = provider.pendingConfig;
-    final isPath = cfg.mode == 'mobile';
+    final isPath = cfg.mode == 'path';
 
     return Container(
       width: 230,
@@ -266,7 +266,7 @@ class _GeofenceEditorPanelState extends State<GeofenceEditorPanel> {
                     _ModeButton(
                       label: 'Đường đi',
                       active: isPath,
-                      onTap: () => provider.updatePendingConfig(cfg.copyWith(mode: 'mobile')),
+                      onTap: () => provider.updatePendingConfig(cfg.copyWith(mode: 'path')),
                     ),
                   ],
                 ),
@@ -465,7 +465,7 @@ class _GeofenceListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPath = geofence.mode == 'mobile';
+    final isPath = geofence.path.isNotEmpty;
     return GestureDetector(
       onTap: onFocus,
       child: Padding(

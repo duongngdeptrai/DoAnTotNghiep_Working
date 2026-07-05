@@ -1,0 +1,38 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+\section{Kết luận}
+\label{section:6.1}
+
+Đề tài đã xây dựng thành công một hệ thống theo dõi vị trí trẻ em theo thời gian thực hoàn chỉnh, bao gồm ba thành phần hoạt động đồng bộ: thiết bị IoT nhúng, hệ thống backend và ứng dụng di động đa nền tảng. So với mục tiêu đặt ra tại mục \ref{section:1.2}, các kết quả đạt được như sau.
+
+\textbf{Thiết bị IoT hoạt động độc lập} mà không cần điện thoại của trẻ — mục tiêu cốt lõi phân biệt hệ thống này với các giải pháp như Life360. ESP32 kết hợp với SIM7600 đọc tọa độ GPS và truyền qua mạng di động (4G LTE/APN Viettel) hoàn toàn tự chủ, với máy trạng thái tự phục hồi khi mất tín hiệu GPS hoặc rớt kết nối mạng.
+
+\textbf{Theo dõi thời gian thực} đạt độ trễ end-to-end dưới 2 giây với chu kỳ cập nhật 5 giây, độ chính xác GPS khoảng 3,2 m trong điều kiện ngoài trời. Ứng dụng Flutter cập nhật bản đồ tức thì thông qua kênh WebSocket mà không cần phụ huynh thao tác thủ công.
+
+\textbf{Geofencing linh hoạt} hỗ trợ hai chế độ: vùng hình tròn (Haversine) và hành lang đường đi (point-to-polyline), đáp ứng đa dạng tình huống sử dụng thực tế mà các GPS tracker thương mại thường không có. Phụ huynh có thể tạo, chỉnh sửa và xóa vùng an toàn trực tiếp trên bản đồ trong ứng dụng mà không cần can thiệp kỹ thuật.
+
+\textbf{Cảnh báo đa kênh} qua WebSocket và Telegram Bot đảm bảo phụ huynh nhận được thông báo kịp thời trong mọi tình huống sử dụng. Tín hiệu SOS khẩn cấp được gửi tức thì kèm liên kết định vị Google Maps.
+
+\textbf{Chi phí vận hành thấp}: hệ thống sử dụng EMQX public broker miễn phí, MongoDB Atlas gói miễn phí, OpenStreetMap không giới hạn request, và Telegram Bot API không tính phí. Chi phí duy nhất là gói data SIM di động và phí hosting backend.
+
+So sánh với các sản phẩm tương tự trên thị trường (Bảng \ref{table:comparison}), hệ thống đề tài đáp ứng được tất cả năm tiêu chí: hoạt động độc lập không cần điện thoại trẻ, theo dõi liên tục thời gian thực, geofence linh hoạt, cảnh báo đa kênh, chi phí vận hành thấp — trong khi mỗi sản phẩm thương mại chỉ đáp ứng được một phần. Bốn đóng góp kỹ thuật nổi bật được phân tích chi tiết tại Chương \ref{chapter:SolutionAndContribution}.
+
+\textbf{Hạn chế còn tồn tại:} Hệ thống chưa có thiết kế PCB tùy chỉnh — phần cứng hiện tại dùng module phát triển ESP32 và bo mạch SIM7600 dạng breakout board, chưa tối ưu về kích thước và tiêu thụ điện cho sản phẩm thương mại. Cơ chế xác thực hiện tại dùng JWT ký bằng HS256 nhưng chưa có refresh token và thu hồi token, đồng thời kênh MQTT chưa được mã hóa TLS — phù hợp nguyên mẫu nhưng cần bổ sung khi đưa vào sản xuất. Ngoài ra, chức năng chia sẻ thiết bị giữa nhiều phụ huynh (shared permission) đã được thiết kế cơ sở dữ liệu hỗ trợ nhưng giao diện ứng dụng chưa hoàn thiện đầy đủ.
+
+\section{Hướng phát triển}
+\label{section:6.2}
+
+\textbf{Thiết kế PCB và đóng gói sản phẩm:} Bước phát triển tự nhiên tiếp theo là thiết kế bo mạch in tùy chỉnh tích hợp ESP32, SIM7600, pin Li-Po và mạch sạc trong một vỏ đeo nhỏ gọn. PCB tùy chỉnh cho phép tối ưu hóa tiêu thụ điện, giảm kích thước và cải thiện độ bền cơ học cho trẻ em sử dụng hàng ngày.
+
+\textbf{Chế độ ngủ sâu và tiết kiệm điện:} Triển khai deep sleep cho ESP32 và module SIM7600 giữa các chu kỳ gửi dữ liệu (wake on timer); xa hơn, có thể chuyển sang module di động tiết kiệm điện hỗ trợ NB-IoT/LTE-M (ví dụ dòng SIM7000) thay cho kết nối LTE/GPRS khi có phủ sóng phù hợp, nhằm kéo dài thời lượng pin từ vài giờ lên vài ngày trên một lần sạc.
+
+\textbf{Mở rộng đa thiết bị và phân quyền:} Hoàn thiện giao diện quản lý nhiều thiết bị trong một tài khoản (nhiều trẻ trong gia đình), cùng tính năng chia sẻ quyền theo dõi với thành viên khác (ông bà, người giám hộ) với các mức phân quyền khác nhau.
+
+\textbf{Phân tích hành vi và cảnh báo bất thường:} Tích hợp phân tích chuỗi thời gian trên dữ liệu lịch sử vị trí để phát hiện hành vi bất thường — ví dụ trẻ dừng lại quá lâu ở một vị trí không quen thuộc, hoặc đi lạc khỏi tuyến đường thường ngày — mà không cần phụ huynh cài đặt geofence thủ công.
+
+\textbf{Chế độ hoạt động ngoại tuyến:} Cho phép thiết bị lưu tọa độ vào bộ nhớ flash nội bộ khi mất kết nối mạng và đồng bộ lại khi kết nối được khôi phục, đảm bảo không mất dữ liệu lịch sử hành trình khi thiết bị đi qua vùng phủ sóng kém.
+
+\textbf{Bảo mật và xác thực nâng cao:} Bổ sung cơ chế refresh token và thu hồi token cho hệ thống JWT hiện có, mã hóa kênh MQTT bằng TLS, và triển khai xác thực hai yếu tố (2FA) cho ứng dụng phụ huynh nhằm đảm bảo an toàn dữ liệu vị trí trẻ em trong môi trường sản xuất thực tế.
+
+\end{document}

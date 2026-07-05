@@ -131,10 +131,15 @@ class GeofenceService:
             }
 
             if mode == "fixed":
-                update_data["centerLat"] = center_lat if center_lat is not None else 21.0285
-                update_data["centerLng"] = center_lng if center_lng is not None else 105.8542
                 update_data["source"] = "fixed"
-                update_data["path"] = []
+                if path and len(path) >= 2:
+                    update_data["path"] = path
+                    update_data["centerLat"] = center_lat if center_lat is not None else 21.0285
+                    update_data["centerLng"] = center_lng if center_lng is not None else 105.8542
+                else:
+                    update_data["centerLat"] = center_lat if center_lat is not None else 21.0285
+                    update_data["centerLng"] = center_lng if center_lng is not None else 105.8542
+                    update_data["path"] = []
             elif mode == "mobile":
                 update_data["source"] = "mobile"
                 if path:
@@ -213,12 +218,11 @@ class GeofenceService:
             matched_geofence_id = None
 
             for g in geofences:
-                mode = g.get("mode", "fixed")
                 path = g.get("path", [])
                 radius = g.get("radiusM", 100.0)
                 gid = g.get("id", "unknown")
 
-                if mode == "mobile" and path and len(path) >= 2:
+                if path and len(path) >= 2:
                     min_dist = float("inf")
                     for i in range(len(path) - 1):
                         dist = self._distance_to_segment((lat, lng), tuple(path[i]), tuple(path[i + 1]))

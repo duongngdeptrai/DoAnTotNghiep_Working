@@ -163,7 +163,7 @@ def login(payload: UserLoginIn) -> TokenResponse:
     token = create_access_token(user_id)
     user_out = UserOut(id=user_id, email=user["email"], createdAt=user["createdAt"])
     return TokenResponse(access_token=token, user=user_out)
-
+    
 
 @router.get("/auth/me", response_model=UserOut)
 def get_me(request: Request) -> UserOut:
