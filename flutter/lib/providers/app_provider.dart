@@ -623,8 +623,6 @@ class AppProvider with ChangeNotifier {
 		_socketStatus = SocketStatus.connecting;
 		notifyListeners();
 
-		_socketService!.connect();
-
 		_socketMessageSub?.cancel();
 		_socketMessageSub = _socketService!.messageStream.listen(
 			_handleSocketMessage,
@@ -644,6 +642,8 @@ class AppProvider with ChangeNotifier {
 			}
 			notifyListeners();
 		});
+
+		_socketService!.connect();
 	}
 
 	Alert _enrichAlertWithZoneName(Alert alert) {

@@ -108,14 +108,43 @@ class GeofenceService:
                 self._save_to_db()
             return {"geofences": list(self._geofences)}
 
+    def _get_default(self) -> dict | None:
+        return next((g for g in self._geofences if g.get("id") == "default"), None)
+
     def set_fixed_mode(self) -> dict:
-        return self.upsert_geofence("default", mode="fixed", source="fixed")
+        with self._lock:
+            current = self._get_default() or {}
+            lat = current.get("fixedCenterLat", current.get("centerLat", 21.0285))
+            lng = current.get("fixedCenterLng", current.get("centerLng", 105.8542))
+            return self.upsert_geofence(
+                "default", mode="fixed", source="fixed", centerLat=lat, centerLng=lng
+            )
 
     def set_mobile_mode(self) -> dict:
-        return self.upsert_geofence("default", mode="mobile", radiusM=50.0)
+        with self._lock:
+            current = self._get_default() or {}
+            lat = current.get("mobileCenterLat", current.get("centerLat", 21.0285))
+            lng = current.get("mobileCenterLng", current.get("centerLng", 105.8542))
+            return self.upsert_geofence(
+                "default", mode="mobile", radiusM=50.0, centerLat=lat, centerLng=lng
+            )
 
-    def update_mobile_center(self, lat: float, lng: float) -> dict:
-        return self.upsert_geofence("default", mode="mobile", centerLat=lat, centerLng=lng, source="mobile")
+    def update_center(self, lat: float, lng: float) -> dict:
+        """Cập nhật tâm vùng 'default'. Ghi đồng thời vào ô nhớ riêng của
+        mode hiện tại (fixedCenter* hoặc mobileCenter*) để lần chuyển mode
+        sau còn khôi phục lại đúng tâm cũ thay vì bị mode kia ghi đè."""
+        with self._lock:
+            current = self._get_default() or {}
+            mode = current.get("mode", "fixed")
+            if mode == "mobile":
+                return self.upsert_geofence(
+                    "default", centerLat=lat, centerLng=lng,
+                    mobileCenterLat=lat, mobileCenterLng=lng,
+                )
+            return self.upsert_geofence(
+                "default", centerLat=lat, centerLng=lng,
+                fixedCenterLat=lat, fixedCenterLng=lng,
+            )
 
     def update_path(self, path: list[list[float]]) -> dict:
         return self.upsert_geofence("default", path=path)
@@ -150,6 +179,17 @@ class GeofenceService:
                 else:
                     update_data["centerLat"] = 21.0285
                     update_data["centerLng"] = 105.8542
+
+            # Đồng bộ vào ô nhớ riêng của mode để set_fixed_mode()/set_mobile_mode()
+            # sau này khôi phục đúng center vừa sửa qua Plan Mode Editor, thay vì
+            # khôi phục giá trị fixedCenter*/mobileCenter* cũ đã lỗi thời.
+            if geofence_id == "default" and "centerLat" in update_data:
+                if mode == "fixed":
+                    update_data["fixedCenterLat"] = update_data["centerLat"]
+                    update_data["fixedCenterLng"] = update_data["centerLng"]
+                elif mode == "mobile":
+                    update_data["mobileCenterLat"] = update_data["centerLat"]
+                    update_data["mobileCenterLng"] = update_data["centerLng"]
 
             if idx is not None:
                 for key, value in update_data.items():

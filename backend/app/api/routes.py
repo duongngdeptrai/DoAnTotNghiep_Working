@@ -273,9 +273,7 @@ def update_geofence_center(
 ) -> dict:
     user_id = _get_user_id(request)
     geofence_service = _get_user_geofence_service(request, user_id)
-    state = geofence_service.upsert_geofence(
-        "default", centerLat=payload.lat, centerLng=payload.lng
-    )
+    state = geofence_service.update_center(payload.lat, payload.lng)
     flat = _flat_geofence_state(state)
     ws_manager.broadcast_to_user_from_thread(user_id, {"type": "geofence_state_update", **flat})
     return flat
